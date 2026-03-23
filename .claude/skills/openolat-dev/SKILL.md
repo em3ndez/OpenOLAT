@@ -264,6 +264,7 @@ MyManager mgr = CoreSpringFactory.getImpl(MyManager.class);
 - **Gender strategy:** `Benutzer{in}` → converted per locale config (star `*`, colon `:`, etc.)
 - **Core classes:** `I18nModule` (config), `I18nManager` (resolution/caching), `PackageTranslator` (per-controller)
 - **Glossary:** See `doc/openolat-glossary.md` for product-specific term definitions and `doc/openolat-glossary-translations.md` for canonical translations
+- **Glossary-driven translation (mandatory):** When translating i18n strings between languages, always read `doc/openolat-glossary-translations.md` first. If the source text contains any glossary terms, you **must** use the corresponding translated term from the glossary as the basis for your translation. This ensures consistent terminology across all languages.
 
 ## VFS (Virtual File System)
 
