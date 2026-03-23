@@ -347,13 +347,14 @@ abstract class AbstractImportListController extends StepFormBasicController impl
 							doOpenValidationCallout(ureq, selectedRow, col, targetId);
 						}
 					}
+				} else if(ImportStatisticsCellRenderer.CMD_ACTIONS.equals(se.getCommand())) {
+					String targetId = ImportStatisticsCellRenderer.getId(se.getIndex());
+					AbstractImportRow selectedRow = tableModel.getObject(se.getIndex());
+					doOpenValidationResultsCallout(ureq, selectedRow, targetId);
 				}
 			} else if(event instanceof FlexiTableSearchEvent || event instanceof FlexiTableFilterTabEvent) {
 				filterModel();
 			}
-		} else if(source instanceof FormLink link && cmdValidationResults.equals(link.getCmd())
-				&& link.getUserObject() instanceof AbstractImportRow importedRow) {
-			doOpenValidationResultsCallout(ureq, importedRow, link.getFormDispatchId());
 		} else if(source instanceof MultipleSelectionElement check
 				&& check.getUserObject() instanceof ImportedRow importedRow) {
 			doIgnore(importedRow, check.isAtLeastSelected(1));
@@ -428,8 +429,8 @@ abstract class AbstractImportListController extends StepFormBasicController impl
 		validationListCtrl = new ValidationResultListController(ureq, getWindowControl(), values);
 		listenTo(validationListCtrl);
 	
-		calloutCtrl = new CloseableCalloutWindowController(ureq, getWindowControl(),
-				validationListCtrl.getInitialComponent(), targetId, "", true, "", new CalloutSettings(true, CalloutOrientation.bottom, false, "", true));
+		calloutCtrl = new CloseableCalloutWindowController(ureq, getWindowControl(), validationListCtrl.getInitialComponent(),
+				targetId, "", true, "", new CalloutSettings(true, CalloutOrientation.bottom, false, "", true));
 		listenTo(calloutCtrl);
 		calloutCtrl.activate();
 	}

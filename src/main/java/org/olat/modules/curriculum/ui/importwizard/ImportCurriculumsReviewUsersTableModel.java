@@ -205,7 +205,7 @@ implements FilterableFlexiTableModel, SortableFlexiTableDataModel<ImportedUserRo
 			return switch(COLS[col]) {
 				case rowNum -> Integer.valueOf(userRow.getRowNum());
 				case status -> userRow.getStatus();
-				case infos, infosWarnings, infosErrors -> userRow.getValidationResultsLink();
+				case infos, infosWarnings, infosErrors -> userRow.getValidationStatistics();
 				case ignore -> userRow.getIgnoreEl();
 				case tools -> Boolean.valueOf(userRow.getIgnoreEl() != null && userRow.getIgnoreEl().isEnabled());
 				case organisationIdentifier -> userRow.getOrganisationIdentifier();

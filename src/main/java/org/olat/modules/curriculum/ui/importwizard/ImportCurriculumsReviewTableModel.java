@@ -174,7 +174,7 @@ implements FilterableFlexiTableModel {
 		return switch(COLS[col]) {
 			case rowNum -> Integer.valueOf(importedRow.getRowNum());
 			case status -> importedRow.getStatus();
-			case infos, infosWarnings, infosErrors -> importedRow.getValidationResultsLink();
+			case infos, infosWarnings, infosErrors -> importedRow.getValidationStatistics();
 			case ignore -> importedRow.getIgnoreEl();
 			case curriculumIdentifier -> importedRow.getCurriculumIdentifier();
 			case implementationIdentifier -> importedRow.getImplementationIdentifier();

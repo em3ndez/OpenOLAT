@@ -68,7 +68,8 @@ public class ImportCurriculumsReviewMembershipsController extends AbstractImport
 	protected void initColumns(FlexiTableColumnModel columnsModel) {
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.status,
 				new ImportStatusCellRenderer(getTranslator())));
-		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.infosErrors));
+		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.infosErrors,
+				new ImportStatisticsCellRenderer(false, false)));
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.ignore));
 		
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.curriculumIdentifier,
@@ -181,6 +182,20 @@ public class ImportCurriculumsReviewMembershipsController extends AbstractImport
 		tableEl.reset(true, true, true);
 		
 		loadErrorMessage(rows, "error.members");
+	}
+
+	@Override
+	protected boolean validateFormLogic(UserRequest ureq) {
+		boolean allOk = super.validateFormLogic(ureq);
+		allOk &= hasErrors(context.getImportedCurriculumsRows());
+		allOk &= hasErrors(context.getImportedElementsRows());
+		allOk &= hasErrors(context.getImportedUsersRows());
+		allOk &= hasErrors(context.getImportedMembershipsRows());
+		return allOk;
+	}
+	
+	private boolean hasErrors(List<? extends AbstractImportRow> rows) {
+		return rows.stream().anyMatch(row -> row.hasValidationErrors());
 	}
 
 	@Override

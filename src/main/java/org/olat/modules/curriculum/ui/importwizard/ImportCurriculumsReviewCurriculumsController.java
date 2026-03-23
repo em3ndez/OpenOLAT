@@ -66,7 +66,8 @@ public class ImportCurriculumsReviewCurriculumsController extends AbstractImport
 	protected void initColumns(FlexiTableColumnModel columnsModel) {
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.status,
 				new ImportStatusCellRenderer(getTranslator())));
-		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.infos));
+		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.infos,
+				new ImportStatisticsCellRenderer(true, true)));
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.ignore));
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.displayName,
 				new ImportValueCellRenderer(ImportCurriculumsCols.displayName, getLocale())));

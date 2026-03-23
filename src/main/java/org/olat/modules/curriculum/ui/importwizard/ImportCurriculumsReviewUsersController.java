@@ -102,7 +102,8 @@ public class ImportCurriculumsReviewUsersController extends AbstractImportListCo
 		DefaultFlexiColumnModel statusCol = new DefaultFlexiColumnModel(ImportCurriculumsCols.status,
 				new ImportStatusCellRenderer(getTranslator()));
 		columnsModel.addFlexiColumnModel(statusCol);
-		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.infosWarnings));
+		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.infosWarnings,
+				new ImportStatisticsCellRenderer(true, false)));
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(ImportCurriculumsCols.ignore));
 		
 		int i=0;
