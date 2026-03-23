@@ -278,6 +278,34 @@ VFSManager.copyContent(inputStream, file, identity);
 
 - **No pure whitespace changes:** Never change invisible characters (spaces, tabs) on lines where the only modification is the whitespace itself. Whitespace may be changed on lines where actual code is also being modified. This keeps diffs clean and avoids unnecessary merge conflicts.
 
+## HTTP Client Service
+
+All outbound HTTP requests **must** use `HttpClientService` (`org.olat.core.util.httpclient.HttpClientService`). Never use `java.net.http.HttpClient`, other HTTP client libraries, or instantiate Apache `HttpClient` directly. The service provides centralized proxy configuration, standardized timeouts, and frees the DB connection before outbound calls.
+
+```java
+// In Spring-managed beans
+@Autowired
+private HttpClientService httpClientService;
+
+// In controllers
+HttpClientService httpClientService = CoreSpringFactory.getImpl(HttpClientService.class);
+
+// Simple request
+try (CloseableHttpClient httpClient = httpClientService.createHttpClient()) {
+    HttpGet request = new HttpGet("https://api.example.com/data");
+    try (CloseableHttpResponse response = httpClient.execute(request)) {
+        // handle response
+    }
+}
+
+// Thread-safe pooled client for concurrent use
+try (CloseableHttpClient httpClient = httpClientService.createThreadSafeHttpClient(true)) {
+    // use for multiple concurrent requests
+}
+```
+
+**Methods:** `createHttpClient()`, `createHttpClientBuilder()`, `createThreadSafeHttpClient(redirect)`, plus variants with `(host, port, user, password)` for basic auth.
+
 ## Security Checklist
 
 - **XSS:** Use `$r.escapeHtml()` for all user text in templates. `$r.render()` is safe.
