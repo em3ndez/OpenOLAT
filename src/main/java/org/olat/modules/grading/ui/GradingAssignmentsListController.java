@@ -580,7 +580,7 @@ public class GradingAssignmentsListController extends FormBasicController implem
 		RepositoryEntry referenceEntry = assessment.getReferenceEntry();
 		
 		AssessmentTestSession session = qtiService
-				.getLastAssessmentTestSessions(entry, courseNode.getIdent(), referenceEntry, assessedIdentity);
+				.getLastAssessmentTestSessions(entry, courseNode.getIdent(), referenceEntry, assessedIdentity, true);
 		if(session == null) {
 			gradingService.deactivateAssignment(assignment);
 			showWarning("warning.assignement.deactivated");

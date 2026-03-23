@@ -892,14 +892,14 @@ public class QTI21AssessmentRunController extends BasicController implements Gen
 		AssessmentTestSession session = null;
 		if(courseNode instanceof SelfAssessableCourseNode) {
 			RepositoryEntry courseEntry = userCourseEnv.getCourseEnvironment().getCourseGroupManager().getCourseEntry();
-			session = qtiService.getLastAssessmentTestSessions(courseEntry, courseNode.getIdent(), testEntry, getIdentity());
+			session = qtiService.getLastAssessmentTestSessions(courseEntry, courseNode.getIdent(), testEntry, getIdentity(), false);
 		} else {
 			AssessmentEntry assessmentEntry = courseAssessmentService.getAssessmentEntry(courseNode, userCourseEnv);
 			if(userCourseEnv.isParticipant() && assessmentEntry.getAssessmentId() != null) {
 				session = qtiService.getAssessmentTestSession(assessmentEntry.getAssessmentId());
 			} else {
 				RepositoryEntry courseEntry = userCourseEnv.getCourseEnvironment().getCourseGroupManager().getCourseEntry();
-				session = qtiService.getLastAssessmentTestSessions(courseEntry, courseNode.getIdent(), testEntry, getIdentity());
+				session = qtiService.getLastAssessmentTestSessions(courseEntry, courseNode.getIdent(), testEntry, getIdentity(), false);
 			}
 		}
 		
