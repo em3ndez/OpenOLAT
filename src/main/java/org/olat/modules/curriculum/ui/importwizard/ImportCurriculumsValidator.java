@@ -22,9 +22,11 @@ package org.olat.modules.curriculum.ui.importwizard;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.time.DateUtils;
@@ -83,6 +85,7 @@ public class ImportCurriculumsValidator {
 	public static final String DEFAULT = "DEFAULT";
 	
 	private final List<UserPropertyHandler> userPropertyHandlers;
+	private final Set<String> curriculumsNoPermissions = new HashSet<>();
 
 	@Autowired
 	private UserManager userManager;
@@ -384,6 +387,9 @@ public class ImportCurriculumsValidator {
 		}
 		
 		validateIdentifier(importedRow, EditCurriculumElementMetadataController.IDENTIFIER_MAX_LENGTH);
+
+		// Permissions on curriculum
+		validateCurriculumPermissions(importedRow);
 		
 		// Level only for element
 		if(importedRow.type() == CurriculumExportType.ELEM) {
@@ -527,6 +533,8 @@ public class ImportCurriculumsValidator {
 
 		// Identifier
 		validateIdentifier(importedRow, 255);
+		// Permissions on curriculum
+		validateCurriculumPermissions(importedRow);
 		
 		// Identifier matches a repository entry
 		if(entry == null) {
@@ -609,6 +617,9 @@ public class ImportCurriculumsValidator {
 		}
 		
 		validateIdentifier(importedRow, 255);
+
+		// Permissions on curriculum
+		validateCurriculumPermissions(importedRow);
 
 		// Reference to course
 		String referenceColumn = translate(ImportCurriculumsCols.referenceIdentifier.i18nHeaderKey());
@@ -712,6 +723,7 @@ public class ImportCurriculumsValidator {
 			} else if(!hasOrganisationPermission(importedRow.getOrganisation())) {
 				importedRow.addValidationError(ImportCurriculumsCols.organisationIdentifier, organisationColumn,
 						null, translate("error.permissions"));
+				curriculumsNoPermissions.add(importedRow.getIdentifier());
 			} else if(importedRow.getCurriculum() != null && !Objects.equals(importedRow.getCurriculum().getOrganisation(), importedRow.getOrganisation())) {
 				importedRow.addValidationError(ImportCurriculumsCols.organisationIdentifier, organisationColumn,
 						null, translate("error.no.update"));
@@ -925,6 +937,14 @@ public class ImportCurriculumsValidator {
 		return allOk;
 	}
 	
+	private void validateCurriculumPermissions(ImportedRow importedRow) {
+		if(StringHelper.containsNonWhitespace(importedRow.getCurriculumIdentifier())
+				&& curriculumsNoPermissions.contains(importedRow.getCurriculumIdentifier())) {
+			String column = translate(ImportCurriculumsCols.curriculumIdentifier.i18nHeaderKey());
+			importedRow.addValidationError(ImportCurriculumsCols.curriculumIdentifier, column, null, translate("error.permissions"));
+		}
+	}
+	
 	private boolean validateLength(ImportedRow importedRow, String val, int maxLength, ImportCurriculumsCols col) {
 		boolean allOk = true;
 		if(StringHelper.containsNonWhitespace(val) && val.length() > maxLength) {
@@ -1051,6 +1071,7 @@ public class ImportCurriculumsValidator {
 			importedRow.addValidationError(ImportCurriculumsCols.objectType, column,
 					translate("error.no.value"), translate("error.value.required"));
 		}
+		importedRow.setStatus(ImportCurriculumsStatus.NEW);
 	}
 	
 	private void changes(ImportedRow importedRow, Object currentValue, Object newValue, ImportCurriculumsCols col) {
