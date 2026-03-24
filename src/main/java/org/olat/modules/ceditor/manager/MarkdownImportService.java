@@ -44,6 +44,7 @@ import org.olat.modules.ceditor.model.ContainerLayout;
 import org.olat.modules.ceditor.model.ContainerSettings;
 import org.olat.modules.ceditor.model.jpa.ContainerPart;
 import org.olat.modules.ceditor.ui.PageEditorV2Controller;
+import org.olat.core.util.httpclient.HttpClientService;
 import org.olat.modules.cemedia.handler.ImageHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -80,6 +81,9 @@ public class MarkdownImportService {
 	@Autowired
 	private MediaServerModule mediaServerModule;
 
+	@Autowired
+	private HttpClientService httpClientService;
+
 	/**
 	 * Convert markdown and persist all parts to the given page,
 	 * wrapped in a container.
@@ -110,7 +114,7 @@ public class MarkdownImportService {
 		// 3. Visit AST
 		Translator translator = Util.createPackageTranslator(PageEditorV2Controller.class, locale);
 		MarkdownPagePartVisitor visitor = new MarkdownPagePartVisitor(
-			author, basePath, imageHandler, mediaServerModule, preprocessed.mathBlocks(), translator);
+			author, basePath, imageHandler, mediaServerModule, httpClientService, preprocessed.mathBlocks(), translator);
 		document.accept(visitor);
 
 		// 4. Persist parts in container

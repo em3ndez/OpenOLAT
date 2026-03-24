@@ -22,17 +22,17 @@ package org.olat.modules.ceditor.manager;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
 
 import org.apache.logging.log4j.Logger;
 import org.commonmark.ext.gfm.tables.TableBlock;
@@ -75,6 +75,7 @@ import org.olat.core.id.Identity;
 import org.olat.core.logging.Tracing;
 import org.olat.core.util.FileUtils;
 import org.olat.core.util.StringHelper;
+import org.olat.core.util.httpclient.HttpClientService;
 import org.olat.modules.ceditor.ContentEditorXStream;
 import org.olat.modules.ceditor.PagePart;
 import org.olat.modules.ceditor.model.AlertBoxSettings;
@@ -134,15 +135,17 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 	private final Translator translator;
 
 	private final HtmlRenderer inlineRenderer;
-	private HttpClient httpClient;
+	private final HttpClientService httpClientService;
 
 	public MarkdownPagePartVisitor(Identity author, File basePath,
 			ImageHandler imageHandler, MediaServerModule mediaServerModule,
+			HttpClientService httpClientService,
 			Map<String, String> mathBlocks, Translator translator) {
 		this.author = author;
 		this.basePath = basePath;
 		this.imageHandler = imageHandler;
 		this.mediaServerModule = mediaServerModule;
+		this.httpClientService = httpClientService;
 		this.mathBlocks = mathBlocks;
 		this.translator = translator;
 		this.inlineRenderer = HtmlRenderer.builder()
@@ -742,46 +745,39 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 			// Determine file extension from filename or default to .png
 			String suffix = filename.contains(".") ? filename.substring(filename.lastIndexOf('.')) : ".png";
 
-			if (httpClient == null) {
-				httpClient = HttpClient.newBuilder()
-					.followRedirects(HttpClient.Redirect.NORMAL)
-					.connectTimeout(Duration.ofSeconds(10))
-					.build();
-			}
-			HttpRequest request = HttpRequest.newBuilder()
-				.uri(uri)
-				.timeout(Duration.ofSeconds(30))
-				.GET()
-				.build();
-			HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+			HttpGet get = new HttpGet(uri);
+			try (CloseableHttpClient httpClient = httpClientService.createThreadSafeHttpClient(true);
+					CloseableHttpResponse response = httpClient.execute(get)) {
 
-			if (response.statusCode() != 200) {
-				warnings.add("Failed to download image (HTTP " + response.statusCode() + "): " + url);
-				return null;
-			}
+				int statusCode = response.getStatusLine().getStatusCode();
+				if (statusCode != 200) {
+					warnings.add("Failed to download image (HTTP " + statusCode + "): " + url);
+					return null;
+				}
 
-			Path tempFile = Files.createTempFile("md_img_", suffix);
-			try (InputStream in = response.body()) {
-				// Enforce size limit to prevent disk exhaustion
-				long bytesWritten = 0;
-				byte[] buffer = new byte[8192];
-				try (var out = Files.newOutputStream(tempFile)) {
-					int read;
-					while ((read = in.read(buffer)) != -1) {
-						bytesWritten += read;
-						if (bytesWritten > MAX_DOWNLOAD_BYTES) {
-							Files.deleteIfExists(tempFile);
-							warnings.add("Image too large (max " + (MAX_DOWNLOAD_BYTES / (1024 * 1024)) + " MB): " + url);
-							return null;
+				Path tempFile = Files.createTempFile("md_img_", suffix);
+				try (InputStream in = response.getEntity().getContent()) {
+					// Enforce size limit to prevent disk exhaustion
+					long bytesWritten = 0;
+					byte[] buffer = new byte[8192];
+					try (var out = Files.newOutputStream(tempFile)) {
+						int read;
+						while ((read = in.read(buffer)) != -1) {
+							bytesWritten += read;
+							if (bytesWritten > MAX_DOWNLOAD_BYTES) {
+								Files.deleteIfExists(tempFile);
+								warnings.add("Image too large (max " + (MAX_DOWNLOAD_BYTES / (1024 * 1024)) + " MB): " + url);
+								return null;
+							}
+							out.write(buffer, 0, read);
 						}
-						out.write(buffer, 0, read);
 					}
 				}
-			}
 
-			File downloaded = tempFile.toFile();
-			downloaded.deleteOnExit();
-			return downloaded;
+				File downloaded = tempFile.toFile();
+				downloaded.deleteOnExit();
+				return downloaded;
+			}
 		} catch (Exception e) {
 			log.warn("Failed to download remote image: {}", url, e);
 			warnings.add("Failed to download image: " + url);
