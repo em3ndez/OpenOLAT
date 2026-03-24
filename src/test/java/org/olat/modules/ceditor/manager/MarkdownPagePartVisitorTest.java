@@ -459,7 +459,7 @@ public class MarkdownPagePartVisitorTest {
 		VisitorResult result = convertWithWarnings("<div>raw html</div>");
 
 		assertThat(result.parts()).isEmpty();
-		assertThat(result.warnings()).anyMatch(w -> w.contains("HTML block skipped"));
+		assertThat(result.warnings()).anyMatch(w -> w.contains("import.markdown.warn.html.skipped"));
 	}
 
 	// --- Math blocks ---
@@ -539,7 +539,7 @@ public class MarkdownPagePartVisitorTest {
 
 		assertThat(result.parts()).hasSize(1);
 		assertThat(result.parts().get(0)).isInstanceOf(ParagraphPart.class);
-		assertThat(result.warnings()).anyMatch(w -> w.contains("Unsupported data URI image type"));
+		assertThat(result.warnings()).anyMatch(w -> w.contains("import.markdown.warn.datauri.type"));
 	}
 
 	@Test
@@ -549,7 +549,7 @@ public class MarkdownPagePartVisitorTest {
 
 		assertThat(result.parts()).hasSize(1);
 		assertThat(result.parts().get(0)).isInstanceOf(ParagraphPart.class);
-		assertThat(result.warnings()).anyMatch(w -> w.contains("Only base64-encoded"));
+		assertThat(result.warnings()).anyMatch(w -> w.contains("import.markdown.warn.datauri.encoding"));
 	}
 
 	@Test
@@ -558,7 +558,7 @@ public class MarkdownPagePartVisitorTest {
 
 		assertThat(result.parts()).hasSize(1);
 		assertThat(result.parts().get(0)).isInstanceOf(ParagraphPart.class);
-		assertThat(result.warnings()).anyMatch(w -> w.contains("Malformed data URI"));
+		assertThat(result.warnings()).anyMatch(w -> w.contains("import.markdown.warn.datauri.malformed"));
 	}
 
 	@Test
@@ -567,7 +567,7 @@ public class MarkdownPagePartVisitorTest {
 
 		assertThat(result.parts()).hasSize(1);
 		assertThat(result.parts().get(0)).isInstanceOf(ParagraphPart.class);
-		assertThat(result.warnings()).anyMatch(w -> w.contains("Malformed base64"));
+		assertThat(result.warnings()).anyMatch(w -> w.contains("import.markdown.warn.datauri.base64"));
 	}
 
 	// --- Complex document ---
@@ -627,7 +627,7 @@ public class MarkdownPagePartVisitorTest {
 		VisitorResult result = convertWithWarnings("<script>alert('xss')</script>");
 
 		assertThat(result.parts()).isEmpty();
-		assertThat(result.warnings()).anyMatch(w -> w.contains("HTML block skipped"));
+		assertThat(result.warnings()).anyMatch(w -> w.contains("import.markdown.warn.html.skipped"));
 	}
 
 	@Test
@@ -686,7 +686,7 @@ public class MarkdownPagePartVisitorTest {
 		VisitorResult result = convertWithWarnings("<div class=\"evil\">content</div>");
 
 		assertThat(result.parts()).isEmpty();
-		assertThat(result.warnings()).anyMatch(w -> w.contains("HTML block skipped"));
+		assertThat(result.warnings()).anyMatch(w -> w.contains("import.markdown.warn.html.skipped"));
 	}
 
 	@Test
@@ -694,7 +694,7 @@ public class MarkdownPagePartVisitorTest {
 		VisitorResult result = convertWithWarnings("<iframe src=\"https://evil.com\"></iframe>");
 
 		assertThat(result.parts()).isEmpty();
-		assertThat(result.warnings()).anyMatch(w -> w.contains("HTML block skipped"));
+		assertThat(result.warnings()).anyMatch(w -> w.contains("import.markdown.warn.html.skipped"));
 	}
 
 	@Test
@@ -702,7 +702,7 @@ public class MarkdownPagePartVisitorTest {
 		VisitorResult result = convertWithWarnings("<form action=\"https://evil.com\"><input type=\"text\"></form>");
 
 		assertThat(result.parts()).isEmpty();
-		assertThat(result.warnings()).anyMatch(w -> w.contains("HTML block skipped"));
+		assertThat(result.warnings()).anyMatch(w -> w.contains("import.markdown.warn.html.skipped"));
 	}
 
 	@Test
@@ -784,7 +784,7 @@ public class MarkdownPagePartVisitorTest {
 		assertThat(result.parts().get(1)).isInstanceOf(ParagraphPart.class);
 		assertThat(result.parts().get(1).getContent()).contains("Safe paragraph");
 		// Script block was skipped
-		assertThat(result.warnings()).anyMatch(w -> w.contains("HTML block skipped"));
+		assertThat(result.warnings()).anyMatch(w -> w.contains("import.markdown.warn.html.skipped"));
 		// No part contains script
 		for (PagePart part : result.parts()) {
 			assertThat(part.getContent()).doesNotContain("<script>");
@@ -861,7 +861,7 @@ public class MarkdownPagePartVisitorTest {
 		VisitorResult result = convertWithWarnings("<style>body{background:url('javascript:alert(1)')}</style>");
 
 		assertThat(result.parts()).isEmpty();
-		assertThat(result.warnings()).anyMatch(w -> w.contains("HTML block skipped"));
+		assertThat(result.warnings()).anyMatch(w -> w.contains("import.markdown.warn.html.skipped"));
 	}
 
 	// --- Markdown formatting is preserved ---

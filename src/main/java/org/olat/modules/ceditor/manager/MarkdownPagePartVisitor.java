@@ -283,7 +283,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 	public void visit(HtmlBlock htmlBlock) {
 		// HTML blocks are skipped entirely to prevent XSS and HTML injection.
 		// We only accept pure markdown content.
-		warnings.add("HTML block skipped (HTML is not allowed in markdown import).");
+		warnings.add("import.markdown.warn.html.skipped");
 	}
 
 	@Override
@@ -337,7 +337,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 		}
 
 		if (numCols == 0 || numRows == 0) {
-			warnings.add("Empty table encountered; skipping.");
+			warnings.add("import.markdown.warn.table.empty");
 			return;
 		}
 
@@ -437,7 +437,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 
 		File imageFile = resolveImageFile(destination);
 		if (imageFile == null || !imageFile.exists()) {
-			warnings.add("Image not found: " + destination);
+			warnings.add("import.markdown.warn.image.not.found\t" + StringHelper.escapeHtml(destination));
 			ParagraphPart fallback = new ParagraphPart();
 			fallback.setContent("<p>" + (altText.isEmpty() ? destination : altText) + "</p>");
 			parts.add(fallback);
@@ -485,7 +485,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 			imageCount++;
 		} catch (Exception e) {
 			log.warn("Failed to import image: {}", destination, e);
-			warnings.add("Failed to import image: " + destination + " (" + e.getMessage() + ")");
+			warnings.add("import.markdown.warn.image.import.failed\t" + StringHelper.escapeHtml(destination) + "\t" + StringHelper.escapeHtml(e.getMessage()));
 		}
 	}
 
@@ -508,7 +508,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 		// Without basePath (text paste), only remote URLs are supported to prevent
 		// arbitrary file reads from the server filesystem.
 		if (basePath == null) {
-			warnings.add("Local image paths are not supported when pasting text: " + destination);
+			warnings.add("import.markdown.warn.image.local.unsupported\t" + StringHelper.escapeHtml(destination));
 			return null;
 		}
 
@@ -522,11 +522,11 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 		try {
 			File resolved = file.getCanonicalFile();
 			if (!resolved.toPath().startsWith(basePath.getCanonicalFile().toPath())) {
-				warnings.add("Image path outside allowed directory: " + destination);
+				warnings.add("import.markdown.warn.image.path.outside\t" + StringHelper.escapeHtml(destination));
 				return null;
 			}
 		} catch (Exception e) {
-			warnings.add("Cannot resolve image path: " + destination);
+			warnings.add("import.markdown.warn.image.path.resolve\t" + StringHelper.escapeHtml(destination));
 			return null;
 		}
 
@@ -660,20 +660,20 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 	private File decodeDataUriImage(String dataUri) {
 		String mimeType = extractDataUriMimeType(dataUri);
 		if (mimeType == null || !ImageHandler.mimeTypes.contains(mimeType)) {
-			warnings.add("Unsupported data URI image type: " + (mimeType != null ? mimeType : "unknown"));
+			warnings.add("import.markdown.warn.datauri.type\t" + (mimeType != null ? mimeType : "unknown"));
 			return null;
 		}
 
 		int commaIdx = dataUri.indexOf(',');
 		if (commaIdx < 0) {
-			warnings.add("Malformed data URI (no data payload).");
+			warnings.add("import.markdown.warn.datauri.malformed");
 			return null;
 		}
 
 		// Only accept base64 encoding
 		String header = dataUri.substring(0, commaIdx);
 		if (!header.contains(";base64")) {
-			warnings.add("Only base64-encoded data URIs are supported.");
+			warnings.add("import.markdown.warn.datauri.encoding");
 			return null;
 		}
 
@@ -683,7 +683,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 			// OutOfMemoryError from oversized payloads (base64 expands 3 bytes → 4 chars)
 			long estimatedBytes = (long) base64Data.length() * 3 / 4;
 			if (estimatedBytes > MAX_DOWNLOAD_BYTES) {
-				warnings.add("Data URI image too large (max " + (MAX_DOWNLOAD_BYTES / (1024 * 1024)) + " MB).");
+				warnings.add("import.markdown.warn.datauri.toolarge\t" + (MAX_DOWNLOAD_BYTES / (1024 * 1024)));
 				return null;
 			}
 			byte[] decoded = Base64.getDecoder().decode(base64Data);
@@ -695,11 +695,11 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 			file.deleteOnExit();
 			return file;
 		} catch (IllegalArgumentException e) {
-			warnings.add("Malformed base64 data in data URI.");
+			warnings.add("import.markdown.warn.datauri.base64");
 			return null;
 		} catch (Exception e) {
 			log.warn("Failed to decode data URI image", e);
-			warnings.add("Failed to decode data URI image: " + e.getMessage());
+			warnings.add("import.markdown.warn.datauri.decode.failed\t" + StringHelper.escapeHtml(e.getMessage()));
 			return null;
 		}
 	}
@@ -731,7 +731,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 	private File downloadRemoteImage(String url) {
 		// Check domain allowlist via MediaServerModule (SSRF protection)
 		if (mediaServerModule != null && mediaServerModule.isRestrictedDomain(url)) {
-			warnings.add("Image download blocked (domain not on allowlist): " + url);
+			warnings.add("import.markdown.warn.image.domain.blocked\t" + StringHelper.escapeHtml(url));
 			return null;
 		}
 
@@ -751,7 +751,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 
 				int statusCode = response.getStatusLine().getStatusCode();
 				if (statusCode != 200) {
-					warnings.add("Failed to download image (HTTP " + statusCode + "): " + url);
+					warnings.add("import.markdown.warn.image.download.http\t" + statusCode + "\t" + StringHelper.escapeHtml(url));
 					return null;
 				}
 
@@ -766,7 +766,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 							bytesWritten += read;
 							if (bytesWritten > MAX_DOWNLOAD_BYTES) {
 								Files.deleteIfExists(tempFile);
-								warnings.add("Image too large (max " + (MAX_DOWNLOAD_BYTES / (1024 * 1024)) + " MB): " + url);
+								warnings.add("import.markdown.warn.image.download.toolarge\t" + (MAX_DOWNLOAD_BYTES / (1024 * 1024)) + "\t" + StringHelper.escapeHtml(url));
 								return null;
 							}
 							out.write(buffer, 0, read);
@@ -780,7 +780,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 			}
 		} catch (Exception e) {
 			log.warn("Failed to download remote image: {}", url, e);
-			warnings.add("Failed to download image: " + url);
+			warnings.add("import.markdown.warn.image.download.failed\t" + StringHelper.escapeHtml(url));
 			return null;
 		}
 	}
