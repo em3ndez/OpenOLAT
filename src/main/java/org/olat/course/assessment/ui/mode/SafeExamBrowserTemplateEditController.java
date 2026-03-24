@@ -23,6 +23,7 @@ import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.form.flexible.FormItem;
 import org.olat.core.gui.components.form.flexible.FormItemContainer;
 import org.olat.core.gui.components.form.flexible.elements.FormToggle;
+import org.olat.core.gui.components.form.flexible.elements.RichTextElement;
 import org.olat.core.gui.components.form.flexible.elements.SingleSelection;
 import org.olat.core.gui.components.form.flexible.elements.TextElement;
 import org.olat.core.gui.components.form.flexible.impl.FormBasicController;
@@ -48,7 +49,6 @@ public class SafeExamBrowserTemplateEditController extends FormBasicController {
 
 	private TextElement nameEl;
 	private FormToggle activeEl;
-
 	private SingleSelection allowToExitEl;
 	private TextElement passwordToQuitEl;
 	private SingleSelection linkToQuitEl;
@@ -72,6 +72,8 @@ public class SafeExamBrowserTemplateEditController extends FormBasicController {
 	private TextElement allowedRegexEl;
 	private TextElement blockedExpressionsEl;
 	private TextElement blockedRegexEl;
+	private RichTextElement safeExamBrowserHintEl;
+
 	private SafeExamBrowserTemplate sebTemplate;
 
 	@Autowired
@@ -203,6 +205,10 @@ public class SafeExamBrowserTemplateEditController extends FormBasicController {
 		blockedRegexEl = uifactory.addTextAreaElement("mode.safeexambrowser.url.filter.blocked.regex", "mode.safeexambrowser.url.filter.blocked.regex",
 				2000, 2, 60, false, false, config.getBlockedUrlRegex(), formLayout);
 
+		String hint = sebTemplate != null ? sebTemplate.getSafeExamBrowserHint() : "";
+		safeExamBrowserHintEl = uifactory.addRichTextElementForStringData("safeexamhint", "mode.safeexambrowser.hint",
+				hint, 10, -1, false, null, null, formLayout, ureq.getUserSession(), getWindowControl());
+
 		FormLayoutContainer buttonsCont = FormLayoutContainer.createButtonLayout("buttons", getTranslator());
 		buttonsCont.setRootForm(mainForm);
 		formLayout.add(buttonsCont);
@@ -310,6 +316,7 @@ public class SafeExamBrowserTemplateEditController extends FormBasicController {
 			config.setBlockedUrlRegex(blockedRegexEl.getValue());
 		}
 		sebTemplate.setSafeExamBrowserConfiguration(config);
+		sebTemplate.setSafeExamBrowserHint(safeExamBrowserHintEl.getValue());
 
 		assessmentModeManager.updateSafeExamBrowserTemplate(sebTemplate);
 		fireEvent(ureq, Event.DONE_EVENT);
