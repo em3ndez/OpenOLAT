@@ -875,7 +875,7 @@ public class PageRunController extends BasicController implements TooledControll
 	private void doImportMarkdownContents(UserRequest ureq, MarkdownImportDoneEvent mdEvent) {
 		if (mdEvent.hasWarnings()) {
 			Translator mdTranslator = Util.createPackageTranslator(MarkdownImportController.class, getLocale());
-			getWindowControl().setWarning(mdTranslator.translate("import.markdown.warnings", String.join("\n", mdEvent.getWarnings())));
+			getWindowControl().setWarning(mdTranslator.translate("import.markdown.warnings", String.join("<br>", mdEvent.getWarnings())));
 		}
 		dirtyMarker = true;
 		pageEditCtrl.loadModel(ureq);
