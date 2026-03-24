@@ -72,7 +72,6 @@ import org.olat.modules.curriculum.ui.member.MemberDetailsController;
 import org.olat.repository.ui.list.ImplementationEvent;
 import org.olat.resource.OLATResource;
 import org.olat.resource.accesscontrol.ResourceReservation;
-import org.olat.resource.accesscontrol.manager.ACOrderDAO;
 import org.olat.resource.accesscontrol.manager.ACReservationDAO;
 import org.olat.resource.accesscontrol.ui.PendingMembershipsTableModel.PendingMembershipCol;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -102,8 +101,6 @@ public class PendingMembershipsController extends FormBasicController implements
 
 	@Autowired
 	private CurriculumElementDAO curriculumElementDao;
-	@Autowired
-	private ACOrderDAO orderDao;
 	@Autowired
 	private ACReservationDAO reservationDao;
 	@Autowired
@@ -287,7 +284,7 @@ public class PendingMembershipsController extends FormBasicController implements
 	}
 	
 	private void loadModel() {
-		List<ResourceReservation> reservations = orderDao.getReservationsWithOrders(identity).stream()
+		List<ResourceReservation> reservations = reservationDao.loadReservations(identity).stream()
 				.filter(r -> StringHelper.containsNonWhitespace(r.getType()))
 				.filter(r -> r.getType().startsWith(CurriculumService.RESERVATION_PREFIX))
 				.toList();
