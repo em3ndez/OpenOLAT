@@ -29,17 +29,16 @@ package org.olat.restapi;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.Collections;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Before;
@@ -107,7 +106,7 @@ public class CourseSecurityTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void testAdminCanEditCourse() throws IOException, URISyntaxException, InterruptedException {
+	public void testAdminCanEditCourse() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//create an structure node
@@ -116,14 +115,15 @@ public class CourseSecurityTest extends OlatRestTestCase {
 				.queryParam("shortTitle", "Structure-admin-0")
 				.queryParam("longTitle", "Structure-long-admin-0")
 				.queryParam("objectives", "Structure-objectives-admin-0").build();
-		HttpRequest method = conn.createPut(newStructureUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-
+		HttpPut method = conn.createPut(newStructureUri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testIdCannotEditCourse() throws IOException, URISyntaxException, InterruptedException {
+	public void testIdCannotEditCourse() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("id-c-s-0", "A6B7C8");
 		
 		//create an structure node
@@ -132,14 +132,15 @@ public class CourseSecurityTest extends OlatRestTestCase {
 				.queryParam("shortTitle", "Structure-id-0")
 				.queryParam("longTitle", "Structure-long-id-0")
 				.queryParam("objectives", "Structure-objectives-id-0").build();
-		HttpRequest method = conn.createPut(newStructureUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(Status.FORBIDDEN.getStatusCode(), response.statusCode());
-
+		HttpPut method = conn.createPut(newStructureUri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(Status.FORBIDDEN.getStatusCode(), response.getStatusLine().getStatusCode());
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testAuthorCannotEditCourse() throws IOException, URISyntaxException, InterruptedException {
+	public void testAuthorCannotEditCourse() throws IOException, URISyntaxException {
 		//author but not owner
 		RestConnection conn = new RestConnection("id-c-s-1", "A6B7C8");
 		
@@ -149,14 +150,15 @@ public class CourseSecurityTest extends OlatRestTestCase {
 				.queryParam("shortTitle", "Structure-id-0")
 				.queryParam("longTitle", "Structure-long-id-0")
 				.queryParam("objectives", "Structure-objectives-id-0").build();
-		HttpRequest method = conn.createPut(newStructureUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(Status.FORBIDDEN.getStatusCode(), response.statusCode());
-
+		HttpPut method = conn.createPut(newStructureUri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(Status.FORBIDDEN.getStatusCode(), response.getStatusLine().getStatusCode());
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testAuthorCanEditCourse() throws IOException, URISyntaxException, InterruptedException {
+	public void testAuthorCanEditCourse() throws IOException, URISyntaxException {
 		//author and owner
 		RestConnection conn = new RestConnection("id-c-s-2", "A6B7C8");
 		
@@ -166,10 +168,11 @@ public class CourseSecurityTest extends OlatRestTestCase {
 				.queryParam("shortTitle", "Structure-id-0")
 				.queryParam("longTitle", "Structure-long-id-0")
 				.queryParam("objectives", "Structure-objectives-id-0").build();
-		HttpRequest method = conn.createPut(newStructureUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-
+		HttpPut method = conn.createPut(newStructureUri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		
+		conn.shutdown();
 	}
 	
 	private UriBuilder getCoursesUri() {

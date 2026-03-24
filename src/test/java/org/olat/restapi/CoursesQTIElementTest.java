@@ -20,21 +20,21 @@
 package org.olat.restapi;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.xml.parsers.ParserConfigurationException;
-
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
+import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Before;
@@ -91,15 +91,15 @@ public class CoursesQTIElementTest extends OlatRestTestCase {
 	
 	@Test
 	public void changeResultsSettings()
-	throws IOException, SAXException, URISyntaxException, ParserConfigurationException, InterruptedException {
+	throws IOException, SAXException, URISyntaxException, ParserConfigurationException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		// get the editor tree model
 		URI request = UriBuilder.fromUri(getContextURI()).path("/repo/courses/" + course.getResourceableId() + "/editortreemodel").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_XML);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		String editorTreeModel = RestConnection.toString(response);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_XML, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		String editorTreeModel = EntityUtils.toString(response.getEntity());
 		Assert.assertNotNull(editorTreeModel);
 		
 		// collect the identifier of the test course element
@@ -130,9 +130,9 @@ public class CoursesQTIElementTest extends OlatRestTestCase {
 				.path("configuration")
 				.path("report").build();
 		
-		HttpRequest getConfig = conn.createGet(configUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> configResponse = conn.execute(getConfig);
-		Assert.assertEquals(200, configResponse.statusCode());
+		HttpGet getConfig = conn.createGet(configUri, MediaType.APPLICATION_JSON, true);
+		HttpResponse configResponse = conn.execute(getConfig);
+		Assert.assertEquals(200, configResponse.getStatusLine().getStatusCode());
 		TestReportConfigVO testConfig = conn.parse(configResponse, TestReportConfigVO.class);
 		Assert.assertNotNull(testConfig);
 		
@@ -141,9 +141,11 @@ public class CoursesQTIElementTest extends OlatRestTestCase {
 		testConfig.setSummaryPresentation("metadata,sectionsSummary,questionSummary,userSolutions,correctSolutions");
 		
 		// update the configuration node
-		HttpRequest putConfig = conn.createPut(configUri, testConfig, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> updateConfigResponse = conn.execute(putConfig);
-		Assert.assertEquals(200, updateConfigResponse.statusCode());
+		HttpPut putConfig = conn.createPut(configUri, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(putConfig, testConfig);
+		
+		HttpResponse updateConfigResponse = conn.execute(putConfig);
+		Assert.assertEquals(200, updateConfigResponse.getStatusLine().getStatusCode());
 		TestReportConfigVO updatedConfig = conn.parse(updateConfigResponse, TestReportConfigVO.class);
 		Assert.assertNotNull(updatedConfig);
 	}

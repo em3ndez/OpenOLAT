@@ -82,7 +82,7 @@ public class LoginTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void loginAsAdministrator() 
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		UserVO administrator = new UserRestClient(deploymentUrl).getOrCreateAdministrator();
 		
 		//load dmz
@@ -105,7 +105,7 @@ public class LoginTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void loginAsNewUser()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		//create a random user
 		UserRestClient userClient = new UserRestClient(deploymentUrl);
 		UserVO user = userClient.createRandomUser();
@@ -128,7 +128,7 @@ public class LoginTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void loginAsNewLDAPUser()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		//load dmz
 		LoginPage loginPage = LoginPage
 				.load(browser, deploymentUrl)
@@ -151,7 +151,7 @@ public class LoginTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void loginWithStartButton()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver userBrowser = getWebDriver(1);
 		
 		UserVO administrator = new UserRestClient(deploymentUrl).getOrCreateAdministrator();
@@ -189,7 +189,7 @@ public class LoginTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void loginWithRestToken()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		//create a random user
 		UserRestClient adminClient = new UserRestClient(deploymentUrl);
 		UserVO user = adminClient.createRandomUser();
@@ -227,7 +227,7 @@ public class LoginTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void maintenanceMessage()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver reiBrowser = getWebDriver(1);
 		WebDriver kanuBrowser = getWebDriver(2);
 		
@@ -405,7 +405,7 @@ public class LoginTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void passwordForgotten()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		
 		UserVO user = new UserRestClient(deploymentUrl).createRandomUser();
 		

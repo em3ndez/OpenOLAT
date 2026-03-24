@@ -29,16 +29,15 @@ package org.olat.restapi;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
@@ -79,7 +78,7 @@ public class MyForumsTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void myForums() throws IOException, URISyntaxException, InterruptedException {
+	public void myForums() throws IOException, URISyntaxException {
 		URL courseUrl = MyForumsTest.class.getResource("myCourseWS.zip");
 		RepositoryEntry myCourseRe = JunitTestHelper.deployCourse(null, "My course", courseUrl);// 4);	
 		Assert.assertNotNull(myCourseRe);
@@ -93,10 +92,10 @@ public class MyForumsTest extends OlatRestTestCase {
 		
 		//subscribed to nothing
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users").path(id.getKey().toString()).path("forums").build();
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		ForumVOes forums = conn.parse(response, ForumVOes.class);
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		ForumVOes forums = conn.parse(response.getEntity(), ForumVOes.class);
 		Assert.assertNotNull(forums);
 		Assert.assertNotNull(forums.getForums());
 		Assert.assertEquals(0, forums.getForums().length);
@@ -116,10 +115,10 @@ public class MyForumsTest extends OlatRestTestCase {
 		dbInstance.commitAndCloseSession();
 		
 		//retrieve my forums
-		HttpRequest method2 = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response2 = conn.execute(method2);
-		assertEquals(200, response2.statusCode());
-		ForumVOes forums2 = conn.parse(response2, ForumVOes.class);
+		HttpGet method2 = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response2 = conn.execute(method2);
+		assertEquals(200, response2.getStatusLine().getStatusCode());
+		ForumVOes forums2 = conn.parse(response2.getEntity(), ForumVOes.class);
 		Assert.assertNotNull(forums2);
 		Assert.assertNotNull(forums2.getForums());
 		Assert.assertEquals(1, forums2.getForums().length);

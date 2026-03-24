@@ -77,7 +77,7 @@ public class CoursePlannerTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void createCurriculum()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		UserVO participant = new UserRestClient(deploymentUrl).createRandomUser("Charlie");
 		
 		UserVO manager = new UserRestClient(deploymentUrl).createCurriculumManager("Sammy");
@@ -182,7 +182,7 @@ public class CoursePlannerTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void createImplementationInPreparation()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		UserVO participant = new UserRestClient(deploymentUrl).createRandomUser("Salim");
 		
 		UserVO manager = new UserRestClient(deploymentUrl).createCurriculumManager("Sammy");
@@ -262,7 +262,7 @@ public class CoursePlannerTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void bookingWithInvoice()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		UserVO participant = new UserRestClient(deploymentUrl).createRandomUser("Sally");
 		UserVO manager = new UserRestClient(deploymentUrl).createCurriculumManager("John");
 		UserVO administrator = new UserRestClient(deploymentUrl).createAdministrator();
@@ -368,7 +368,7 @@ public class CoursePlannerTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void userBookingFromWebCatalog()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		UserVO participant = new UserRestClient(deploymentUrl).createRandomUser("Astrid");
 		UserVO manager = new UserRestClient(deploymentUrl).createCurriculumManager("John");
 

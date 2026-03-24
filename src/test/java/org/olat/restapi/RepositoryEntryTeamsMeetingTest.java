@@ -20,17 +20,19 @@
 package org.olat.restapi;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.Date;
 import java.util.List;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.util.EntityUtils;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Before;
@@ -83,7 +85,7 @@ public class RepositoryEntryTeamsMeetingTest extends OlatRestTestCase {
 	
 	@Test
 	public void getMeetingsAsTool()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Identity auth = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-teams-0");
 		RepositoryEntry courseEntry = JunitTestHelper.deployBasicCourse(defaultUnitTestAdministrator.getIdentity(),
 				"REST-Teams-Course-1", defaultUnitTestOrganisation, RepositoryEntryStatusEnum.preparation);
@@ -97,10 +99,10 @@ public class RepositoryEntryTeamsMeetingTest extends OlatRestTestCase {
 
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(courseEntry.getKey().toString()).path("teams").path("tool").build();
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
 
-		Assert.assertEquals(200, response.statusCode());
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		List<TeamsMeetingVO> voList = conn.parseList(response, TeamsMeetingVO.class);
 		
 		Assertions.assertThat(voList)
@@ -116,7 +118,7 @@ public class RepositoryEntryTeamsMeetingTest extends OlatRestTestCase {
 	
 	@Test
 	public void addMeetingAsTool()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RepositoryEntry courseEntry = JunitTestHelper.deployBasicCourse(defaultUnitTestAdministrator.getIdentity(),
 				"REST-Teams-Course-2", defaultUnitTestOrganisation, RepositoryEntryStatusEnum.preparation);
 		Date start = DateUtils.addHours(new Date(), 3);
@@ -137,10 +139,11 @@ public class RepositoryEntryTeamsMeetingTest extends OlatRestTestCase {
 
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(courseEntry.getKey().toString()).path("teams").path("tool").build();
-		HttpRequest method = conn.createPut(uri, meetingVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
+		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, meetingVo);
+		HttpResponse response = conn.execute(method);
 
-		Assert.assertEquals(200, response.statusCode());
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		TeamsMeetingVO newMeetingVo = conn.parse(response, TeamsMeetingVO.class);
 		
 		// Check response
@@ -170,7 +173,7 @@ public class RepositoryEntryTeamsMeetingTest extends OlatRestTestCase {
 	
 	@Test
 	public void getMeetingAsTool()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Identity auth = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-teams-3");
 		RepositoryEntry courseEntry = JunitTestHelper.deployBasicCourse(defaultUnitTestAdministrator.getIdentity(),
 				"REST-Teams-Course-3", defaultUnitTestOrganisation, RepositoryEntryStatusEnum.preparation);
@@ -184,10 +187,10 @@ public class RepositoryEntryTeamsMeetingTest extends OlatRestTestCase {
 
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(courseEntry.getKey().toString()).path("teams").path("tool").path(meeting.getKey().toString()).build();
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
 
-		Assert.assertEquals(200, response.statusCode());
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		TeamsMeetingVO meetingVo = conn.parse(response, TeamsMeetingVO.class);
 
 		Assert.assertEquals(meeting.getKey(), meetingVo.getKey());
@@ -198,7 +201,7 @@ public class RepositoryEntryTeamsMeetingTest extends OlatRestTestCase {
 	
 	@Test
 	public void deleteMeetingAsTool()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Identity auth = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-teams-5");
 		RepositoryEntry courseEntry = JunitTestHelper.deployBasicCourse(defaultUnitTestAdministrator.getIdentity(),
 				"REST-Teams-Course-5", defaultUnitTestOrganisation, RepositoryEntryStatusEnum.preparation);
@@ -212,11 +215,11 @@ public class RepositoryEntryTeamsMeetingTest extends OlatRestTestCase {
 
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(courseEntry.getKey().toString()).path("teams").path("tool").path(meeting.getKey().toString()).build();
-		HttpRequest method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
+		HttpDelete method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
+		HttpResponse response = conn.execute(method);
 
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		TeamsMeeting deletedMeeting = teamsService.getMeeting(meeting);
 		Assert.assertNull(deletedMeeting);

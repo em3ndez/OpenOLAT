@@ -20,16 +20,15 @@
 package org.olat.test.rest;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPut;
 import org.junit.Assert;
 import org.olat.modules.curriculum.restapi.CurriculumElementTypeVO;
 import org.olat.restapi.RestConnection;
@@ -57,13 +56,13 @@ public class CurriculumRestClient {
 	}
 	
 	public CurriculumElementTypeVO createSingleCourseImplementationType(String displayName, String identifier)
-	throws URISyntaxException, IOException, InterruptedException {
+	throws URISyntaxException, IOException {
 		return createCurriculumElementType(displayName, identifier, Boolean.TRUE, Integer.valueOf(1), Boolean.TRUE);
 	}
 	
 	public CurriculumElementTypeVO createCurriculumElementType(String displayName, String identifier,
 			Boolean singleElement, Integer maxRepositoryEntryRelations, Boolean allowedAsRootElement)
-	throws URISyntaxException, IOException, InterruptedException {
+	throws URISyntaxException, IOException {
 		RestConnection conn = new RestConnection(deploymentUrl, username, password);
 		
 		CurriculumElementTypeVO vo = new CurriculumElementTypeVO();
@@ -76,11 +75,14 @@ public class CurriculumRestClient {
 		vo.setAllowedAsRootElement(allowedAsRootElement);
 
 		URI request = UriBuilder.fromUri(deploymentUrl.toURI()).path("restapi").path("curriculum").path("types").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertTrue(response.statusCode() == 200 || response.statusCode() == 201);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		
+		HttpResponse response = conn.execute(method);
+		Assert.assertTrue(response.getStatusLine().getStatusCode() == 200 || response.getStatusLine().getStatusCode() == 201);
 		
 		CurriculumElementTypeVO pvo = conn.parse(response, CurriculumElementTypeVO.class);
+		conn.shutdown();
 		return pvo;
 	}
 }

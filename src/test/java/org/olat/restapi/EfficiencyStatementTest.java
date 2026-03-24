@@ -22,17 +22,18 @@ package org.olat.restapi;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.Date;
 import java.util.List;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.util.EntityUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
@@ -62,7 +63,7 @@ public class EfficiencyStatementTest extends OlatRestTestCase {
 	private EfficiencyStatementManager efficiencyStatementManager;
 	
 	@Test
-	public void getEfficiencyStatement() throws IOException, URISyntaxException, InterruptedException {
+	public void getEfficiencyStatement() throws IOException, URISyntaxException {
 		// create a standalone efficiency statement
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		Identity assessedIdentity = JunitTestHelper.createAndPersistIdentityAsRndUser("eff-1");
@@ -82,9 +83,9 @@ public class EfficiencyStatementTest extends OlatRestTestCase {
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("courses")
 				.path(resource.getKey().toString())
 				.path("statements").path(assessedIdentity.getKey().toString()).build();
-		HttpRequest getStatement = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(getStatement);
-		assertEquals(200, response.statusCode());
+		HttpGet getStatement = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(getStatement);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		EfficiencyStatementVO statementVO = conn.parse(response, EfficiencyStatementVO.class);
 		Assert.assertNotNull(statementVO);
 		Assert.assertEquals(5.0f, statementVO.getScore(), 0.0001);
@@ -97,7 +98,7 @@ public class EfficiencyStatementTest extends OlatRestTestCase {
 	}
 
 	@Test
-	public void putEfficiencyStatement() throws IOException, URISyntaxException, InterruptedException {
+	public void putEfficiencyStatement() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		Identity assessedIdentity = JunitTestHelper.createAndPersistIdentityAsRndUser("cert-3");
@@ -114,10 +115,12 @@ public class EfficiencyStatementTest extends OlatRestTestCase {
 		statement.setPassed(Boolean.TRUE);
 		statement.setScore(2.5f);
 
-		HttpRequest method = conn.createPut(uri, statement, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, statement);
+
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 
 		UserEfficiencyStatement efficiencyStatement = efficiencyStatementManager
 				.getUserEfficiencyStatementFull(entry, assessedIdentity);
@@ -131,7 +134,7 @@ public class EfficiencyStatementTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void putEfficiencyStatement_standalone() throws IOException, URISyntaxException, InterruptedException {
+	public void putEfficiencyStatement_standalone() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		Identity assessedIdentity = JunitTestHelper.createAndPersistIdentityAsRndUser("cert-3");
@@ -149,10 +152,12 @@ public class EfficiencyStatementTest extends OlatRestTestCase {
 		statement.setScore(8.5f);
 		statement.setCourseTitle("Standalone");
 
-		HttpRequest method = conn.createPut(uri, statement, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, statement);
+
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 
 		//check the efficiency statement
 		List<UserEfficiencyStatement> efficiencyStatements = efficiencyStatementManager
@@ -174,7 +179,7 @@ public class EfficiencyStatementTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void putEfficiencyStatement_standalone_alt() throws IOException, URISyntaxException, InterruptedException {
+	public void putEfficiencyStatement_standalone_alt() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		Identity assessedIdentity = JunitTestHelper.createAndPersistIdentityAsRndUser("cert-3");
@@ -193,10 +198,12 @@ public class EfficiencyStatementTest extends OlatRestTestCase {
 		statement.setScore(8.5f);
 		statement.setCourseTitle("Standalone");
 
-		HttpRequest method = conn.createPut(uri, statement, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, statement);
+
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 
 		//check the efficiency statement
 		List<UserEfficiencyStatement> efficiencyStatements = efficiencyStatementManager

@@ -24,13 +24,16 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.util.EntityUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
@@ -74,7 +77,7 @@ public class NotificationsSubscribersTest extends OlatRestTestCase {
 	private NotificationsManager notificationsManager;
 	
 	@Test
-	public void subscribe() throws IOException, URISyntaxException, InterruptedException {
+	public void subscribe() throws IOException, URISyntaxException {
 		Identity id1 = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-sub-1");
 		Identity id2 = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-sub-2");
 		
@@ -112,10 +115,11 @@ public class NotificationsSubscribersTest extends OlatRestTestCase {
 		
 		//create the subscribers
 		URI subscribersUri = UriBuilder.fromUri(getContextURI()).path("notifications").path("subscribers").build();
-		HttpRequest putMethod = conn.createPut(subscribersUri, subscribersVO, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(putMethod);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPut putMethod = conn.createPut(subscribersUri, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(putMethod, subscribersVO);
+		HttpResponse response = conn.execute(putMethod);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		//get publisher
 		SubscriptionContext subsContext
@@ -127,11 +131,12 @@ public class NotificationsSubscribersTest extends OlatRestTestCase {
 		List<Subscriber> subscribers = notificationsManager.getSubscribers(publisher, true);
 		Assert.assertNotNull(subscribers);
 		Assert.assertEquals(2, subscribers.size());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void unsubscribe() throws IOException, URISyntaxException, InterruptedException {
+	public void unsubscribe() throws IOException, URISyntaxException {
 		Identity id1 = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-sub-3");
 		Identity id2 = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-sub-4");
 		Identity id3 = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-sub-5");
@@ -168,10 +173,10 @@ public class NotificationsSubscribersTest extends OlatRestTestCase {
 
 		URI subscribersUri = UriBuilder.fromUri(getContextURI()).path("notifications").path("subscribers")
 				.path(subsContext.getResName()).path(subsContext.getResId().toString()).path(subsContext.getSubidentifier()).build();
-		HttpRequest getMethod = conn.createGet(subscribersUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> getResponse = conn.execute(getMethod);
-		Assert.assertEquals(200, getResponse.statusCode());
-		List<SubscriberVO> subscriberVOes = conn.parseList(getResponse, SubscriberVO.class);
+		HttpGet getMethod = conn.createGet(subscribersUri, MediaType.APPLICATION_JSON, true);
+		HttpResponse getResponse = conn.execute(getMethod);
+		Assert.assertEquals(200, getResponse.getStatusLine().getStatusCode());
+		List<SubscriberVO> subscriberVOes = parseGroupArray(getResponse.getEntity().getContent());
 		Assert.assertNotNull(subscriberVOes);
 		Assert.assertEquals(3, subscriberVOes.size());
 		
@@ -189,9 +194,9 @@ public class NotificationsSubscribersTest extends OlatRestTestCase {
 		//delete id2
 		URI deleteSubscriberUri = UriBuilder.fromUri(getContextURI()).path("notifications").path("subscribers")
 				.path(subscriberId2VO.getSubscriberKey().toString()).build();
-		HttpRequest deleteMethod = conn.createDelete(deleteSubscriberUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> deleteResponse = conn.execute(deleteMethod);
-		Assert.assertEquals(200, deleteResponse.statusCode());
+		HttpDelete deleteMethod = conn.createDelete(deleteSubscriberUri, MediaType.APPLICATION_JSON);
+		HttpResponse deleteResponse = conn.execute(deleteMethod);
+		Assert.assertEquals(200, deleteResponse.getStatusLine().getStatusCode());
 		
 		//check
 		Publisher publisher = notificationsManager.getPublisher(subsContext);

@@ -35,16 +35,15 @@ import static org.olat.course.nodes.co.COEditController.CONFIG_KEY_MBODY_DEFAULT
 import static org.olat.course.nodes.co.COEditController.CONFIG_KEY_MSUBJECT_DEFAULT;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPut;
 import org.junit.Before;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
@@ -91,7 +90,7 @@ public class CoursesContactElementTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void testBareBoneConfig() throws IOException, URISyntaxException, InterruptedException {
+	public void testBareBoneConfig() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//create an contact node
@@ -104,10 +103,10 @@ public class CoursesContactElementTest extends OlatRestTestCase {
 			.queryParam("instruction", "Contact-instruction-0")
 			.queryParam("instructionalDesign", "Contact-instructionalDesign-0")
 			.build();
-		HttpRequest method = conn.createPut(newContactUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
+		HttpPut method = conn.createPut(newContactUri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
 		
-		assertEquals(200, response.statusCode());
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		CourseNodeVO contactNode = conn.parse(response, CourseNodeVO.class);
 		assertNotNull(contactNode);
 		assertNotNull(contactNode.getId());
@@ -118,11 +117,12 @@ public class CoursesContactElementTest extends OlatRestTestCase {
 		assertEquals(contactNode.getInstruction(), "Contact-instruction-0");
 		assertEquals(contactNode.getInstructionalDesign(), "Contact-instructionalDesign-0");
 		assertEquals(contactNode.getParentId(), rootNodeId);
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testFullConfig() throws IOException, URISyntaxException, InterruptedException {
+	public void testFullConfig() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//create an contact node
@@ -139,11 +139,11 @@ public class CoursesContactElementTest extends OlatRestTestCase {
 			.queryParam("defaultSubject", "Hello by contact 1")
 			.queryParam("defaultBody", "Hello by contact 1 body")
 			.build();
-		HttpRequest method = conn.createPut(newContactUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
+		HttpPut method = conn.createPut(newContactUri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
 		
 		//check the return values
-		assertEquals(200, response.statusCode());
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		CourseNodeVO contactNode = conn.parse(response, CourseNodeVO.class);
 		assertNotNull(contactNode);
 		assertNotNull(contactNode.getId());
@@ -167,7 +167,8 @@ public class CoursesContactElementTest extends OlatRestTestCase {
 
 		assertEquals(config.get(CONFIG_KEY_MSUBJECT_DEFAULT), "Hello by contact 1");
 		assertEquals(config.get(CONFIG_KEY_MBODY_DEFAULT), "Hello by contact 1 body");
-
+		
+		conn.shutdown();
 	}
 	
 	private UriBuilder getElementsUri(ICourse course) {

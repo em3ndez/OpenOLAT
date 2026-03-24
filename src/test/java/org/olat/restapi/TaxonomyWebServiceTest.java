@@ -25,8 +25,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,11 +34,18 @@ import java.util.UUID;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.util.EntityUtils;
+import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
 import org.olat.core.gui.translator.Translator;
 import org.olat.core.id.Identity;
+import org.olat.core.logging.Tracing;
 import org.olat.core.util.Util;
 import org.olat.core.util.i18n.I18nModule;
 import org.olat.modules.taxonomy.Taxonomy;
@@ -61,6 +66,9 @@ import org.olat.test.JunitTestHelper;
 import org.olat.test.OlatRestTestCase;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  * 
  * Initial date: 5 Oct 2017<br>
@@ -69,6 +77,8 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
+	private static final Logger log = Tracing.createLoggerFor(TaxonomyWebServiceTest.class);
+	
 	@Autowired
 	private DB dbInstance;
 	@Autowired
@@ -76,7 +86,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 
 	@Test
 	public void getTaxonomy()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-1", "Taxonomy on rest", "Rest is cool", "Ext-tax-1");
 		dbInstance.commitAndCloseSession();
 		Assert.assertNotNull(taxonomy);
@@ -84,9 +94,9 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		TaxonomyVO taxonomyVO = conn.parse(response, TaxonomyVO.class);
 		Assert.assertNotNull(taxonomyVO);
 		Assert.assertEquals(taxonomy.getKey(), taxonomyVO.getKey());
@@ -98,7 +108,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getTaxonomyList()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-1b", "Taxonomy on rest", "Rest is cool", "Ext-tax-1");
 		dbInstance.commitAndCloseSession();
 		Assert.assertNotNull(taxonomy);
@@ -106,16 +116,16 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		TaxonomyVOes taxonomyVOes = conn.parse(response, TaxonomyVOes.class);
 		Assert.assertNotNull(taxonomyVOes);
 	}
 	
 	@Test
 	public void getFlatTaxonomyLevels()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-2", "Taxonomy on rest", "Rest is cool", "Ext-tax-1");
 		TaxonomyLevel level1 = taxonomyService.createTaxonomyLevel("REST-Tax-l-1", random(), "Ext-3", null, null, taxonomy);
 		TaxonomyLevel level2 = taxonomyService.createTaxonomyLevel("REST-Tax-l-2", random(), "Ext-4", null, null, taxonomy);
@@ -125,10 +135,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString()).path("levels").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<TaxonomyLevelVO> taxonomyLevelVOList = conn.parseList(response, TaxonomyLevelVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<TaxonomyLevelVO> taxonomyLevelVOList = parseTaxonomyLevelsArray(response.getEntity().getContent());
 		Assert.assertNotNull(taxonomyLevelVOList);
 		Assert.assertEquals(2, taxonomyLevelVOList.size());
 		
@@ -147,7 +157,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void putTaxonomyLevel_rootLevel()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-2", "Taxonomy on rest", "PUT is cool", "PUT-tax-1");
 		dbInstance.commitAndCloseSession();
 		Assert.assertNotNull(taxonomy);
@@ -162,9 +172,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		levelVo.setExternalId("EXT-190");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString()).path("levels").build();
-		HttpRequest method = conn.createPut(request, levelVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, levelVo);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		//check the returned value
 		TaxonomyLevelVO newTaxonomyLevelVo = conn.parse(response, TaxonomyLevelVO.class);
@@ -190,7 +201,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void putTaxonomyLevel_subLevel()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-3", "Taxonomy on rest", "PUT is cool, yes!", "PUT-tax-2");
 		TaxonomyLevel rootLevel = taxonomyService.createTaxonomyLevel("REST-Tax-r-1", random(), "Ext-23", null, null, taxonomy);
 		TaxonomyLevelType type = taxonomyService.createTaxonomyLevelType("Sub-type", "Type for a sub level", "All is in the title", "TYP-23", true, taxonomy);
@@ -209,9 +220,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		levelVo.setTypeKey(type.getKey());
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString()).path("levels").build();
-		HttpRequest method = conn.createPut(request, levelVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, levelVo);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		//check the returned value
 		TaxonomyLevelVO newTaxonomyLevelVo = conn.parse(response, TaxonomyLevelVO.class);
@@ -245,7 +257,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	 */
 	@Test
 	public void updateTaxonomyLevel()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-4", "Taxonomy on rest", "PUT is cool, yes!", "PUT-tax-2");
 		TaxonomyLevel rootLevel = taxonomyService.createTaxonomyLevel("REST-Tax-u-1", random(), "Ext-25", null, null, taxonomy);
 		TaxonomyLevel levelToUpdate = taxonomyService.createTaxonomyLevel("REST-Tax-u-1", random(), "Ext-26", null, rootLevel, taxonomy);
@@ -265,9 +277,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		levelVo.setParentKey(rootLevel.getKey());
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString()).path("levels").build();
-		HttpRequest method = conn.createPut(request, levelVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, levelVo);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		//check the updated value
 		TaxonomyLevelVO updatedTaxonomyLevelVo = conn.parse(response, TaxonomyLevelVO.class);
@@ -293,7 +306,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void deleteTaxonomyLevel()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Del-1", "Taxonomy on rest", "Delete is sad!", "DELETE-tax-1");
 		TaxonomyLevel rootLevel = taxonomyService.createTaxonomyLevel("REST-Del-root", random(), "Ext-55", null, null, taxonomy);
 		TaxonomyLevel levelToDelete = taxonomyService.createTaxonomyLevel("REST-Del-u-1", random(), "Ext-56", null, rootLevel, taxonomy);
@@ -304,10 +317,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("levels").path(levelToDelete.getKey().toString()).build();
-		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		//check the deleted value
 		TaxonomyLevel deletedLevel =taxonomyService.getTaxonomyLevel(new TaxonomyLevelRefImpl(levelToDelete.getKey()));
@@ -325,7 +338,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	 */
 	@Test
 	public void deleteTaxonomyLevel_notPossible()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Del-2", "Taxonomy on rest", "Delete is sad! But there is some hope.", "DELETE-tax-2");
 		TaxonomyLevel rootLevel = taxonomyService.createTaxonomyLevel("REST-Del-root", random(), "Ext-57", null, null, taxonomy);
 		TaxonomyLevel levelToDelete = taxonomyService.createTaxonomyLevel("REST-Del-u-2", random(), "Ext-58", null, rootLevel, taxonomy);
@@ -336,10 +349,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("levels").path(rootLevel.getKey().toString()).build();
-		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(304, response.statusCode());
-		RestConnection.consume(response);
+		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(304, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		//check the updated value
 		TaxonomyLevel survivingLevel = taxonomyService.getTaxonomyLevel(new TaxonomyLevelRefImpl(levelToDelete.getKey()));
@@ -350,7 +363,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getTaxonomyLevelTypes()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-2", "Taxonomy on rest", "Rest is cool", "Ext-tax-1");
 		TaxonomyLevelType type1 = taxonomyService.createTaxonomyLevelType("RESR-Type-1", "Type 1 on rest", "Type", "EXT-Type-1", true, taxonomy);
 		TaxonomyLevelType type2 = taxonomyService.createTaxonomyLevelType("RESR-Type-2", "Type 2 on rest", "Type", "EXT-Type-2", true, taxonomy);
@@ -360,10 +373,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString()).path("types").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<TaxonomyLevelTypeVO> typeVoList = conn.parseList(response, TaxonomyLevelTypeVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<TaxonomyLevelTypeVO> typeVoList = parseTaxonomyLevelTypesArray(response.getEntity().getContent());
 		Assert.assertNotNull(typeVoList);
 		Assert.assertEquals(2, typeVoList.size());
 		
@@ -382,7 +395,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getTaxonomyLevelType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-2", "Taxonomy on rest", "Rest is cool", "Ext-tax-1");
 		TaxonomyLevelType type = taxonomyService.createTaxonomyLevelType("REST-Type-3", "Type 3 on rest", "Type", "EXT-Type-3", true, taxonomy);
 		dbInstance.commitAndCloseSession();
@@ -392,16 +405,16 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("types").path(type.getKey().toString()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		TaxonomyLevelTypeVO typeVo = conn.parse(response, TaxonomyLevelTypeVO.class);
 		Assert.assertNotNull(typeVo);
 	}
 	
 	@Test
 	public void putTaxonomyLevelType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-2", "Taxonomy on rest", "Rest is cool", "Ext-tax-1");
 		dbInstance.commitAndCloseSession();
 		Assert.assertNotNull(taxonomy);
@@ -417,9 +430,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("types").build();
-		HttpRequest method = conn.createPut(request, newTypeVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, newTypeVo);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		TaxonomyLevelTypeVO typeVo = conn.parse(response, TaxonomyLevelTypeVO.class);
 		Assert.assertNotNull(typeVo);
 		Assert.assertEquals(identifier, typeVo.getIdentifier());
@@ -430,7 +444,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getTaxonomyLevelTypeAllowedSubTypes()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-4", "Taxonomy on rest", "Rest is cool", "Ext-tax-1");
 		TaxonomyLevelType type = taxonomyService.createTaxonomyLevelType("REST-Type-4", "Type 4 on rest", "Type", "EXT-Type-4", true, taxonomy);
 		TaxonomyLevelType subType1 = taxonomyService.createTaxonomyLevelType("REST-Type-4-1", "Type 4.1 on rest", "Type", "EXT-Type-4-1", true, taxonomy);
@@ -447,10 +461,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("types").path(type.getKey().toString()).path("allowedSubTypes").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<TaxonomyLevelTypeVO> typeVoList = conn.parseList(response, TaxonomyLevelTypeVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<TaxonomyLevelTypeVO> typeVoList = parseTaxonomyLevelTypesArray(response.getEntity().getContent());
 		Assert.assertNotNull(typeVoList);
 		Assert.assertEquals(2, typeVoList.size());
 		
@@ -470,7 +484,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void allowTaxonomyLevelTypeAllowedSubType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-4", "Taxonomy on rest", "Rest is cool", "Ext-tax-1");
 		TaxonomyLevelType type = taxonomyService.createTaxonomyLevelType("REST-Type-4", "Type 4 on rest", "Type", "EXT-Type-4", true, taxonomy);
 		TaxonomyLevelType subType1 = taxonomyService.createTaxonomyLevelType("REST-Type-4-1", "Type 4.1 on rest", "Type", "EXT-Type-4-1", true, taxonomy);
@@ -483,10 +497,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("types").path(type.getKey().toString()).path("allowedSubTypes").path(subType2.getKey().toString()).build();
-		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		TaxonomyLevelType reloadedType = taxonomyService.getTaxonomyLevelType(type);
 		Set<TaxonomyLevelTypeToType> typeToTypes = reloadedType.getAllowedTaxonomyLevelSubTypes();
@@ -507,7 +521,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void disallowTaxonomyLevelTypeAllowedSubType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-6", "Taxonomy on rest", "Rest is cool", "Ext-tax-6");
 		TaxonomyLevelType type = taxonomyService.createTaxonomyLevelType("REST-Type-6", "Type 6 on rest", "Type", "EXT-Type-6", true, taxonomy);
 		TaxonomyLevelType subType1 = taxonomyService.createTaxonomyLevelType("REST-Type-6-1", "Type 6.1 on rest", "Type", "EXT-Type-6-1", true, taxonomy);
@@ -525,10 +539,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("types").path(type.getKey().toString()).path("allowedSubTypes").path(subType2.getKey().toString()).build();
-		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		TaxonomyLevelType reloadedType = taxonomyService.getTaxonomyLevelType(type);
 		Set<TaxonomyLevelTypeToType> typeToTypes = reloadedType.getAllowedTaxonomyLevelSubTypes();
@@ -553,7 +567,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getTaxonomyLevelComptences()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		// prepare a level, 2 users and 2 competences
 		Identity id1 = JunitTestHelper.createAndPersistIdentityAsRndUser("competence-1");
 		Identity id2 = JunitTestHelper.createAndPersistIdentityAsRndUser("competence-2");
@@ -568,10 +582,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("levels").path(level.getKey().toString()).path("competences").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<TaxonomyCompetenceVO> competenceList = conn.parseList(response, TaxonomyCompetenceVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<TaxonomyCompetenceVO> competenceList = parseTaxonomyComptencesArray(response.getEntity().getContent());
 		Assert.assertNotNull(competenceList);
 		Assert.assertEquals(2, competenceList.size());
 		
@@ -594,7 +608,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getTaxonomyComptencesByIdentity()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		// prepare a level, 2 users and 2 competences
 		Identity id = JunitTestHelper.createAndPersistIdentityAsRndUser("competence-4");
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-20", "Taxonomy on rest", "Rest is cool", "Ext-tax-7");
@@ -609,10 +623,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("competences").path(id.getKey().toString()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<TaxonomyCompetenceVO> competenceList = conn.parseList(response, TaxonomyCompetenceVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<TaxonomyCompetenceVO> competenceList = parseTaxonomyComptencesArray(response.getEntity().getContent());
 		Assert.assertNotNull(competenceList);
 		Assert.assertEquals(2, competenceList.size());
 		
@@ -633,7 +647,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getTaxonomyLevelComptences_byIdentity()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		// prepare a level, 1 user and 1 competence
 		Identity id = JunitTestHelper.createAndPersistIdentityAsRndUser("competence-4");
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-7", "Taxonomy on rest", "Rest is cool", "Ext-tax-7");
@@ -647,10 +661,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("levels").path(level.getKey().toString()).path("competences")
 				.path(id.getKey().toString()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<TaxonomyCompetenceVO> competenceList = conn.parseList(response, TaxonomyCompetenceVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<TaxonomyCompetenceVO> competenceList = parseTaxonomyComptencesArray(response.getEntity().getContent());
 		Assert.assertNotNull(competenceList);
 		Assert.assertEquals(1, competenceList.size());
 		TaxonomyCompetenceVO competence = competenceList.get(0);
@@ -661,7 +675,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void putTaxonomyLevelComptence()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Identity id = JunitTestHelper.createAndPersistIdentityAsRndUser("competence-4");
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-8", "Taxonomy on rest", "PUT is cool, yes!", "PUT-tax-2");
 		TaxonomyLevel level = taxonomyService.createTaxonomyLevel("REST-Tax-r-8", random(), "Ext-23", null, null, taxonomy);
@@ -676,9 +690,10 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("levels").path(level.getKey().toString()).path("competences").build();
-		HttpRequest method = conn.createPut(request, competenceVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, competenceVo);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		//check the returned value
 		TaxonomyCompetenceVO newTaxonomyCompetenceVo = conn.parse(response, TaxonomyCompetenceVO.class);
@@ -700,7 +715,7 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void removeTaxonomyLevelCompetence()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Identity id = JunitTestHelper.createAndPersistIdentityAsRndUser("competence-4");
 		Taxonomy taxonomy = taxonomyService.createTaxonomy("REST-Tax-8", "Taxonomy on rest", "PUT is cool, yes!", "PUT-tax-2");
 		TaxonomyLevel level = taxonomyService.createTaxonomyLevel("REST-Tax-r-8", random(), "Ext-23", null, null, taxonomy);
@@ -718,14 +733,44 @@ public class TaxonomyWebServiceTest extends OlatRestTestCase {
 		URI request = UriBuilder.fromUri(getContextURI()).path("taxonomy").path(taxonomy.getKey().toString())
 				.path("levels").path(level.getKey().toString()).path("competences")
 				.path(competence.getKey().toString()).build();
-		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		//check the database
 		List<TaxonomyCompetence> competences = taxonomyService.getTaxonomyCompetences(id, TaxonomyCompetenceTypes.target);
 		Assert.assertNotNull(competences);
 		Assert.assertEquals(0, competences.size());
+	}
+	
+	protected List<TaxonomyLevelVO> parseTaxonomyLevelsArray(InputStream body) {
+		try {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(body, new TypeReference<List<TaxonomyLevelVO>>(){/* */});
+		} catch (Exception e) {
+			log.error("", e);
+			return null;
+		}
+	}
+	
+	protected List<TaxonomyLevelTypeVO> parseTaxonomyLevelTypesArray(InputStream body) {
+		try {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(body, new TypeReference<List<TaxonomyLevelTypeVO>>(){/* */});
+		} catch (Exception e) {
+			log.error("", e);
+			return null;
+		}
+	}
+	
+	protected List<TaxonomyCompetenceVO> parseTaxonomyComptencesArray(InputStream body) {
+		try {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(body, new TypeReference<List<TaxonomyCompetenceVO>>(){/* */});
+		} catch (Exception e) {
+			log.error("", e);
+			return null;
+		}
 	}
 }

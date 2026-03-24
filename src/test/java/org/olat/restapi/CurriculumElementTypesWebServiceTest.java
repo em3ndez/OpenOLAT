@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +31,13 @@ import java.util.Set;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.util.EntityUtils;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
@@ -50,6 +55,9 @@ import org.olat.modules.curriculum.restapi.CurriculumElementTypeVO;
 import org.olat.test.OlatRestTestCase;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  * 
  * Initial date: 16 mai 2018<br>
@@ -65,17 +73,17 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getCurriculumElementTypes()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		CurriculumElementType type = curriculumService.createCurriculumElementType("TYPE-2", "Type 2", "", "");
 		dbInstance.commitAndCloseSession();
 
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path("types").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<CurriculumElementTypeVO> typeVoes = conn.parseList(response, CurriculumElementTypeVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<CurriculumElementTypeVO> typeVoes = parseCurriculumElementTypeArray(response.getEntity());
 		
 		CurriculumElementTypeVO foundVo = null;
 		for(CurriculumElementTypeVO typeVo:typeVoes) {
@@ -88,16 +96,16 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 
 	@Test
 	public void getCurriculumElementType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		CurriculumElementType type = curriculumService.createCurriculumElementType("rest-3-type", "REST Type 3", "A type for REST", "EXT-3");
 		dbInstance.commitAndCloseSession();
 
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path("types").path(type.getKey().toString()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		CurriculumElementTypeVO elementTypeVo = conn.parse(response, CurriculumElementTypeVO.class); 
 		Assert.assertNotNull(elementTypeVo);
 		Assert.assertEquals(type.getKey(), elementTypeVo.getKey());
@@ -110,7 +118,7 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void createCurriculumElementType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		CurriculumElementTypeVO vo = new CurriculumElementTypeVO();
@@ -122,9 +130,11 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 		vo.setManagedFlagsString("delete");
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path("types").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		MatcherAssert.assertThat(response.statusCode(), Matchers.either(Matchers.is(200)).or(Matchers.is(201)));
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		
+		HttpResponse response = conn.execute(method);
+		MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), Matchers.either(Matchers.is(200)).or(Matchers.is(201)));
 		
 		// checked VO
 		CurriculumElementTypeVO savedVo = conn.parse(response, CurriculumElementTypeVO.class);
@@ -153,7 +163,7 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void updateCurriculumElementType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		CurriculumElementType type = curriculumService.createCurriculumElementType("rest-5-type", "REST 5 Type", "A type for REST", "EXT-5");
@@ -169,9 +179,11 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 		vo.setManagedFlagsString("delete,all");
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path("types").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		// checked VO
 		CurriculumElementTypeVO savedVo = conn.parse(response, CurriculumElementTypeVO.class);
@@ -199,7 +211,7 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void updateCurriculumElementTypeWithKey()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		CurriculumElementType type = curriculumService.createCurriculumElementType("rest-6-type", "REST 6 Type", "A type for REST", "EXT-6");
@@ -218,9 +230,11 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 		vo.setMaxRepositoryEntryRelations(Integer.valueOf(1));
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path("types").path(type.getKey().toString()).build();
-		HttpRequest method = conn.createPost(request, vo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, vo);
+		
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		// checked VO
 		CurriculumElementTypeVO savedVo = conn.parse(response, CurriculumElementTypeVO.class);
@@ -251,7 +265,7 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 
 	@Test
 	public void getCurriculumElementTypeAllowedSubTypes()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		CurriculumElementType type = curriculumService.createCurriculumElementType("rest-7-type", "REST Type 7", "A type for REST", "EXT-7");
 		CurriculumElementType subType1 = curriculumService.createCurriculumElementType("rest-7-1-type", "REST Type 7.1", "A type for REST", "EXT-7-1");
 		CurriculumElementType subType2 = curriculumService.createCurriculumElementType("rest-7-2-type", "REST Type 7.2", "A type for REST", "EXT-7-2");
@@ -267,10 +281,10 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path("types")
 				.path(type.getKey().toString()).path("allowedSubTypes").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<CurriculumElementTypeVO> typeVoList = conn.parseList(response, CurriculumElementTypeVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<CurriculumElementTypeVO> typeVoList = parseCurriculumElementTypeArray(response.getEntity());
 		Assert.assertNotNull(typeVoList);
 		Assert.assertEquals(2, typeVoList.size());
 		
@@ -289,7 +303,7 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void allowCurriculumElementTypeSubType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		CurriculumElementType type = curriculumService.createCurriculumElementType("rest-8-type", "REST Type 8", "A type for REST", "EXT-8");
 		CurriculumElementType subType1 = curriculumService.createCurriculumElementType("rest-8-1-type", "REST Type 8.1", "A type for REST", "EXT-8-1");
 		CurriculumElementType subType2 = curriculumService.createCurriculumElementType("rest-8-2-type", "REST Type 8.2", "A type for REST", "EXT-8-2");
@@ -301,10 +315,10 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path("types").path(type.getKey().toString())
 				.path("allowedSubTypes").path(subType2.getKey().toString()).build();
-		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		CurriculumElementType reloadedType = curriculumService.getCurriculumElementType(type);
 		Set<CurriculumElementTypeToType> typeToTypes = reloadedType.getAllowedSubTypes();
@@ -325,7 +339,7 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void disallowCurriculumElementTypeSubType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		CurriculumElementType type = curriculumService.createCurriculumElementType("rest-9-type", "REST Type 9", "A type for REST", "EXT-9");
 		CurriculumElementType subType1 = curriculumService.createCurriculumElementType("rest-9-1-type", "REST Type 9.1", "A type for REST", "EXT-9-1");
 		CurriculumElementType subType2 = curriculumService.createCurriculumElementType("rest-9-2-type", "REST Type 9.2", "A type for REST", "EXT-9-2");
@@ -342,10 +356,10 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path("types").path(type.getKey().toString())
 				.path("allowedSubTypes").path(subType2.getKey().toString()).build();
-		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		CurriculumElementType reloadedType = curriculumService.getCurriculumElementType(type);
 		Set<CurriculumElementTypeToType> typeToTypes = reloadedType.getAllowedSubTypes();
@@ -366,5 +380,15 @@ public class CurriculumElementTypesWebServiceTest extends OlatRestTestCase {
 		Assert.assertTrue(found1);
 		Assert.assertFalse(found2);
 		Assert.assertTrue(found3);
+	}
+
+	protected List<CurriculumElementTypeVO> parseCurriculumElementTypeArray(HttpEntity entity) {
+		try(InputStream in = entity.getContent()) {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(in, new TypeReference<List<CurriculumElementTypeVO>>(){/* */});
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 }

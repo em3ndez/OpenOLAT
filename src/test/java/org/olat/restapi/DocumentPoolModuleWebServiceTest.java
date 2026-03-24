@@ -20,15 +20,14 @@
 package org.olat.restapi;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.modules.docpool.restapi.DocumentPoolModuleConfigurationVO;
@@ -44,13 +43,13 @@ public class DocumentPoolModuleWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void documentPoolModuleConfiguration()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("docpool").path("module").path("configuration").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		DocumentPoolModuleConfigurationVO configVO = conn.parse(response, DocumentPoolModuleConfigurationVO.class);
 		Assert.assertNotNull(configVO);
 	}

@@ -23,16 +23,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.olat.test.JunitTestHelper.random;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.util.EntityUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
@@ -64,7 +65,7 @@ public class ToDoTaskWebServiceTest extends OlatRestTestCase {
 	private ToDoService toDoService;
 	
 	@Test
-	public void getMyToDoTasks() throws IOException, URISyntaxException, InterruptedException, InterruptedException {
+	public void getMyToDoTasks() throws IOException, URISyntaxException {
 		String assigneeName = random();
 		String assigneePw = random();
 		Identity assignee = JunitTestHelper.createAndPersistIdentityAsUser(assigneeName, assigneePw);
@@ -96,19 +97,20 @@ public class ToDoTaskWebServiceTest extends OlatRestTestCase {
 				.path("todotasks")
 				.path("my")
 				.build();
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		ToDoTaskVOes toDoTaskVoes = conn.parse(response, ToDoTaskVOes.class);
 		assertThat(toDoTaskVoes.getToDoTasks())
 			.extracting(ToDoTaskVO::getKey)
 			.containsExactlyInAnyOrder(toDoTask2.getKey(), toDoTask3.getKey());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void postToDoStatus() throws IOException, URISyntaxException, InterruptedException {
+	public void postToDoStatus() throws IOException, URISyntaxException {
 		String assigneeName = random();
 		String assigneePw = random();
 		Identity assignee = JunitTestHelper.createAndPersistIdentityAsUser(assigneeName, assigneePw);
@@ -129,14 +131,16 @@ public class ToDoTaskWebServiceTest extends OlatRestTestCase {
 		ToDoStatus status = ToDoStatus.done;
 		ToDoStatusVO statusVO = new ToDoStatusVO();
 		statusVO.setStatus(status.name());
-		HttpRequest method = conn.createPost(uri, statusVO, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPost method = conn.createPost(uri, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, statusVO);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 	
 		ToDoTask reloadedToDoTask = toDoService.getToDoTask(toDoTask);
 		assertThat(reloadedToDoTask.getStatus()).isEqualTo(status);
-
+		
+		conn.shutdown();
 	}
 
 }

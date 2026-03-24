@@ -23,21 +23,23 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.List;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.util.EntityUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
-import org.olat.core.util.httpclient.ConnectionUtilities.NameValuePair;
 import org.olat.course.CourseFactory;
 import org.olat.course.ICourse;
 import org.olat.course.nodes.CourseNode;
@@ -60,7 +62,7 @@ public class CoursePublishTest extends OlatRestTestCase {
 	private DB dbInstance;
 	
 	@Test
-	public void testGetCourse() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetCourse() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//deploy a test course
@@ -75,30 +77,33 @@ public class CoursePublishTest extends OlatRestTestCase {
 		
 		//get the course 
 		URI uri = conn.getContextURI().path("repo").path("courses").path(course.getResourceableId().toString()).build();
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		CourseVO courseVo = conn.parse(response, CourseVO.class);
 		Assert.assertNotNull(courseVo);
 		
 		//update the root node
 		URI rootUri = getElementsUri(courseVo).path("structure").path(courseVo.getEditorRootNodeId()).build();
-		List<NameValuePair> formParameters = List.of(new NameValuePair("shortTitle", "Change it short"),
-				new NameValuePair("longTitle", "Change it long"));
-		HttpRequest updateMethod = conn.createPost(rootUri, formParameters, MediaType.APPLICATION_JSON);
-
-		HttpResponse<InputStream> updateRootResponse = conn.execute(updateMethod);
-		int updateRootCode = updateRootResponse.statusCode();
+		HttpPost updateMethod = conn.createPost(rootUri, MediaType.APPLICATION_JSON);
+		HttpEntity entity = MultipartEntityBuilder.create()
+				.setMode(HttpMultipartMode.BROWSER_COMPATIBLE)
+				.addTextBody("shortTitle", "Change it short")
+				.addTextBody("longTitle", "Change it long")
+				.build();
+		updateMethod.setEntity(entity);
+		HttpResponse updateRootResponse = conn.execute(updateMethod);
+		int updateRootCode = updateRootResponse.getStatusLine().getStatusCode();
 		assertTrue(updateRootCode == 200 || updateRootCode == 201);
-		RestConnection.consume(updateRootResponse);
+		EntityUtils.consume(updateRootResponse.getEntity());
 	
 		//publish
 		URI publishUri = getCoursesUri().path(courseVo.getKey().toString()).path("publish").build();
-		HttpRequest publishMethod = conn.createPost(publishUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> publishResponse = conn.execute(publishMethod);
-		int publishCode = publishResponse.statusCode();
+		HttpPost publishMethod = conn.createPost(publishUri, MediaType.APPLICATION_JSON);
+		HttpResponse publishResponse = conn.execute(publishMethod);
+		int publishCode = publishResponse.getStatusLine().getStatusCode();
 		assertTrue(publishCode == 200 || publishCode == 201);
-		RestConnection.consume(publishResponse);
+		EntityUtils.consume(publishResponse.getEntity());
 		
 		//reload the course
 		ICourse reloadedCourse = CourseFactory.loadCourse(re.getOlatResource().getResourceableId());

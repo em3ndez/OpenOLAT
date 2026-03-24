@@ -23,11 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.olat.test.JunitTestHelper.random;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +33,11 @@ import java.util.Map;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response.Status;
 
+import org.apache.http.HttpRequest;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.Before;
 import org.junit.Test;
@@ -62,7 +64,6 @@ import org.olat.core.util.vfs.VFSLockManager;
 import org.olat.core.util.vfs.VFSManager;
 import org.olat.core.util.vfs.lock.LockInfo;
 import org.olat.restapi.RestConnection;
-import org.olat.restapi.RestConnection.Header;
 import org.olat.test.JunitTestHelper;
 import org.olat.test.OlatRestTestCase;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -145,7 +146,7 @@ public class OnlyOfficeWebServiceTest extends OlatRestTestCase {
 		callback.setKey(documentKey);
 		callback.setStatus(1); // Editing
 		callback.setUsers(new String[] {user1Id} );
-		HttpResponse<InputStream> response = postCallback(callback);
+		HttpResponse response = postCallback(callback);
 		softly.assertThat(getCallbackError(response)).as("Response error code").isEqualTo(0);
 		
 		softly.assertThat(vfsLockManager.getLock(vfsLeaf).getTokens())
@@ -326,7 +327,7 @@ public class OnlyOfficeWebServiceTest extends OlatRestTestCase {
 		callback.setKey(documentKey);
 		callback.setStatus(1); // Editing
 		callback.setUsers(new String[] {user1Id} );
-		HttpResponse<InputStream> response = postCallback(callback);
+		HttpResponse response = postCallback(callback);
 		softly.assertThat(getCallbackError(response)).as("Response error code").isEqualTo(0);
 		
 		LockInfo lock = vfsLockManager.getLock(vfsLeaf);
@@ -385,58 +386,57 @@ public class OnlyOfficeWebServiceTest extends OlatRestTestCase {
 	public void shouldReturnSuccessWhenGettingCallbackIfAutorisationIsOk() throws Exception {
 		CallbackImpl callback = new CallbackImpl();
 		callback.setStatus(CallbackStatus.ErrorCorrupted.getValue());
-		HttpResponse<InputStream> response = postCallback(callback);
+		HttpResponse response = postCallback(callback);
 		
-		assertThat(response.statusCode()).isEqualTo(Status.OK.getStatusCode());
+		assertThat(response.getStatusLine().getStatusCode()).isEqualTo(Status.OK.getStatusCode());
 	}
 
 	@Test
 	public void shouldReturnBadRequestWhenGettingCallbackIfNoAutorisation() throws Exception {
-		HttpRequest request = conn.createPost(createCallbackUri(), MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(request);
+		HttpPost request = conn.createPost(createCallbackUri(), MediaType.APPLICATION_JSON);
+		HttpResponse response = conn.execute(request);
 		
-		assertThat(response.statusCode()).isEqualTo(Status.BAD_REQUEST.getStatusCode());
+		assertThat(response.getStatusLine().getStatusCode()).isEqualTo(Status.BAD_REQUEST.getStatusCode());
 	}
 
 	@Test
 	public void shouldReturnBadRequestWhenGettingCallbackIfAutorisationfails() throws Exception {
-		HttpRequest request = conn.createPost(createCallbackUri(), MediaType.APPLICATION_JSON,
-				new Header("Authorization", "not a valid jwt token"));
-		HttpResponse<InputStream> response = conn.execute(request);
+		HttpPost request = conn.createPost(createCallbackUri(), MediaType.APPLICATION_JSON);
+		request.addHeader("Authorization", "not a valid jwt token");
+		HttpResponse response = conn.execute(request);
 		
-		assertThat(response.statusCode()).isEqualTo(Status.BAD_REQUEST.getStatusCode());
+		assertThat(response.getStatusLine().getStatusCode()).isEqualTo(Status.BAD_REQUEST.getStatusCode());
 	}
 	
 	@Test
 	public void shouldReturnSuccessWhenGettingContentIfAutorisationIsOk() throws Exception {
-		HttpRequest request = conn.createGet(createContentUri(),
-				new Header("Authorization", createAuthorisation("something")));
-		HttpResponse<InputStream> response = conn.execute(request);
+		HttpUriRequest request = new HttpGet(createContentUri());
+		decorateAuthorisation(request, "something");
+		HttpResponse response = conn.execute(request);
 		
-		assertThat(response.statusCode()).isEqualTo(Status.OK.getStatusCode());
+		assertThat(response.getStatusLine().getStatusCode()).isEqualTo(Status.OK.getStatusCode());
 	}
 	
 	@Test
 	public void shouldReturnBadRequestWhenGettingContentIfNoAutorisation() throws Exception {
-		HttpRequest request = conn.createGet(createContentUri());
-		HttpResponse<InputStream> response = conn.execute(request);
+		HttpUriRequest request = new HttpGet(createContentUri());
+		HttpResponse response = conn.execute(request);
 		
-		assertThat(response.statusCode()).isEqualTo(Status.BAD_REQUEST.getStatusCode());
+		assertThat(response.getStatusLine().getStatusCode()).isEqualTo(Status.BAD_REQUEST.getStatusCode());
 	}
 	
 	@Test
 	public void shouldReturnBadRequestWhenGettingContentIfAutorisationFails() throws Exception {
-		HttpRequest request = conn.createGet(createContentUri(),
-				new Header("Authorization", "not a valid jwt token"));
-		HttpResponse<InputStream> response = conn.execute(request);
+		HttpUriRequest request = new HttpGet(createContentUri());
+		request.addHeader("Authorization", "not a valid jwt token");
+		HttpResponse response = conn.execute(request);
 		
-		assertThat(response.statusCode()).isEqualTo(Status.BAD_REQUEST.getStatusCode());
+		assertThat(response.getStatusLine().getStatusCode()).isEqualTo(Status.BAD_REQUEST.getStatusCode());
 	}
 	
-	private HttpResponse<InputStream> postCallback(CallbackImpl callback) throws URISyntaxException, IOException, InterruptedException {
-		String autorisation = createAuthorisation(callback);
-		HttpRequest request = conn.createPost(createCallbackUri(), MediaType.APPLICATION_JSON,
-				new Header("Authorization", autorisation));
+	private HttpResponse postCallback(CallbackImpl callback) throws URISyntaxException, IOException {
+		HttpPost request = conn.createPost(createCallbackUri(), MediaType.APPLICATION_JSON);
+		decorateAuthorisation(request, callback);
 		return conn.execute(request);
 	}
 	
@@ -462,6 +462,11 @@ public class OnlyOfficeWebServiceTest extends OlatRestTestCase {
 		return vfsLeaf.getMetaInfo().getUuid();
 	}
 	
+	private void decorateAuthorisation(HttpRequest request, Object object) {
+		String autorisation = createAuthorisation(object);
+		request.addHeader("Authorization", autorisation);
+	}
+	
 	private String createAuthorisation(Object object) {
 		Map<String, Object> payloadMap = new HashMap<>();
 		payloadMap.put("payload", object);
@@ -470,7 +475,7 @@ public class OnlyOfficeWebServiceTest extends OlatRestTestCase {
 		return "Bearer " + payloadToken;
 	}
 	
-	private int getCallbackError(HttpResponse<InputStream> response) {
+	private int getCallbackError(HttpResponse response) {
 		CallbackResponseVO callbackResonse = conn.parse(response, CallbackResponseVO.class);
 		return callbackResonse.getError();
 	}

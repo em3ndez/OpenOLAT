@@ -98,12 +98,11 @@ public class AssessmentTest extends Deployments {
 	 * @param ryomouBrowser
 	 * @throws IOException
 	 * @throws URISyntaxException
-	 * @throws InterruptedException 
 	 */
 	@Test
 	@RunAsClient
 	public void scormCourseWithAssessment()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver ryomouBrowser = getWebDriver(1);
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
@@ -230,7 +229,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void assessmentInspection()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver participantBrowser = getWebDriver(1);
 			
 		UserVO participant = new UserRestClient(deploymentUrl).createRandomUser("Janis");
@@ -376,7 +375,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void assessmentModeManual()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver ryomouBrowser = getWebDriver(1);
 		WebDriver kanuBrowser = getWebDriver(2);
 			
@@ -534,7 +533,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void assessmentModeManualWithFollowUp()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver participantBrowser = getWebDriver(1);
 			
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
@@ -670,7 +669,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void assessmentModesConsecutives()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver participantBrowser = getWebDriver(1);
 			
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
@@ -853,7 +852,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void certificatesManuallyGenerated()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO rei = new UserRestClient(deploymentUrl).createRandomUser("Rei");
@@ -939,7 +938,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void certificatesGeneratedByTest()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		
 		//create an author and a participant
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
@@ -1051,7 +1050,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void certificatesGeneratedWithCascadingRules()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO participant1 = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
@@ -1195,7 +1194,7 @@ public class AssessmentTest extends Deployments {
 	 */
 	@Test
 	public void createBadgeManually()
-			throws IOException, URISyntaxException, InterruptedException {
+			throws IOException, URISyntaxException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO participant = new UserRestClient(deploymentUrl).createRandomUser("Jeremy");
 		
@@ -1295,7 +1294,7 @@ public class AssessmentTest extends Deployments {
 	 */
 	@Test
 	public void createBadgeAuto()
-			throws IOException, URISyntaxException, InterruptedException {
+			throws IOException, URISyntaxException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO participant = new UserRestClient(deploymentUrl).createRandomUser("Jeremy");
 		
@@ -1422,7 +1421,7 @@ public class AssessmentTest extends Deployments {
 	 */
 	@Test
 	public void createBadgeAuto2Levels()
-			throws IOException, URISyntaxException, InterruptedException {
+			throws IOException, URISyntaxException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO participant = new UserRestClient(deploymentUrl).createRandomUser("Jeremy");
 		
@@ -1601,7 +1600,7 @@ public class AssessmentTest extends Deployments {
 	 */
 	@Test
 	public void createBadgeGlobalManually()
-			throws IOException, URISyntaxException, InterruptedException {
+			throws IOException, URISyntaxException {
 		UserVO admin = new UserRestClient(deploymentUrl).getOrCreateAdministrator();
 		UserVO participant = new UserRestClient(deploymentUrl).createRandomUser("Adelaide");
 		
@@ -1673,7 +1672,7 @@ public class AssessmentTest extends Deployments {
 	 */
 	@Test
 	public void createBadgeGlobalAuto()
-			throws IOException, URISyntaxException, InterruptedException {
+			throws IOException, URISyntaxException {
 		UserVO admin = new UserRestClient(deploymentUrl).getOrCreateAdministrator();
 		UserVO participant = new UserRestClient(deploymentUrl).createRandomUser("Adelaide");
 		
@@ -1810,7 +1809,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void assessmentCourseElement()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
@@ -1907,7 +1906,7 @@ public class AssessmentTest extends Deployments {
 	 */
 	@Test
 	public void assessmentCourseElementWithGrades()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 	
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO student = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
@@ -2027,7 +2026,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void taskWithGroupsAndStandardSettings()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver participantBrowser = getWebDriver(1);
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
@@ -2221,7 +2220,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void taskWithIndividualScoreAndRevision()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver ryomouBrowser = getWebDriver(1);
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
@@ -2400,7 +2399,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void taskWithoutAssignment()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver ryomouBrowser = getWebDriver(1);
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
@@ -2559,7 +2558,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void taskWithIndividualScoreNoRevision()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver ryomouBrowser = getWebDriver(1);
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
@@ -2703,7 +2702,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void bulkAssessment()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
@@ -2840,7 +2839,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void taskOptionalWithIndividualScore()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver ryomouBrowser = getWebDriver(1);
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
@@ -2991,7 +2990,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void taskOptionalWithoutAssignment()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		WebDriver participantBrowser = getWebDriver(1);
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
@@ -3137,7 +3136,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void taskOptionalWithoutAssignmentRoleSwitch()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
@@ -3223,7 +3222,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void taskWithoutSubmission()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 						
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO kanu = new UserRestClient(deploymentUrl).createRandomUser("kanu");
@@ -3346,7 +3345,7 @@ public class AssessmentTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void taskOptionalWithoutSubmission()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 						
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO kanu = new UserRestClient(deploymentUrl).createRandomUser("kanu");

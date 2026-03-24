@@ -22,10 +22,7 @@ package org.olat.ldap.manager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.InputStream;
 import java.net.URI;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,6 +35,9 @@ import javax.naming.ldap.LdapContext;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.util.EntityUtils;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
@@ -1532,10 +1532,10 @@ public class LDAPLoginManagerTest extends OlatRestTestCase {
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(id.getKey().toString())
 				.path("username").queryParam("username", newUsername).build();
 		
-		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		Identity renamedId = securityManager.loadIdentityByKey(id.getKey());
 		Assert.assertEquals(newUsername, renamedId.getUser().getNickName());

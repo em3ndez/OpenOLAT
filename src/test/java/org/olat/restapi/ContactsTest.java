@@ -25,15 +25,14 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.junit.Before;
 import org.junit.Test;
 import org.olat.basesecurity.GroupRoles;
@@ -184,13 +183,13 @@ public class ContactsTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void testGetContactsRest() throws IOException, URISyntaxException, InterruptedException, InterruptedException {
+	public void testGetContactsRest() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("rest-contacts-two", "A6B7C8");
 
 		UriBuilder uri = UriBuilder.fromUri(getContextURI()).path("contacts").queryParam("start", "0").queryParam("limit", "10");
-		HttpRequest method = conn.createGet(uri.build(), MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri.build(), MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		ContactVOes contacts = conn.parse(response, ContactVOes.class);
 		assertNotNull(contacts);
 		assertNotNull(contacts.getUsers());
@@ -198,6 +197,7 @@ public class ContactsTest extends OlatRestTestCase {
 		assertEquals(1, contacts.getTotalCount());
 		//owner3 -> g4
 		assertEquals(part3.getKey(), contacts.getUsers()[0].getKey());
-
+		
+		conn.shutdown();
 	}
 }

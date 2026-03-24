@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -34,6 +32,14 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
 import org.apache.commons.lang3.time.DateUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.util.EntityUtils;
+import org.apache.logging.log4j.Logger;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
@@ -44,6 +50,7 @@ import org.olat.basesecurity.OrganisationService;
 import org.olat.core.commons.persistence.DB;
 import org.olat.core.id.Identity;
 import org.olat.core.id.Organisation;
+import org.olat.core.logging.Tracing;
 import org.olat.modules.curriculum.Curriculum;
 import org.olat.modules.curriculum.CurriculumCalendars;
 import org.olat.modules.curriculum.CurriculumElement;
@@ -75,6 +82,9 @@ import org.olat.test.OlatRestTestCase;
 import org.olat.user.restapi.UserVO;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  * 
  * Initial date: 15 mai 2018<br>
@@ -82,6 +92,8 @@ import org.springframework.beans.factory.annotation.Autowired;
  *
  */
 public class CurriculumsWebServiceTest extends OlatRestTestCase {
+	
+	private static final Logger log = Tracing.createLoggerFor(CurriculumsWebServiceTest.class);
 	
 	@Autowired
 	private DB dbInstance;
@@ -114,7 +126,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getCurriculums()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Organisation organisation = organisationService.createOrganisation("Curriculum org.", "curr-org", "", defaultUnitTestOrganisation, null, JunitTestHelper.getDefaultActor());
 		Curriculum curriculum = curriculumService.createCurriculum("REST-Curriculum", "REST Curriculum", "A curriculum accessible by REST API", false, organisation);
 		dbInstance.commitAndCloseSession();
@@ -122,10 +134,10 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<CurriculumVO> curriculumVoes = conn.parseList(response, CurriculumVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<CurriculumVO> curriculumVoes = parseCurriculumArray(response.getEntity());
 		
 		CurriculumVO foundVo = null;
 		for(CurriculumVO curriculumVo:curriculumVoes) {
@@ -138,7 +150,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getCurriculum()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Organisation organisation = organisationService.createOrganisation("Curriculum org.", "curr-org", "", defaultUnitTestOrganisation, null, JunitTestHelper.getDefaultActor());
 		Curriculum curriculum = curriculumService.createCurriculum("REST-2-Curriculum", "REST 2 Curriculum", "A curriculum accessible by REST API", false, organisation);
 		dbInstance.commitAndCloseSession();
@@ -146,9 +158,9 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path(curriculum.getKey().toString()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		CurriculumVO curriculumVo = conn.parse(response, CurriculumVO.class);
 		Assert.assertNotNull(curriculumVo);
@@ -159,7 +171,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void createCurriculum()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Organisation organisation = organisationService.createOrganisation("REST Parent Organisation", "REST-p-organisation", "", defaultUnitTestOrganisation,
 				null, JunitTestHelper.getDefaultActor());
 		dbInstance.commitAndCloseSession();
@@ -176,9 +188,11 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		vo.setOrganisationKey(organisation.getKey());
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		MatcherAssert.assertThat(response.statusCode(), Matchers.either(Matchers.is(200)).or(Matchers.is(201)));
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		
+		HttpResponse response = conn.execute(method);
+		MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), Matchers.either(Matchers.is(200)).or(Matchers.is(201)));
 		
 		// checked VO
 		CurriculumVO savedVo = conn.parse(response, CurriculumVO.class);
@@ -209,7 +223,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void updateCurriculum()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Organisation organisation = organisationService.createOrganisation("REST Parent Organisation 3", "REST-p-3-organisation", "", defaultUnitTestOrganisation, null, JunitTestHelper.getDefaultActor());
 		Curriculum curriculum = curriculumService.createCurriculum("REST-4-Curriculum", "REST 4 Curriculum", "A curriculum accessible by REST API", false, organisation);
 		dbInstance.commitAndCloseSession();
@@ -227,9 +241,11 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		vo.setOrganisationKey(organisation.getKey());
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		// checked VO
 		CurriculumVO savedVo = conn.parse(response, CurriculumVO.class);
@@ -258,7 +274,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void deleteCurriculum()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Curriculum curriculum = curriculumService.createCurriculum("REST-Del-Curriculum", "REST del Curriculum", "A curriculum deleted by REST API", false, defaultUnitTestOrganisation);
 		Curriculum notDeletedCurriculum = curriculumService.createCurriculum("REST-Not-Me-Curriculum", "REST don't delete me", "A curriculum by REST API", false, defaultUnitTestOrganisation);
 		dbInstance.commit();
@@ -270,9 +286,9 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path(curriculum.getKey().toString()).build();
-		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		Curriculum deletedCurriculum = curriculumService.getCurriculum(curriculum);
 		Assert.assertNotNull(deletedCurriculum);
@@ -287,7 +303,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void createCurriculum_notAuthorized()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		IdentityWithLogin author = JunitTestHelper.createAndPersistRndAuthor("rest-curriculum");
 		
 		RestConnection conn = new RestConnection(author);
@@ -303,15 +319,17 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		vo.setOrganisationKey(organisation.getKey());
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(403, response.statusCode());
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(403, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 	}
 	
 	@Test
 	public void updateCurriculum_authorizedOrNot()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		IdentityWithLogin curriculumManager = JunitTestHelper.createAndPersistRndUser("rest-curriculum");
 		Organisation parentOrganisation = organisationService.createOrganisation("Root curriculum organisation", "REST-curl-organisation", "", null,
 				null, JunitTestHelper.getDefaultActor());
@@ -334,19 +352,21 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		voA.setIdentifier("Take control A");
 		// it cannot change something in organization A
 		URI requestA = UriBuilder.fromUri(getContextURI()).path("curriculum").build();
-		HttpRequest methodA = conn.createPost(requestA, voA, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> responsea = conn.execute(methodA);
-		Assert.assertEquals(403, responsea.statusCode());
-		RestConnection.consume(responsea);
+		HttpPost methodA = conn.createPost(requestA, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(methodA, voA);
+		HttpResponse responsea = conn.execute(methodA);
+		Assert.assertEquals(403, responsea.getStatusLine().getStatusCode());
+		EntityUtils.consume(responsea.getEntity());
 		
 		// but it can update a curriculum in organization B
 		CurriculumVO voB = CurriculumVO.valueOf(curriculumB);
 		voB.setIdentifier("Update B");
 		// it cannot change something in organization A
 		URI requestB = UriBuilder.fromUri(getContextURI()).path("curriculum").build();
-		HttpRequest methodB = conn.createPost(requestB, voB, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> responseB = conn.execute(methodB);
-		Assert.assertEquals(200, responseB.statusCode());
+		HttpPost methodB = conn.createPost(requestB, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(methodB, voB);
+		HttpResponse responseB = conn.execute(methodB);
+		Assert.assertEquals(200, responseB.getStatusLine().getStatusCode());
 		// check the updated curriculum
 		CurriculumVO updatedVoB = conn.parse(responseB, CurriculumVO.class);
 		Assert.assertNotNull(updatedVoB);
@@ -356,7 +376,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void searchCurriculumElements_externalId()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Organisation organisation = organisationService.createOrganisation("Curriculum org.", "curr-org", "", null,
 				null, JunitTestHelper.getDefaultActor());
 		Curriculum curriculum = curriculumService.createCurriculum("REST-Curriculum-elements", "REST Curriculum", "A curriculum accessible by REST API for elemets", false, organisation);
@@ -373,11 +393,11 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 
 		// it cannot change something in organization A
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum/elements").queryParam("externalId", externalId).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
 
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<CurriculumElementVO> elements = conn.parseList(response, CurriculumElementVO.class);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<CurriculumElementVO> elements = this.parseCurriculumElementArray(response.getEntity());
 		Assert.assertNotNull(elements);
 		Assert.assertEquals(1, elements.size());
 		Assert.assertEquals(element.getKey(), elements.get(0).getKey());
@@ -385,7 +405,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void searchCurriculumElements_identifier()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Organisation organisation = organisationService.createOrganisation("Curriculum org.", "curr-org", "", null,
 				null, JunitTestHelper.getDefaultActor());
 		Curriculum curriculum = curriculumService.createCurriculum("REST-Curriculum-elements", "REST Curriculum", "A curriculum accessible by REST API for elements", false, organisation);
@@ -399,11 +419,11 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 
 		// it cannot change something in organization A
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum/elements").queryParam("identifier", identifier).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
 
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<CurriculumElementVO> elements = conn.parseList(response, CurriculumElementVO.class);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<CurriculumElementVO> elements = this.parseCurriculumElementArray(response.getEntity());
 		Assert.assertNotNull(elements);
 		Assert.assertEquals(1, elements.size());
 		Assert.assertEquals(element.getKey(), elements.get(0).getKey());
@@ -411,7 +431,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void searchCurriculumElements_elementKey()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Organisation organisation = organisationService.createOrganisation("Curriculum org.", "curr-org", "", null,
 				null, JunitTestHelper.getDefaultActor());
 		Curriculum curriculum = curriculumService.createCurriculum("REST-Curriculum-elements", "REST Curriculum", "A curriculum accessible by REST API for elements", false, organisation);
@@ -424,11 +444,11 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 
 		// it cannot change something in organization A
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum/elements").queryParam("key", element.getKey().toString()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
 
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<CurriculumElementVO> elements = conn.parseList(response, CurriculumElementVO.class);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<CurriculumElementVO> elements = this.parseCurriculumElementArray(response.getEntity());
 		Assert.assertNotNull(elements);
 		Assert.assertEquals(1, elements.size());
 		Assert.assertEquals(element.getKey(), elements.get(0).getKey());
@@ -436,7 +456,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getCurriculumOwners()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		Identity member = JunitTestHelper.createAndPersistIdentityAsRndUser("cur-manager-1");
@@ -448,11 +468,11 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path(curriculum.getKey().toString())
 				.path("curriculumowners").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
 		
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<UserVO> memberVoes = conn.parseList(response, UserVO.class);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> memberVoes = parseUserArray(response.getEntity());
 		
 		Assert.assertNotNull(memberVoes);
 		Assert.assertEquals(1, memberVoes.size());
@@ -461,7 +481,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void addCurriculumOwner()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("element-member-11");
@@ -470,11 +490,11 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path(curriculum.getKey().toString())
 				.path("curriculumowners").path(owner.getKey().toString()).build();
-		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
 		
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		List<Identity> managers = curriculumService.getMembersIdentity(curriculum, CurriculumRoles.curriculumowner);
 		Assert.assertNotNull(managers);
@@ -484,7 +504,7 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void removeCurriculumManager()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("element-member-23");
@@ -498,22 +518,23 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path(curriculum.getKey().toString())
 				.path("curriculumowners").path(owner.getKey().toString()).build();
-		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
 		
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		List<Identity> owners = curriculumService.getMembersIdentity(curriculum, CurriculumRoles.curriculumowner);
 		Assert.assertTrue(owners.isEmpty());
 		List<Identity> coaches = curriculumService.getMembersIdentity(curriculum, CurriculumRoles.coach);
 		Assert.assertEquals(1, coaches.size());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
 	public void getLecturesStatistics()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 
 		// Curriculum with 2 courses
@@ -584,11 +605,11 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path(curriculum.getKey().toString())
 				.path("lectures").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
-		List<LectureBlockStatisticsVO> statisticsVoes = conn.parseList(response, LectureBlockStatisticsVO.class);
+		List<LectureBlockStatisticsVO> statisticsVoes = parseLectureBlockStatisticsArray(response.getEntity());
 		Assert.assertNotNull(statisticsVoes);
 		Assert.assertEquals(2, statisticsVoes.size());
 		
@@ -611,12 +632,13 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		Assert.assertEquals(11l, stats2.getTotalAttendedLectures());
 		Assert.assertEquals(16l, stats2.getTotalEffectiveLectures());
 		Assert.assertEquals(16l, stats2.getTotalPersonalPlannedLectures());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
 	public void getLecturesOfParticipant()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 
 		// curriculum with 2 courses
@@ -671,17 +693,18 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("curriculum").path(curriculum.getKey().toString())
 				.path("lectures").path(participant.getKey().toString()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
-		LectureBlockStatisticsVO statisticsVo = conn.parse(response, LectureBlockStatisticsVO.class);
+		LectureBlockStatisticsVO statisticsVo = conn.parse(response.getEntity(), LectureBlockStatisticsVO.class);
 		Assert.assertNotNull(statisticsVo);
 		Assert.assertEquals(2l, statisticsVo.getTotalAbsentLectures());
 		Assert.assertEquals(14l, statisticsVo.getTotalAttendedLectures());
 		Assert.assertEquals(16l, statisticsVo.getTotalEffectiveLectures());
 		Assert.assertEquals(16l, statisticsVo.getTotalPersonalPlannedLectures());
-
+		
+		conn.shutdown();
 	}
 	
 	private LectureBlock createLectureBlock(RepositoryEntry entry, CurriculumElement element) {
@@ -696,5 +719,45 @@ public class CurriculumsWebServiceTest extends OlatRestTestCase {
 		lectureBlock = lectureBlockDao.update(lectureBlock);
 		lectureBlockDao.addGroupToLectureBlock(lectureBlock, element.getGroup());
 		return lectureBlock;
+	}
+	
+	protected List<UserVO> parseUserArray(HttpEntity entity) {
+		try(InputStream in=entity.getContent()) {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(in, new TypeReference<List<UserVO>>(){/* */});
+		} catch (Exception e) {
+			log.error("", e);
+			return null;
+		}
+	}
+	
+	protected List<CurriculumVO> parseCurriculumArray(HttpEntity entity) {
+		try(InputStream in=entity.getContent()) {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(in, new TypeReference<List<CurriculumVO>>(){/* */});
+		} catch (Exception e) {
+			log.error("", e);
+			return null;
+		}
+	}
+
+	protected List<CurriculumElementVO> parseCurriculumElementArray(HttpEntity entity) {
+		try(InputStream in=entity.getContent()) {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(in, new TypeReference<List<CurriculumElementVO>>(){/* */});
+		} catch (Exception e) {
+			log.error("", e);
+			return null;
+		}
+	}
+	
+	protected List<LectureBlockStatisticsVO> parseLectureBlockStatisticsArray(HttpEntity entity) {
+		try(InputStream in=entity.getContent()) {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(in, new TypeReference<List<LectureBlockStatisticsVO>>(){/* */});
+		} catch (Exception e) {
+			log.error("", e);
+			return null;
+		}
 	}
 }

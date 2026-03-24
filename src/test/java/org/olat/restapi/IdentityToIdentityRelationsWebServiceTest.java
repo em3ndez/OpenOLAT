@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,6 +30,11 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
@@ -64,7 +67,7 @@ public class IdentityToIdentityRelationsWebServiceTest extends OlatRestTestCase 
 	
 	@Test
 	public void getRelationsAsSource()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		String role = UUID.randomUUID().toString();
 		RelationRole relationRole = identityRelationshipService.createRole(role, null);
 		Identity idSource = JunitTestHelper.createAndPersistIdentityAsRndUser("id-2-id-1");
@@ -75,10 +78,10 @@ public class IdentityToIdentityRelationsWebServiceTest extends OlatRestTestCase 
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(idSource.getKey().toString()).path("relations").path("source").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<IdentityToIdentityRelationVO> relationVoes = conn.parseList(response, IdentityToIdentityRelationVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<IdentityToIdentityRelationVO> relationVoes = parseRelationArray(response.getEntity());
 		Assert.assertNotNull(relationVoes);
 		Assert.assertEquals(1, relationVoes.size());
 		IdentityToIdentityRelationVO relationVo = relationVoes.get(0);
@@ -87,12 +90,13 @@ public class IdentityToIdentityRelationsWebServiceTest extends OlatRestTestCase 
 		Assert.assertEquals(idTarget.getKey(), relationVo.getIdentityTargetKey());
 		Assert.assertEquals(relationRole.getKey(), relationVo.getRelationRoleKey());
 		Assert.assertEquals(relationRole.getRole(), relationVo.getRelationRole());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
 	public void getRelationsAsTarget()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		String role = UUID.randomUUID().toString();
 		RelationRole relationRole = identityRelationshipService.createRole(role, null);
 		Identity idSource = JunitTestHelper.createAndPersistIdentityAsRndUser("id-2-id-1");
@@ -103,10 +107,10 @@ public class IdentityToIdentityRelationsWebServiceTest extends OlatRestTestCase 
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(idTarget.getKey().toString()).path("relations").path("target").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<IdentityToIdentityRelationVO> relationVoes = conn.parseList(response, IdentityToIdentityRelationVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<IdentityToIdentityRelationVO> relationVoes = parseRelationArray(response.getEntity());
 		Assert.assertNotNull(relationVoes);
 		Assert.assertEquals(1, relationVoes.size());
 		IdentityToIdentityRelationVO relationVo = relationVoes.get(0);
@@ -115,12 +119,13 @@ public class IdentityToIdentityRelationsWebServiceTest extends OlatRestTestCase 
 		Assert.assertEquals(idTarget.getKey(), relationVo.getIdentityTargetKey());
 		Assert.assertEquals(relationRole.getKey(), relationVo.getRelationRoleKey());
 		Assert.assertEquals(relationRole.getRole(), relationVo.getRelationRole());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
 	public void createRelation_put()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		String role = UUID.randomUUID().toString();
 		RelationRole relationRole = identityRelationshipService.createRole(role, null);
 		Identity idSource = JunitTestHelper.createAndPersistIdentityAsRndUser("id-2-id-1");
@@ -137,9 +142,11 @@ public class IdentityToIdentityRelationsWebServiceTest extends OlatRestTestCase 
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(idTarget.getKey().toString()).path("relations").build();
-		HttpRequest method = conn.createPut(request, relationVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		MatcherAssert.assertThat(response.statusCode(), Matchers.either(Matchers.is(200)).or(Matchers.is(201)));
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, relationVo);
+		
+		HttpResponse response = conn.execute(method);
+		MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), Matchers.either(Matchers.is(200)).or(Matchers.is(201)));
 		
 		// checked VO
 		IdentityToIdentityRelationVO savedRelationVo = conn.parse(response, IdentityToIdentityRelationVO.class);
@@ -149,12 +156,13 @@ public class IdentityToIdentityRelationsWebServiceTest extends OlatRestTestCase 
 		Assert.assertEquals(idTarget.getKey(), savedRelationVo.getIdentityTargetKey());
 		Assert.assertEquals(relationRole.getKey(), savedRelationVo.getRelationRoleKey());
 		Assert.assertEquals(relationRole.getRole(), savedRelationVo.getRelationRole());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
 	public void createRelation_post()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		String role = UUID.randomUUID().toString();
 		RelationRole relationRole = identityRelationshipService.createRole(role, null);
 		Identity idSource = JunitTestHelper.createAndPersistIdentityAsRndUser("id-2-id-1");
@@ -171,10 +179,11 @@ public class IdentityToIdentityRelationsWebServiceTest extends OlatRestTestCase 
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(idTarget.getKey().toString()).path("relations").build();
-		HttpRequest method = conn.createPost(request, relationVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, relationVo);
 		
-		MatcherAssert.assertThat(response.statusCode(), Matchers.either(Matchers.is(200)).or(Matchers.is(201)));
+		HttpResponse response = conn.execute(method);
+		MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), Matchers.either(Matchers.is(200)).or(Matchers.is(201)));
 		
 		// checked VO
 		IdentityToIdentityRelationVO savedRelationVo = conn.parse(response, IdentityToIdentityRelationVO.class);
@@ -184,12 +193,13 @@ public class IdentityToIdentityRelationsWebServiceTest extends OlatRestTestCase 
 		Assert.assertEquals(idTarget.getKey(), savedRelationVo.getIdentityTargetKey());
 		Assert.assertEquals(relationRole.getKey(), savedRelationVo.getRelationRoleKey());
 		Assert.assertEquals(relationRole.getRole(), savedRelationVo.getRelationRole());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
 	public void deleteRelation()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		String role = UUID.randomUUID().toString();
 		RelationRole relationRole = identityRelationshipService.createRole(role, null);
 		Identity idSource = JunitTestHelper.createAndPersistIdentityAsRndUser("id-2-id-1");
@@ -201,11 +211,12 @@ public class IdentityToIdentityRelationsWebServiceTest extends OlatRestTestCase 
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(idTarget.getKey().toString())
 				.path("relations").path(relation.getKey().toString()).build();
-		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
 
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		
+		conn.shutdown();
 	}
 	
 	

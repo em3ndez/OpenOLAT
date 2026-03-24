@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -34,6 +32,9 @@ import java.util.stream.Collectors;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
@@ -71,7 +72,7 @@ public class LecturesBlockRollCallTest extends OlatRestTestCase {
 	
 	@Test
 	public void getRollCalls_searchParams_True()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		// an open lecture block
 		LectureBlock openLectureBlock = createMinimalLectureBlock(3);
 		Identity id1 = JunitTestHelper.createAndPersistIdentityAsRndUser("lecturer-1");
@@ -107,11 +108,11 @@ public class LecturesBlockRollCallTest extends OlatRestTestCase {
 				.queryParam("hasAbsences", "true")
 				.queryParam("closed", "true")
 				.queryParam("hasSupervisorNotificationDate", "true").build();
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
 		
-		Assert.assertEquals(200, response.statusCode());
-		List<LectureBlockRollCallVO> voList = conn.parseList(response, LectureBlockRollCallVO.class);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<LectureBlockRollCallVO> voList = parseLectureBlockRollCallArray(response.getEntity().getContent());
 		Assert.assertNotNull(voList);
 		
 		// check the return values
@@ -134,7 +135,7 @@ public class LecturesBlockRollCallTest extends OlatRestTestCase {
 	
 	@Test
 	public void getRollCallByKey()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		// a closed lecture block
 		LectureBlock lectureBlock = createMinimalLectureBlock(3);
 		Identity id = JunitTestHelper.createAndPersistIdentityAsRndUser("lecturer-1");
@@ -150,10 +151,10 @@ public class LecturesBlockRollCallTest extends OlatRestTestCase {
 
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("lectures").path("rollcalls")
 				.path(rollCall.getKey().toString()).build();
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
 
-		Assert.assertEquals(200, response.statusCode());
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		LectureBlockRollCallVO rollCallVo = conn.parse(response, LectureBlockRollCallVO.class);
 		Assert.assertNotNull(rollCallVo);
 		Assert.assertEquals(rollCall.getKey(), rollCallVo.getKey());
@@ -161,7 +162,7 @@ public class LecturesBlockRollCallTest extends OlatRestTestCase {
 	
 	@Test
 	public void getAndUpdateSupervisorDate()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		// a closed lecture block
 		LectureBlock lectureBlock = createMinimalLectureBlock(3);
 		Identity id = JunitTestHelper.createAndPersistIdentityAsRndUser("lecturer-1");
@@ -189,11 +190,13 @@ public class LecturesBlockRollCallTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("lectures").path("rollcalls").build();
-		HttpRequest postMethod = conn.createPost(uri, rollCallVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(postMethod);
+		HttpPost postMethod = conn.createPost(uri, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(postMethod, rollCallVo);
+		
+		HttpResponse response = conn.execute(postMethod);
 
 		// check the response
-		Assert.assertEquals(200, response.statusCode());
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		LectureBlockRollCallVO updatedRollCallVo = conn.parse(response, LectureBlockRollCallVO.class);
 		Assert.assertNotNull(updatedRollCallVo);
 		Assert.assertEquals(rollCall.getKey(), updatedRollCallVo.getKey());

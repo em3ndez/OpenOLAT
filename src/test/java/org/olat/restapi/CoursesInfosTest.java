@@ -28,14 +28,13 @@ package org.olat.restapi;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 
 import jakarta.ws.rs.core.MediaType;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.id.Identity;
@@ -57,21 +56,22 @@ import org.olat.test.OlatRestTestCase;
 public class CoursesInfosTest extends OlatRestTestCase {
 	
 	@Test
-	public void testGetCourseInfos() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetCourseInfos() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI uri = conn.getContextURI().path("repo").path("courses").path("infos").build();
 
-		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> response = conn.execute(get);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse response = conn.execute(get);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		CourseInfoVOes infos = conn.parse(response, CourseInfoVOes.class);
 		Assert.assertNotNull(infos);
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetCourseInfos_byId() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetCourseInfos_byId() throws IOException, URISyntaxException {
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		RepositoryEntry courseEntry = JunitTestHelper.deployBasicCourse(admin, "course-info 1",
 				RepositoryEntryStatusEnum.preparation);
@@ -81,13 +81,14 @@ public class CoursesInfosTest extends OlatRestTestCase {
 		
 		URI uri = conn.getContextURI().path("repo").path("courses").path("infos").path(course.getResourceableId().toString()).build();
 
-		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(get);
-		assertEquals(200, response.statusCode());
+		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(get);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		CourseInfoVO infos = conn.parse(response, CourseInfoVO.class);
 		Assert.assertNotNull(infos);
 		Assert.assertEquals("course-info 1", infos.getTitle());
 		Assert.assertEquals("course-info 1", infos.getDisplayName());
 
+		conn.shutdown();
 	}
 }

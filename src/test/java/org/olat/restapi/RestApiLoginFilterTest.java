@@ -30,12 +30,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpCookie;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
@@ -44,13 +40,16 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
 import org.apache.http.HttpException;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.cookie.Cookie;
+import org.apache.http.util.EntityUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.CoreSpringFactory;
 import org.olat.core.commons.persistence.DB;
 import org.olat.core.id.Identity;
 import org.olat.core.util.StringHelper;
-import org.olat.restapi.RestConnection.Header;
 import org.olat.restapi.RestModule.ApiAccess;
 import org.olat.restapi.security.RestApiAuthenticationProvider;
 import org.olat.restapi.security.RestSecurityBean;
@@ -84,14 +83,15 @@ public class RestApiLoginFilterTest extends OlatRestTestCase {
 	 * @throws IOException
 	 */
 	@Test
-	public void cookieAuthentication() throws IOException, URISyntaxException, InterruptedException {
+	public void cookieAuthentication() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		conn.callMeForSecurityToken();
 		
-		List<HttpCookie> cookies = conn.getCookieStore().getCookieStore().getCookies();
+		List<Cookie> cookies = conn.getCookieStore().getCookies();
 		Assert.assertNotNull(cookies);
 		Assert.assertFalse(cookies.isEmpty());
-
+		
+		conn.shutdown();
 	}
 	
 	/**
@@ -100,12 +100,13 @@ public class RestApiLoginFilterTest extends OlatRestTestCase {
 	 * @throws IOException
 	 */
 	@Test
-	public void tokenAuthentication() throws IOException, URISyntaxException, InterruptedException {
+	public void tokenAuthentication() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		String securityToken = conn.callMeForSecurityToken();
 		Assert.assertTrue(StringHelper.containsNonWhitespace(securityToken));
-
+		
+		conn.shutdown();
 	}
 	
 	/**
@@ -115,18 +116,19 @@ public class RestApiLoginFilterTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void tokenAuthenticationUser() throws IOException, URISyntaxException, InterruptedException {
+	public void tokenAuthenticationUser() throws IOException, URISyntaxException {
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("x-token-1");
 		RestConnection conn = new RestConnection(id);
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/me").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		//log user in
 		String securityToken = conn.getSecurityToken(response);
 		Assert.assertTrue(StringHelper.containsNonWhitespace(securityToken));
+		conn.shutdown();
 	}
 	
 	/**
@@ -135,46 +137,55 @@ public class RestApiLoginFilterTest extends OlatRestTestCase {
 	 * @throws IOException
 	 */
 	@Test
-	public void followTokenBasedDiscussion() throws IOException, URISyntaxException, InterruptedException {
+	public void followTokenBasedDiscussion() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		String securityToken = conn.callMeForSecurityToken();
 		Assert.assertTrue(StringHelper.containsNonWhitespace(securityToken));
+		conn.shutdown();
 		
 		//path is protected
-		RestConnection c1 = new RestConnection(false);
+		RestConnection c1 = new RestConnection();
 		URI uri1 = UriBuilder.fromUri(getContextURI()).path("/users/version").build();
-		HttpRequest method1 = c1.createGet(uri1, MediaType.TEXT_PLAIN, new Header(RestSecurityHelper.SEC_TOKEN, securityToken));
-		HttpResponse<InputStream> r1 = c1.execute(method1);
+		HttpGet method1 = c1.createGet(uri1, MediaType.TEXT_PLAIN, false);
+		method1.setHeader(RestSecurityHelper.SEC_TOKEN, securityToken);
+		HttpResponse r1 = c1.execute(method1);
 		securityToken = c1.getSecurityToken(r1);
-		Assert.assertEquals(200, r1.statusCode());
+		Assert.assertEquals(200, r1.getStatusLine().getStatusCode());
 		Assert.assertTrue(StringHelper.containsNonWhitespace(securityToken));
+		c1.shutdown();
 		
 		//path is protected
-		RestConnection c2 = new RestConnection(false);
+		RestConnection c2 = new RestConnection();
 		URI uri2 = UriBuilder.fromUri(getContextURI()).path("/repo/entries").build();
-		HttpRequest method2 = c2.createGet(uri2, MediaType.APPLICATION_JSON, new Header(RestSecurityHelper.SEC_TOKEN, securityToken));
-		HttpResponse <InputStream>r2 = c2.execute(method2);
+		HttpGet method2 = c2.createGet(uri2, MediaType.APPLICATION_JSON, false);
+		method2.setHeader(RestSecurityHelper.SEC_TOKEN, securityToken);
+		HttpResponse r2 = c2.execute(method2);
 		securityToken = c2.getSecurityToken(r2);
-		Assert.assertEquals(200, r2.statusCode());
+		Assert.assertEquals(200, r2.getStatusLine().getStatusCode());
 		Assert.assertTrue(StringHelper.containsNonWhitespace(securityToken));
+		c2.shutdown();
 		
 		//path is not protected
-		RestConnection c3 = new RestConnection(false);
+		RestConnection c3 = new RestConnection();
 		URI uri3 = UriBuilder.fromUri(getContextURI()).path("/ping").build();
-		HttpRequest method3 = c3.createGet(uri3, MediaType.TEXT_PLAIN, new Header(RestSecurityHelper.SEC_TOKEN, securityToken));
-		HttpResponse<InputStream> r3 = c3.execute(method3);
+		HttpGet method3 = c3.createGet(uri3, MediaType.TEXT_PLAIN, false);
+		method3.setHeader(RestSecurityHelper.SEC_TOKEN, securityToken);
+		HttpResponse r3 = c3.execute(method3);
 		securityToken = c3.getSecurityToken(r3);
-		assertEquals(200, r3.statusCode());
+		assertEquals(200, r3.getStatusLine().getStatusCode());
 		assertTrue(StringHelper.containsNonWhitespace(securityToken));
+		c3.shutdown();
 		
 		//path is protected
-		RestConnection c4 = new RestConnection(false);
+		RestConnection c4 = new RestConnection();
 		URI uri4 = UriBuilder.fromUri(getContextURI()).path("/repo/entries").build();
-		HttpRequest method4 = c4.createGet(uri4, MediaType.APPLICATION_XML, new Header(RestSecurityHelper.SEC_TOKEN, securityToken));
-		HttpResponse<InputStream> r4 = c4.execute(method4);
+		HttpGet method4 = c4.createGet(uri4, MediaType.APPLICATION_XML, false);
+		method4.setHeader(RestSecurityHelper.SEC_TOKEN, securityToken);
+		HttpResponse r4 = c4.execute(method4);
 		securityToken = c4.getSecurityToken(r4);
-		assertEquals(200, r4.statusCode());
+		assertEquals(200, r4.getStatusLine().getStatusCode());
 		assertTrue(StringHelper.containsNonWhitespace(securityToken));
+		c4.shutdown();
 	}
 	
 	/**
@@ -183,10 +194,11 @@ public class RestApiLoginFilterTest extends OlatRestTestCase {
 	 * @throws IOException
 	 */
 	@Test
-	public void followTokenBasedDiscussion_flushSession() throws IOException, URISyntaxException, InterruptedException {
-		RestConnection conn = new RestConnection("administrator", "openolat", false);
+	public void followTokenBasedDiscussion_flushSession() throws IOException, URISyntaxException {
+		RestConnection conn = new RestConnection("administrator", "openolat");
 		String securityToken = conn.callMeForSecurityToken();
 		assertTrue(StringHelper.containsNonWhitespace(securityToken));
+		conn.shutdown();
 		
 		RestSecurityBeanImpl beanImpl = (RestSecurityBeanImpl)CoreSpringFactory.getImpl(RestSecurityBean.class);
 		beanImpl.clearCaches();
@@ -194,42 +206,49 @@ public class RestApiLoginFilterTest extends OlatRestTestCase {
 		//path is protected
 		RestConnection c1 = new RestConnection();
 		URI uri1 = UriBuilder.fromUri(getContextURI()).path("/users/version").build();
-		HttpRequest method1 = c1.createGet(uri1, MediaType.TEXT_PLAIN, new Header(RestSecurityHelper.SEC_TOKEN, securityToken));
-		HttpResponse<InputStream> r1 = c1.execute(method1);
+		HttpGet method1 = c1.createGet(uri1, MediaType.TEXT_PLAIN, false);
+		method1.setHeader(RestSecurityHelper.SEC_TOKEN, securityToken);
+		HttpResponse r1 = c1.execute(method1);
 		securityToken = c1.getSecurityToken(r1);
-		assertEquals(200, r1.statusCode());
+		assertEquals(200, r1.getStatusLine().getStatusCode());
 		assertTrue(StringHelper.containsNonWhitespace(securityToken));
+		c1.shutdown();
+		
 	}
 	
 	@Test
-	public void basicAuthentication() throws IOException, URISyntaxException, InterruptedException {
-		RestConnection conn = new RestConnection(false);
+	public void basicAuthentication() throws IOException, URISyntaxException {
+		RestConnection conn = new RestConnection();
 		//path is protected
 		URI uri = UriBuilder.fromUri(getContextURI()).path("/users/version").build();
-		HttpRequest method = conn.createGet(uri, MediaType.TEXT_PLAIN, new Header("Authorization", "Basic " + encodeBase64NoPadding("administrator:openolat")));
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.TEXT_PLAIN, false);
+		method.setHeader("Authorization", "Basic " + encodeBase64NoPadding("administrator:openolat"));
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		String securityToken = conn.getSecurityToken(response);
 		assertTrue(StringHelper.containsNonWhitespace(securityToken));
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void basicAuthenticationWithClient() throws IOException, URISyntaxException, InterruptedException {
+	public void basicAuthenticationWithClient() throws IOException, URISyntaxException {
 		Identity id = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-10");
 		String clientId = restApiAuthenticationProvider.generateClientId();
 		String clientSecret = restApiAuthenticationProvider.generateClientSecret();
 		restApiAuthenticationProvider.setClientAuthentication(id, clientId, clientSecret);
 		
-		RestConnection conn = new RestConnection(false);
+		RestConnection conn = new RestConnection();
 		//path is protected
 		URI uri = UriBuilder.fromUri(getContextURI()).path("/users/version").build();
-		HttpRequest method = conn.createGet(uri, MediaType.TEXT_PLAIN, new Header("Authorization", "Basic " + encodeBase64NoPadding(clientId + ":" + clientSecret)));
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.TEXT_PLAIN, false);
+		method.setHeader("Authorization", "Basic " + encodeBase64NoPadding(clientId + ":" + clientSecret));
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		String securityToken = conn.getSecurityToken(response);
 		assertTrue(StringHelper.containsNonWhitespace(securityToken));
-
+		
+		conn.shutdown();
 	}
 	
 	private String encodeBase64NoPadding(String string) {
@@ -238,20 +257,21 @@ public class RestApiLoginFilterTest extends OlatRestTestCase {
 	
 	
 	@Test
-	public void webStandardAuthentication() throws IOException, URISyntaxException, InterruptedException {
+	public void webStandardAuthentication() throws IOException, URISyntaxException {
 		URI uri = UriBuilder.fromUri(getContextURI()).path("/users/version").build();
 		RestConnection conn = new RestConnection(uri.toURL(), "administrator", "openolat");
-		HttpRequest method = conn.createGet(uri, MediaType.TEXT_PLAIN);
-		HttpResponse<InputStream> response = conn.execute(method);
+		HttpGet method = conn.createGet(uri, MediaType.TEXT_PLAIN, false);
+		HttpResponse response = conn.execute(method);
 		
-		assertEquals(200, response.statusCode());
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		String securityToken = conn.getSecurityToken(response);
 		assertTrue(StringHelper.containsNonWhitespace(securityToken));
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void apiKeyAuthentication() throws IOException, URISyntaxException, InterruptedException {
+	public void apiKeyAuthentication() throws IOException, URISyntaxException {
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("rest-1");
 		String clientId = restApiAuthenticationProvider.generateClientId();
 		String clientSecret = restApiAuthenticationProvider.generateClientSecret();
@@ -260,15 +280,17 @@ public class RestApiLoginFilterTest extends OlatRestTestCase {
 		
 		RestConnection conn = new RestConnection(clientId, clientSecret);
 		URI request = UriBuilder.fromUri(getContextURI()).path("users/me").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_XML);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
-
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_XML, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void apiKeyOnlyAuthentication() throws IOException, URISyntaxException, InterruptedException {
+	public void apiKeyOnlyAuthentication() throws IOException, URISyntaxException {
+		ApiAccess currentAccess = restModule.getApiAccess();
 		restModule.setApiAccess(ApiAccess.apikey);
 		
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("rest-2");
@@ -279,30 +301,33 @@ public class RestApiLoginFilterTest extends OlatRestTestCase {
 		
 		RestConnection conn = new RestConnection(clientId, clientSecret);
 		URI request = UriBuilder.fromUri(getContextURI()).path("users/me").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_XML);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_XML, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 
-		restModule.setApiAccess(ApiAccess.all);
+		conn.shutdown();
+		restModule.setApiAccess(currentAccess);
 		waitMessageAreConsumed();
 	}
 	
 	@Test
-	public void apiKeyOnlyForbiddenAuthentication() throws IOException, URISyntaxException, InterruptedException {
+	public void apiKeyOnlyForbiddenAuthentication() throws IOException, URISyntaxException {
+		ApiAccess currentAccess = restModule.getApiAccess();
 		restModule.setApiAccess(ApiAccess.apikey);
 		
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("rest-3");
 		dbInstance.commitAndCloseSession();
 		
-		RestConnection conn = new RestConnection(false);
+		RestConnection conn = new RestConnection(id);
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path("me").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_XML, conn.autorizationheader(id.getLogin(), id.getPassword()));
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(401, response.statusCode());
-		RestConnection.consume(response);
-		
-		restModule.setApiAccess(ApiAccess.all);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_XML, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(401, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
+
+		conn.shutdown();
+		restModule.setApiAccess(currentAccess);
 		waitMessageAreConsumed();
 	}
 	
@@ -313,23 +338,24 @@ public class RestApiLoginFilterTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void loginBlocked() throws IOException, URISyntaxException, InterruptedException {
+	public void loginBlocked() throws IOException, URISyntaxException {
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("rest-2");
 		dbInstance.commitAndCloseSession();
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("users/me").build();
-		RestConnection conn = new RestConnection(false);
+		RestConnection conn = new RestConnection(id.getLogin(), "wrong password");
 		for(int i=0; i<10; i++) {
-			HttpRequest method = conn.createGet(request, MediaType.APPLICATION_XML, conn.autorizationheader(id.getLogin(), "wrong password"));
-			HttpResponse<InputStream> response = conn.execute(method);
-			Assert.assertEquals(401, response.statusCode());
-			RestConnection.consume(response);
+			HttpGet method = conn.createGet(request, MediaType.APPLICATION_XML, true);
+			HttpResponse response = conn.execute(method);
+			Assert.assertEquals(401, response.getStatusLine().getStatusCode());
+			EntityUtils.consume(response.getEntity());
 		}
-
-		RestConnection correctConn = new RestConnection(false);
-		HttpRequest method = correctConn.createGet(request, MediaType.APPLICATION_XML, conn.autorizationheader(id.getLogin(), "wrong password"));
-		HttpResponse<InputStream> response = correctConn.execute(method);
-		Assert.assertEquals(401, response.statusCode());
-		RestConnection.consume(response);
+		conn.shutdown();
+		
+		RestConnection correctConn = new RestConnection(id.getLogin(), id.getPassword());
+		HttpGet method = correctConn.createGet(request, MediaType.APPLICATION_XML, true);
+		HttpResponse response = correctConn.execute(method);
+		Assert.assertEquals(401, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 	}
 }

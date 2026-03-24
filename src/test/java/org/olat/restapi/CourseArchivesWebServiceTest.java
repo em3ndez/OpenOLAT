@@ -20,15 +20,16 @@
 package org.olat.restapi;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.commons.services.export.restapi.ExportMetadataVO;
@@ -49,7 +50,7 @@ import org.olat.test.OlatRestTestCase;
 public class CourseArchivesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
-	public void getExports() throws IOException, URISyntaxException, InterruptedException {
+	public void getExports() throws IOException, URISyntaxException {
 		IdentityWithLogin auth = JunitTestHelper.createAndPersistRndUser("rest-course-exp-1");
 		RepositoryEntry courseEntry = JunitTestHelper.deployBasicCourse(auth.getIdentity());
 		
@@ -57,15 +58,15 @@ public class CourseArchivesWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("/repo/courses")
 				.path(courseEntry.getOlatResource().getResourceableId().toString()).path("archives").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		ExportMetadataVOes metadataVoes = conn.parse(response, ExportMetadataVOes.class);
 		Assert.assertNotNull(metadataVoes);
 	}
 	
 	@Test
-	public void startExportsWithDefaultOptions() throws IOException, URISyntaxException, InterruptedException {
+	public void startExportsWithDefaultOptions() throws IOException, URISyntaxException {
 		IdentityWithLogin auth = JunitTestHelper.createAndPersistRndUser("rest-course-exp-2");
 		RepositoryEntry courseEntry = JunitTestHelper.deployBasicCourse(auth.getIdentity());
 		
@@ -73,9 +74,9 @@ public class CourseArchivesWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("/repo/courses")
 				.path(courseEntry.getOlatResource().getResourceableId().toString()).path("archives").build();
-		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		ExportMetadataVO metadataVo = conn.parse(response, ExportMetadataVO.class);
 		
 		Assert.assertNotNull(metadataVo);
@@ -87,7 +88,7 @@ public class CourseArchivesWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void postStartExportsWithArchiveOptions() throws IOException, URISyntaxException, InterruptedException {
+	public void postStartExportsWithArchiveOptions() throws IOException, URISyntaxException {
 		IdentityWithLogin auth = JunitTestHelper.createAndPersistRndUser("rest-course-exp-2");
 		RepositoryEntry courseEntry = JunitTestHelper.deployBasicCourse(auth.getIdentity());
 		
@@ -102,10 +103,12 @@ public class CourseArchivesWebServiceTest extends OlatRestTestCase {
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("/repo/courses")
 				.path(courseEntry.getOlatResource().getResourceableId().toString()).path("archives").build();
-		HttpRequest method = conn.createPost(request, archiveOptions, MediaType.APPLICATION_JSON);
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, archiveOptions);
+		method.addHeader("Accept-Language", "en");
 		
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		ExportMetadataVO metadataVo = conn.parse(response, ExportMetadataVO.class);
 		
 		Assert.assertNotNull(metadataVo);

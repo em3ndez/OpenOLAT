@@ -20,11 +20,8 @@
 package org.olat.restapi;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +30,13 @@ import java.util.Set;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.util.EntityUtils;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
@@ -46,6 +50,9 @@ import org.olat.core.commons.persistence.DB;
 import org.olat.test.OlatRestTestCase;
 import org.olat.user.restapi.OrganisationTypeVO;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * 
@@ -62,17 +69,17 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getOrganisationTypes()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		OrganisationType type = organisationService.createOrganisationType("REST Type", "rest-type", "A type for REST");
 		dbInstance.commitAndCloseSession();
 
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("organisations").path("types").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<OrganisationTypeVO> organisationTypeVoes = conn.parseList(response, OrganisationTypeVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<OrganisationTypeVO> organisationTypeVoes = parseOrganisationTypeArray(response.getEntity());
 		
 		boolean found = false;
 		for(OrganisationTypeVO organisationTypeVo:organisationTypeVoes) {
@@ -85,16 +92,16 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getOrganisationType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		OrganisationType type = organisationService.createOrganisationType("REST Type 2", "rest-2-type", "A type for REST");
 		dbInstance.commitAndCloseSession();
 
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("organisations").path("types").path(type.getKey().toString()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		OrganisationTypeVO organisationTypeVo = conn.parse(response, OrganisationTypeVO.class); 
 		Assert.assertNotNull(organisationTypeVo);
 		Assert.assertEquals(type.getKey(), organisationTypeVo.getKey());
@@ -106,7 +113,7 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void createOrganisationType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		OrganisationTypeVO vo = new OrganisationTypeVO();
@@ -118,9 +125,11 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 		vo.setManagedFlagsString("delete");
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("organisations").path("types").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		MatcherAssert.assertThat(response.statusCode(), Matchers.either(Matchers.is(200)).or(Matchers.is(201)));
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		
+		HttpResponse response = conn.execute(method);
+		MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), Matchers.either(Matchers.is(200)).or(Matchers.is(201)));
 		
 		// checked VO
 		OrganisationTypeVO savedVo = conn.parse(response, OrganisationTypeVO.class);
@@ -149,7 +158,7 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void updateOrganisationType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		OrganisationType type = organisationService.createOrganisationType("REST Type", "rest-type", "A type for REST");
@@ -165,9 +174,11 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 		vo.setManagedFlagsString("delete,all");
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("organisations").path("types").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		// checked VO
 		OrganisationTypeVO savedVo = conn.parse(response, OrganisationTypeVO.class);
@@ -195,7 +206,7 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void updateOrganisationTypeWithKey()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		OrganisationType type = organisationService.createOrganisationType("REST Type", "rest-type", "A type for REST");
@@ -208,9 +219,11 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 		vo.setManagedFlagsString("displayName");
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("organisations").path("types").path(type.getKey().toString()).build();
-		HttpRequest method = conn.createPost(request, vo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, vo);
+		
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		// checked VO
 		OrganisationTypeVO savedVo = conn.parse(response, OrganisationTypeVO.class);
@@ -235,7 +248,7 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 
 	@Test
 	public void getOrganisationTypeAllowedSubTypes()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		OrganisationType type = organisationService.createOrganisationType("REST Type 5", "rest-type", "A type for REST");
 		OrganisationType subType1 = organisationService.createOrganisationType("REST Type 5.1", "rest-type", "A type for REST");
 		OrganisationType subType2 = organisationService.createOrganisationType("REST Type 5.2", "rest-type", "A type for REST");
@@ -251,10 +264,10 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("organisations").path("types")
 				.path(type.getKey().toString()).path("allowedSubTypes").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<OrganisationTypeVO> typeVoList = conn.parseList(response, OrganisationTypeVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<OrganisationTypeVO> typeVoList = parseOrganisationTypeArray(response.getEntity());
 		Assert.assertNotNull(typeVoList);
 		Assert.assertEquals(2, typeVoList.size());
 		
@@ -273,7 +286,7 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void allowOrganisationTypeSubType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		OrganisationType type = organisationService.createOrganisationType("REST Type 6", "rest-type", "A type for REST");
 		OrganisationType subType1 = organisationService.createOrganisationType("REST Type 6.1", "rest-type", "A type for REST");
 		OrganisationType subType2 = organisationService.createOrganisationType("REST Type 6.2", "rest-type", "A type for REST");
@@ -285,10 +298,10 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("organisations").path("types").path(type.getKey().toString())
 				.path("allowedSubTypes").path(subType2.getKey().toString()).build();
-		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		OrganisationType reloadedType = organisationService.getOrganisationType(type);
 		Set<OrganisationTypeToType> typeToTypes = reloadedType.getAllowedSubTypes();
@@ -309,7 +322,7 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void disallowOrganisationTypeSubType()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		OrganisationType type = organisationService.createOrganisationType("REST Type 7", "rest-type", "A type for REST");
 		OrganisationType subType1 = organisationService.createOrganisationType("REST Type 7.1", "rest-type", "A type for REST");
 		OrganisationType subType2 = organisationService.createOrganisationType("REST Type 7.2", "rest-type", "A type for REST");
@@ -326,10 +339,10 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("organisations").path("types").path(type.getKey().toString())
 				.path("allowedSubTypes").path(subType2.getKey().toString()).build();
-		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		OrganisationType reloadedType = organisationService.getOrganisationType(type);
 		Set<OrganisationTypeToType> typeToTypes = reloadedType.getAllowedSubTypes();
@@ -350,5 +363,15 @@ public class OrganisationTypesWebServiceTest extends OlatRestTestCase {
 		Assert.assertTrue(found1);
 		Assert.assertFalse(found2);
 		Assert.assertTrue(found3);
+	}
+	
+	protected List<OrganisationTypeVO> parseOrganisationTypeArray(HttpEntity entity) {
+		try {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(entity.getContent(), new TypeReference<List<OrganisationTypeVO>>(){/* */});
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 }

@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -32,6 +30,13 @@ import java.util.UUID;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.util.EntityUtils;
+import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.basesecurity.BaseSecurity;
@@ -39,6 +44,7 @@ import org.olat.basesecurity.Group;
 import org.olat.basesecurity.Invitation;
 import org.olat.core.commons.persistence.DB;
 import org.olat.core.id.Identity;
+import org.olat.core.logging.Tracing;
 import org.olat.group.BusinessGroup;
 import org.olat.group.BusinessGroupService;
 import org.olat.modules.invitation.InvitationService;
@@ -48,6 +54,9 @@ import org.olat.test.JunitTestHelper;
 import org.olat.test.OlatRestTestCase;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  * 
  * Initial date: 16 déc. 2022<br>
@@ -55,6 +64,8 @@ import org.springframework.beans.factory.annotation.Autowired;
  *
  */
 public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
+	
+	private static final Logger log = Tracing.createLoggerFor(BusinessGroupInvitationsWebServiceTest.class);
 	
 	@Autowired
 	private DB dbInstance;
@@ -67,7 +78,7 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void createInvitationInBusinessGroup()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("Coach-inv-1");
 		BusinessGroup group = businessGroupService.createBusinessGroup(owner, "Invitations-1", "REST invitation",
 				BusinessGroup.BUSINESS_TYPE, null, null, false, false, null);
@@ -82,9 +93,9 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 				.queryParam("email", email).queryParam("registrationRequired", "false")
 				.build();
 		
-		HttpRequest method = conn.createPost(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPost method = conn.createPost(uri, MediaType.APPLICATION_JSON);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		InvitationVO invitation = conn.parse(response, InvitationVO.class);
 		
 		Assert.assertNotNull(invitation);
@@ -101,7 +112,7 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void createInvitationVOInBusinessGroup()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("Coach-inv-2");
 		BusinessGroup businessGroup = businessGroupService.createBusinessGroup(owner, "Invitations-2", "REST invitation",
 				BusinessGroup.BUSINESS_TYPE, null, null, false, false, null);
@@ -121,9 +132,11 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 				.path("groups").path(businessGroup.getKey().toString()).path("invitations")
 				.build();
 		
-		HttpRequest method = conn.createPost(uri, invitationVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPost method = conn.createPost(uri, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, invitationVo);
+		
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		InvitationVO savedInvitationVo = conn.parse(response, InvitationVO.class);
 		
 		Assert.assertNotNull(savedInvitationVo);
@@ -139,7 +152,7 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void updateInvitationVOInBusinessGroup()
-	throws IOException, URISyntaxException, InterruptedException {	
+	throws IOException, URISyntaxException {	
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("Coach-inv-3");
 		BusinessGroup businessGroup = businessGroupService.createBusinessGroup(owner, "Invitations-3", "REST invitation",
 				BusinessGroup.BUSINESS_TYPE, null, null, false, false, null);
@@ -172,9 +185,11 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 				.path("groups").path(businessGroup.getKey().toString()).path("invitations")
 				.build();
 		
-		HttpRequest method = conn.createPost(uri, invitationVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPost method = conn.createPost(uri, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, invitationVo);
+		
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		InvitationVO updatedInvitationVo = conn.parse(response, InvitationVO.class);
 		
 		Assert.assertNotNull(updatedInvitationVo);
@@ -196,7 +211,7 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getListOfInvitationsInBusinessGroup()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("Coach-inv-4");
@@ -212,10 +227,10 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 				.build();
 		
 		RestConnection conn = new RestConnection("administrator", "openolat");
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<InvitationVO> invitations = conn.parseList(response, InvitationVO.class);
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<InvitationVO> invitations = parseInvitationArray(response.getEntity());
 		Assert.assertNotNull(invitations);
 		Assert.assertEquals(1, invitations.size());
 		
@@ -230,7 +245,7 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 
 	@Test
 	public void getInvitationInBusinessGroupByKey()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("Coach-inv-5");
 		BusinessGroup businessGroup = businessGroupService.createBusinessGroup(owner, "Invitations-5", "REST invitation",
@@ -248,9 +263,9 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 				.build();
 		
 		RestConnection conn = new RestConnection("administrator", "openolat");
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		InvitationVO invitationVo = conn.parse(response, InvitationVO.class);
 		Assert.assertEquals(invitation.getKey(), invitationVo.getKey());
 		Assert.assertEquals(id.getKey(), invitationVo.getIdentityKey());
@@ -263,7 +278,7 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void deleteInvitationInBusinessgroupByKey()
-	throws IOException, URISyntaxException, InterruptedException {
+	throws IOException, URISyntaxException {
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("Coach-inv-6");
 		BusinessGroup businessGroup = businessGroupService.createBusinessGroup(owner, "Invitations-6", "REST invitation",
@@ -284,12 +299,22 @@ public class BusinessGroupInvitationsWebServiceTest extends OlatRestTestCase {
 				.build();
 		
 		RestConnection conn = new RestConnection("administrator", "openolat");
-		HttpRequest method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpDelete method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		Invitation deletedInvitation = invitationService.findInvitation(tmpInvitation.getToken());
 		Assert.assertNull(deletedInvitation);
+	}
+	
+	private List<InvitationVO> parseInvitationArray(HttpEntity entity) {
+		try(InputStream content=entity.getContent()) {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(content, new TypeReference<List<InvitationVO>>(){/* */});
+		} catch (Exception e) {
+			log.error("", e);
+			return null;
+		}
 	}
 }

@@ -29,15 +29,15 @@ package org.olat.restapi;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.util.EntityUtils;
 import org.junit.Test;
 import org.olat.test.OlatRestTestCase;
 
@@ -52,15 +52,16 @@ import org.olat.test.OlatRestTestCase;
 public class I18nTest extends OlatRestTestCase {
 	
 	@Test
-	public void testExecuteService() throws IOException, URISyntaxException, InterruptedException {
+	public void testExecuteService() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection();
 		
 		URI uri = UriBuilder.fromUri(getContextURI()).path("i18n").path("org.olat.core").path("ok").build();
-		HttpRequest method = conn.createGet(uri, MediaType.TEXT_PLAIN);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		String out = RestConnection.toString(response);
+		HttpGet method = conn.createGet(uri, MediaType.TEXT_PLAIN, false);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		String out = EntityUtils.toString(response.getEntity());
 		assertEquals("OK", out);
-
+		
+		conn.shutdown();
   }
 }

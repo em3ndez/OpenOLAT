@@ -20,17 +20,16 @@
 package org.olat.restapi;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
@@ -57,7 +56,7 @@ public class BigBlueButtonTemplatesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getTemplates()
-	throws IOException, URISyntaxException, InterruptedException  {
+	throws IOException, URISyntaxException  {
 		String externalId = UUID.randomUUID().toString();
 		BigBlueButtonMeetingTemplate template = bigBlueButtonMeetingTemplateDao.createTemplate("A new template to update", externalId, false);
 		dbInstance.commit();
@@ -66,9 +65,9 @@ public class BigBlueButtonTemplatesWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("bigbluebutton").path("templates").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		List<BigBlueButtonMeetingTemplateVO> templates = conn
 				.parseList(response, BigBlueButtonMeetingTemplateVO.class);
@@ -80,17 +79,17 @@ public class BigBlueButtonTemplatesWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getStatistics()
-	throws IOException, URISyntaxException, InterruptedException  {
+	throws IOException, URISyntaxException  {
 		
 		RestConnection conn = new RestConnection("administrator", "openolat");			
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("bigbluebutton").path("templates").path("statistics").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		BigBlueButtonTemplatesStatisticsVO statistics = conn
-				.parse(response, BigBlueButtonTemplatesStatisticsVO.class);
+				.parse(response.getEntity(), BigBlueButtonTemplatesStatisticsVO.class);
 		Assert.assertNotNull(statistics);
 		Assert.assertNotNull(statistics.getRooms());
 		Assert.assertNotNull(statistics.getMaxParticipants());

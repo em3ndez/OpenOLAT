@@ -34,13 +34,18 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Before;
@@ -56,8 +61,6 @@ import org.olat.core.id.Organisation;
 import org.olat.core.logging.Tracing;
 import org.olat.core.util.FileUtils;
 import org.olat.core.util.StringHelper;
-import org.olat.core.util.httpclient.ConnectionUtilities;
-import org.olat.core.util.httpclient.ConnectionUtilities.NameValuePair;
 import org.olat.core.util.resource.OresHelper;
 import org.olat.core.util.vfs.VFSContainer;
 import org.olat.core.util.vfs.VFSLeaf;
@@ -159,20 +162,21 @@ public class GroupFoldersTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void testGetFolder() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetFolder() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("rest-one", "A6B7C8");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("/groups/" + g1.getKey() + "/folder").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		String content = RestConnection.toString(response);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		String content = EntityUtils.toString(response.getEntity());
 		Assert.assertTrue(StringHelper.containsNonWhitespace(content));
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetSubFolder() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetSubFolder() throws IOException, URISyntaxException {
 		//create some sub folders
 		CollaborationTools collabTools1 = CollaborationToolsFactory.getInstance().getOrCreateCollaborationTools(g1);
 		String folderRelPath = collabTools1.getFolderRelPath();
@@ -193,51 +197,53 @@ public class GroupFoldersTest extends OlatRestTestCase {
 		
 		//get root folder
 		URI request0 = UriBuilder.fromUri(getContextURI()).path("/groups/" + g1.getKey() + "/folder/").build();
-		HttpRequest method0 = conn.createGet(request0, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> code0 = conn.execute(method0);
-		assertEquals(200, code0.statusCode());
-		List<FileVO> fileVos0 = conn.parseList(code0, FileVO.class);
+		HttpGet method0 = conn.createGet(request0, MediaType.APPLICATION_JSON, true);
+		HttpResponse code0 = conn.execute(method0);
+		assertEquals(200, code0.getStatusLine().getStatusCode());
+		List<FileVO> fileVos0 = parseFileArray(code0.getEntity());
 		assertNotNull(fileVos0);
 		assertEquals(1, fileVos0.size());
 		
 		//get sub folder
 		URI request1 = UriBuilder.fromUri(getContextURI()).path("/groups/" + g1.getKey() + "/folder/New_folder_1").build();
-		HttpRequest method1 = conn.createGet(request1, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> code1 = conn.execute(method1);
-		assertEquals(200, code1.statusCode());
-		List<FileVO> fileVos1 = parseFileArray(code1);
+		HttpGet method1 = conn.createGet(request1, MediaType.APPLICATION_JSON, true);
+		HttpResponse code1 = conn.execute(method1);
+		assertEquals(200, code1.getStatusLine().getStatusCode());
+		List<FileVO> fileVos1 = parseFileArray(code1.getEntity());
 		assertNotNull(fileVos1);
 		assertEquals(1, fileVos1.size());
 		
 		//get sub folder by link
 		FileVO fileVO = fileVos1.get(0);
 		URI fileUri = new URI(fileVO.getHref());
-		HttpRequest brutMethod = conn.createGet(fileUri, "*/*", MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> codeBrut = conn.execute(brutMethod);
-		assertEquals(200, codeBrut.statusCode());
-		RestConnection.consume(codeBrut);
+		HttpGet brutMethod = conn.createGet(fileUri, "*/*", true);
+		brutMethod.addHeader("Accept", MediaType.APPLICATION_JSON);
+		HttpResponse codeBrut = conn.execute(brutMethod);
+		assertEquals(200, codeBrut.getStatusLine().getStatusCode());
+		EntityUtils.consume(codeBrut.getEntity());
 
 		// get sub sub folder
 		URI request2 = UriBuilder.fromUri(getContextURI()).path("/groups/" + g1.getKey() + "/folder/New_folder_1/New_folder_1_1").build();
-		HttpRequest method2 = conn.createGet(request2, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> code2 = conn.execute(method2);
-		assertEquals(200, code2.statusCode());
-		String test2 = ConnectionUtilities.toString(code2);
+		HttpGet method2 = conn.createGet(request2, MediaType.APPLICATION_JSON, true);
+		HttpResponse code2 = conn.execute(method2);
+		assertEquals(200, code2.getStatusLine().getStatusCode());
+		String test2 = EntityUtils.toString(code2.getEntity());
 		Assert.assertTrue(StringHelper.containsNonWhitespace(test2));
 		
 		//get sub folder with end /
 		URI request3 = UriBuilder.fromUri(getContextURI()).path("/groups/" + g1.getKey() + "/folder/New_folder_1/").build();
-		HttpRequest method3 = conn.createGet(request3, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> code3 = conn.execute(method3);
-		assertEquals(200, code3.statusCode());
-		List<FileVO> fileVos3 = parseFileArray(code3);
+		HttpGet method3 = conn.createGet(request3, MediaType.APPLICATION_JSON, true);
+		HttpResponse code3 = conn.execute(method3);
+		assertEquals(200, code3.getStatusLine().getStatusCode());
+		List<FileVO> fileVos3 = parseFileArray(code3.getEntity());
 		assertNotNull(fileVos3);
 		assertEquals(1, fileVos3.size());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetFile() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetFile() throws IOException, URISyntaxException {
 		//create some sub folders and copy file
 		CollaborationTools collabTools2 = CollaborationToolsFactory.getInstance().getOrCreateCollaborationTools(g2);
 		String folderRelPath = collabTools2.getFolderRelPath();
@@ -261,17 +267,18 @@ public class GroupFoldersTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("rest-one", "A6B7C8");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("/groups/" + g2.getKey() + "/folder/New_folder_2/portrait.jpg").build();
-		HttpRequest method = conn.createGet(request, "*/*");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		byte[] byteArr = ConnectionUtilities.toByteArray(response);
+		HttpGet method = conn.createGet(request, "*/*", true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		byte[] byteArr = EntityUtils.toByteArray(response.getEntity());
 		Assert.assertNotNull(byteArr);
 		Assert.assertEquals(file.getSize(), byteArr.length);
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetFileMetadata() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetFileMetadata() throws IOException, URISyntaxException {
 		//create some sub folders and copy file
 		CollaborationTools collabTools2 = CollaborationToolsFactory.getInstance().getOrCreateCollaborationTools(g2);
 		String folderRelPath = collabTools2.getFolderRelPath();
@@ -294,9 +301,9 @@ public class GroupFoldersTest extends OlatRestTestCase {
 		// get the file
 		RestConnection conn = new RestConnection("rest-one", "A6B7C8");
 		URI request = UriBuilder.fromUri(getContextURI()).path("/groups/" + g2.getKey() + "/folder/metadata/Metadata_folder/portrait.jpg").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		FileMetadataVO fileMetadataVO = conn.parse(response, FileMetadataVO.class);
 		Assert.assertNotNull(fileMetadataVO);
 		Assert.assertEquals("portrait.jpg", fileMetadataVO.getFileName());
@@ -304,42 +311,52 @@ public class GroupFoldersTest extends OlatRestTestCase {
 		Assert.assertEquals(file.getSize(), fileMetadataVO.getSize().longValue());
 		Assert.assertNotNull(fileMetadataVO.getHref());
 		Assert.assertNotNull(fileMetadataVO.getLastModified());
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testCreateFolder() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateFolder() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("rest-one", "A6B7C8");
 		URI request = UriBuilder.fromUri(getContextURI()).path("/groups/" + g1.getKey() + "/folder/New_folder_1/New_folder_1_1/New_folder_1_1_1").build();
-		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
+		conn.shutdown();
 	}
 
 	@Test
-	public void testCreateFoldersWithSpecialCharacter() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateFoldersWithSpecialCharacter() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("rest-one", "A6B7C8");
 		URI request = UriBuilder.fromUri(getContextURI()).path("/groups/" + g1.getKey() + "/folder/New_folder_1/New_folder_1_1/New_folder_1 1 2").build();
-		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		FileVO file = conn.parse(response, FileVO.class);
 		assertNotNull(file);
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testCreateFoldersWithSpecialCharacter2() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateFoldersWithSpecialCharacter2() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("rest-one", "A6B7C8");
 		URI request = UriBuilder.fromUri(getContextURI()).path("/groups/" + g1.getKey() + "/folder/New_folder_1/New_folder_1_1/").build();
-		List<NameValuePair> formParameters = List.of(new NameValuePair("foldername", "New folder 1 2 3"));
-		HttpRequest method = conn.createPut(request, null, null, formParameters, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		
-		assertEquals(200, response.statusCode());
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		HttpEntity entity = MultipartEntityBuilder.create()
+				.setMode(HttpMultipartMode.BROWSER_COMPATIBLE)
+				.addTextBody("foldername", "New folder 1 2 3")
+				.build();
+		method.setEntity(entity);
+
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		FileVO file = conn.parse(response, FileVO.class);
 		assertNotNull(file);
 		assertNotNull(file.getHref());
 		assertNotNull(file.getTitle());
 		assertEquals("New folder 1 2 3", file.getTitle());
+		
+		conn.shutdown();
 	}
 }

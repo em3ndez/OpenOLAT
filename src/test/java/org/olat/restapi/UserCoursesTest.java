@@ -23,14 +23,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
@@ -71,7 +71,7 @@ public class UserCoursesTest extends OlatRestTestCase {
 	private RepositoryService repositoryService;
 	
 	@Test
-	public void testMyCourses() throws IOException, URISyntaxException, InterruptedException {
+	public void testMyCourses() throws IOException, URISyntaxException {
 		//prepare a course with a participant
 		IdentityWithLogin user = JunitTestHelper.createAndPersistRndUser("My-course-");
 		
@@ -84,29 +84,30 @@ public class UserCoursesTest extends OlatRestTestCase {
 		
 		//without paging
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(user.getKey().toString()).path("courses").path("my").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<CourseVO> courses = conn.parseList(response, CourseVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<CourseVO> courses = parseCourseArray(response.getEntity());
 		Assert.assertNotNull(courses);
 		Assert.assertEquals(1, courses.size());
 
 		//with paging
 		URI pagedRequest = UriBuilder.fromUri(getContextURI()).path("users").path(user.getKey().toString()).path("courses").path("my")
 				.queryParam("start", "0").queryParam("limit", "10").build();
-		HttpRequest pagedMethod = conn.createGet(pagedRequest, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> pagedResponse = conn.execute(pagedMethod);
-		Assert.assertEquals(200, pagedResponse.statusCode());
-		CourseVOes pagedCourses = conn.parse(pagedResponse, CourseVOes.class);
+		HttpGet pagedMethod = conn.createGet(pagedRequest, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse pagedResponse = conn.execute(pagedMethod);
+		Assert.assertEquals(200, pagedResponse.getStatusLine().getStatusCode());
+		CourseVOes pagedCourses = conn.parse(pagedResponse.getEntity(), CourseVOes.class);
 		Assert.assertNotNull(pagedCourses);
 		Assert.assertEquals(1, pagedCourses.getTotalCount());
 		Assert.assertNotNull(pagedCourses.getCourses());
 		Assert.assertEquals(1, pagedCourses.getCourses().length);
 
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testTeachedCourses() throws IOException, URISyntaxException, InterruptedException {
+	public void testTeachedCourses() throws IOException, URISyntaxException {
 		//prepare a course with a tutor
 		IdentityWithLogin teacher = JunitTestHelper.createAndPersistRndUser("Course-teacher-");
 		RepositoryEntry courseRe = JunitTestHelper.deployBasicCourse(teacher.getIdentity());
@@ -118,29 +119,30 @@ public class UserCoursesTest extends OlatRestTestCase {
 		
 		//without paging
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users").path(teacher.getKey().toString()).path("/courses/teached").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<CourseVO> courses = conn.parseList(response, CourseVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<CourseVO> courses = parseCourseArray(response.getEntity());
 		Assert.assertNotNull(courses);
 		Assert.assertEquals(1, courses.size());
 
 		//with paging
 		URI pagedRequest = UriBuilder.fromUri(getContextURI()).path("/users").path(teacher.getKey().toString()).path("/courses/teached")
 				.queryParam("start", "0").queryParam("limit", "10").build();
-		HttpRequest pagedMethod = conn.createGet(pagedRequest, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> pagedResponse = conn.execute(pagedMethod);
-		Assert.assertEquals(200, pagedResponse.statusCode());
-		CourseVOes pagedCourses = conn.parse(pagedResponse, CourseVOes.class);
+		HttpGet pagedMethod = conn.createGet(pagedRequest, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse pagedResponse = conn.execute(pagedMethod);
+		Assert.assertEquals(200, pagedResponse.getStatusLine().getStatusCode());
+		CourseVOes pagedCourses = conn.parse(pagedResponse.getEntity(), CourseVOes.class);
 		Assert.assertNotNull(pagedCourses);
 		Assert.assertEquals(1, pagedCourses.getTotalCount());
 		Assert.assertNotNull(pagedCourses.getCourses());
 		Assert.assertEquals(1, pagedCourses.getCourses().length);
 
+		conn.shutdown();
 	}
 	
     @Test
-    public void testOwnedCourses() throws IOException, URISyntaxException, InterruptedException {
+    public void testOwnedCourses() throws IOException, URISyntaxException {
         //prepare a course with a owner
         IdentityWithLogin owner = JunitTestHelper.createAndPersistRndUser("Course-owner-");
         RepositoryEntry courseRe = JunitTestHelper.deployBasicCourse(owner.getIdentity());
@@ -151,28 +153,30 @@ public class UserCoursesTest extends OlatRestTestCase {
         
         //without paging
         URI request = UriBuilder.fromUri(getContextURI()).path("/users").path(owner.getKey().toString()).path("/courses/owned").build();
-        HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-        HttpResponse<InputStream> response = conn.execute(method);
-        Assert.assertEquals(200, response.statusCode());
-        List<CourseVO> courses = conn.parseList(response, CourseVO.class);
+        HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+        HttpResponse response = conn.execute(method);
+        Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+        List<CourseVO> courses = parseCourseArray(response.getEntity());
         Assert.assertNotNull(courses);
         Assert.assertEquals(1, courses.size());
 
         //with paging
         URI pagedRequest = UriBuilder.fromUri(getContextURI()).path("/users").path(owner.getKey().toString()).path("/courses/owned")
                 .queryParam("start", "0").queryParam("limit", "10").build();
-        HttpRequest pagedMethod = conn.createGet(pagedRequest, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-        HttpResponse<InputStream> pagedResponse = conn.execute(pagedMethod);
-        Assert.assertEquals(200, pagedResponse.statusCode());
-        CourseVOes pagedCourses = conn.parse(pagedResponse, CourseVOes.class);
+        HttpGet pagedMethod = conn.createGet(pagedRequest, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+        HttpResponse pagedResponse = conn.execute(pagedMethod);
+        Assert.assertEquals(200, pagedResponse.getStatusLine().getStatusCode());
+        CourseVOes pagedCourses = conn.parse(pagedResponse.getEntity(), CourseVOes.class);
         Assert.assertNotNull(pagedCourses);
         Assert.assertEquals(1, pagedCourses.getTotalCount());
         Assert.assertNotNull(pagedCourses.getCourses());
         Assert.assertEquals(1, pagedCourses.getCourses().length);
+
+        conn.shutdown();
     }
 
     @Test
-	public void testFavoritCourses() throws IOException, URISyntaxException, InterruptedException {
+	public void testFavoritCourses() throws IOException, URISyntaxException {
 		//prepare a course with a tutor
 		IdentityWithLogin me = JunitTestHelper.createAndPersistRndUser("Course-teacher-");
 		RepositoryEntry courseRe = JunitTestHelper.deployBasicCourse(me.getIdentity());
@@ -184,26 +188,27 @@ public class UserCoursesTest extends OlatRestTestCase {
 		
 		//without paging
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users").path(me.getKey().toString()).path("/courses/favorite").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<CourseVO> courses = conn.parseList(response, CourseVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<CourseVO> courses = parseCourseArray(response.getEntity());
 		Assert.assertNotNull(courses);
 		Assert.assertEquals(1, courses.size());
 		
 		//with paging
 		URI pagedRequest = UriBuilder.fromUri(getContextURI()).path("/users").path(me.getKey().toString()).path("/courses/favorite")
 				.queryParam("start", "0").queryParam("limit", "10").build();
-		HttpRequest pagedMethod = conn.createGet(pagedRequest, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> pagedResponse = conn.execute(pagedMethod);
-		Assert.assertEquals(200, pagedResponse.statusCode());
-		CourseVOes pagedCourses = conn.parse(pagedResponse, CourseVOes.class);
+		HttpGet pagedMethod = conn.createGet(pagedRequest, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse pagedResponse = conn.execute(pagedMethod);
+		Assert.assertEquals(200, pagedResponse.getStatusLine().getStatusCode());
+		CourseVOes pagedCourses = conn.parse(pagedResponse.getEntity(), CourseVOes.class);
 		Assert.assertNotNull(pagedCourses);
 		Assert.assertEquals(1, pagedCourses.getTotalCount());
 		Assert.assertNotNull(pagedCourses.getCourses());
 		Assert.assertEquals(1, pagedCourses.getCourses().length);
 		
 
+		conn.shutdown();
 	}
 	
 	protected List<CourseVO> parseCourseArray(HttpEntity entity) {

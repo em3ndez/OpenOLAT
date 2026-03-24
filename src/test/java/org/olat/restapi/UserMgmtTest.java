@@ -39,8 +39,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -55,6 +53,14 @@ import jakarta.ws.rs.core.UriBuilder;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpHead;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.Logger;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
@@ -129,6 +135,9 @@ import org.olat.user.restapi.StatusVO;
 import org.olat.user.restapi.UserLifecycleVO;
 import org.olat.user.restapi.UserVO;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * 
@@ -310,14 +319,14 @@ public class UserMgmtTest extends OlatRestTestCase {
 	}
 
 	@Test
-	public void testGetUsers() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetUsers() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 		Assert.assertNotNull(vos);
 		Assert.assertFalse(vos.isEmpty());
 		int voSize = vos.size();
@@ -327,19 +336,20 @@ public class UserMgmtTest extends OlatRestTestCase {
 				.getIdentitiesByPowerSearch(null, null, true, null, null, null, null, null, null, Identity.STATUS_VISIBLE_LIMIT);
 		Assert.assertEquals(voSize, identities.size());
 
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testFindUsersByLogin() throws IOException, URISyntaxException, InterruptedException {
+	public void testFindUsersByLogin() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users")
 				.queryParam("login","administrator")
 				.queryParam("authProvider","OLAT").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 		
 		String[] authProviders = new String[]{"OLAT"};
 		List<Identity> identities = securityManager
@@ -348,10 +358,11 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertNotNull(vos);
 		Assert.assertFalse(vos.isEmpty());
 		Assert.assertEquals(vos.size(), identities.size());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testFindUsersByLogin_notFuzzy() throws IOException, URISyntaxException, InterruptedException {
+	public void testFindUsersByLogin_notFuzzy() throws IOException, URISyntaxException {
 		//there is user-rest-...
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("user-rest");
 		Assert.assertNotNull(id);
@@ -360,19 +371,21 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users")
 				.queryParam("login", id.getLogin()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 
 		Assert.assertNotNull(vos);
 		Assert.assertEquals(1, vos.size());
 		Assert.assertEquals(id.getIdentity().getKey(), vos.get(0).getKey());
 		Assert.assertNull(vos.get(0).getLogin());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testFindUsersByLogin_manualIdentityName() throws IOException, URISyntaxException, InterruptedException {
+	public void testFindUsersByLogin_manualIdentityName() throws IOException, URISyntaxException {
+		String currentIdentityNameSetting = securityModule.getIdentityName();
 		securityModule.setIdentityName("manual");
 		
 		//there is user-rest-...
@@ -383,22 +396,21 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users")
 				.queryParam("login", id.getLogin()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 
 		Assert.assertNotNull(vos);
 		Assert.assertEquals(1, vos.size());
 		Assert.assertEquals(id.getIdentity().getKey(), vos.get(0).getKey());
 		Assert.assertEquals(id.getIdentity().getName(), vos.get(0).getLogin());
-		
-		securityModule.setIdentityName("auto");
-		waitMessageAreConsumed();
+		conn.shutdown();
+		securityModule.setIdentityName(currentIdentityNameSetting);
 	}
 	
 	@Test
-	public void testFindUsersByExternalId() throws IOException, URISyntaxException, InterruptedException {
+	public void testFindUsersByExternalId() throws IOException, URISyntaxException {
 		//there is user-rest-...
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("user-external-id");
 		Assert.assertNotNull(id);
@@ -414,10 +426,10 @@ public class UserMgmtTest extends OlatRestTestCase {
 				.queryParam("statusVisibleLimit", "all")
 				.build();
 
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 
 		Assert.assertNotNull(vos);
 		Assert.assertEquals(1, vos.size());
@@ -425,6 +437,7 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertEquals(Identity.STATUS_ACTIV, vos.get(0).getStatus());
 		Assert.assertFalse(vos.get(0).getProperties().isEmpty());
 		Assert.assertNull(vos.get(0).getLogin());
+		conn.shutdown();
 	}
 	
 	/**
@@ -435,7 +448,7 @@ public class UserMgmtTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void testFindInactiveUsersByExternalId() throws IOException, URISyntaxException, InterruptedException {
+	public void testFindInactiveUsersByExternalId() throws IOException, URISyntaxException {
 		//there is user-rest-...
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("user-external-inactive-id");
 		Assert.assertNotNull(id);
@@ -452,15 +465,16 @@ public class UserMgmtTest extends OlatRestTestCase {
 				.queryParam("statusVisibleLimit", "all")
 				.build();
 
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 
 		Assert.assertNotNull(vos);
 		Assert.assertEquals(1, vos.size());
 		Assert.assertEquals(identity.getKey(), vos.get(0).getKey());
 		Assert.assertNull(vos.get(0).getLogin());
+		conn.shutdown();
 	}
 	
 	
@@ -472,7 +486,7 @@ public class UserMgmtTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void testFindInactiveUsers() throws IOException, URISyntaxException, InterruptedException {
+	public void testFindInactiveUsers() throws IOException, URISyntaxException {
 		//there is user-rest-...
 		IdentityWithLogin inactiveId = JunitTestHelper.createAndPersistRndUser("user-inactive-1-id");
 		IdentityWithLogin loginDeniedId = JunitTestHelper.createAndPersistRndUser("user-inactive-2-id");
@@ -489,20 +503,21 @@ public class UserMgmtTest extends OlatRestTestCase {
 				.queryParam("status", Integer.toString(Identity.STATUS_INACTIVE))
 				.build();
 
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 		
 		Assertions.assertThat(vos)
 			.map(UserVO::getKey)
 			.contains(inactiveIdentity.getKey())
 			.doesNotContain(loginDeniedIdentity.getKey());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testFindUsersByAuthusername() throws IOException, URISyntaxException, InterruptedException {
+	public void testFindUsersByAuthusername() throws IOException, URISyntaxException {
 		//there is user-rest-...
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("user-auth-name");
 		Assert.assertNotNull(id);
@@ -515,23 +530,20 @@ public class UserMgmtTest extends OlatRestTestCase {
 				.queryParam("statusVisibleLimit", "all")
 				.build();
 
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 
 		Assert.assertNotNull(vos);
 		Assert.assertEquals(1, vos.size());
 		Assert.assertEquals(id.getKey(), vos.get(0).getKey());
 		Assert.assertNull(vos.get(0).getLogin());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testFindUsersByAuthusernameShib() throws IOException, URISyntaxException, InterruptedException {
-		// Make sure, we test explicitly if the returned login name is null
-		securityModule.setIdentityName("auto");
-		waitMessageAreConsumed();
-		
+	public void testFindUsersByAuthusernameShib() throws IOException, URISyntaxException {
 		//there is user-rest-...
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("user-auth-name");
 		Assert.assertNotNull(id);
@@ -547,10 +559,10 @@ public class UserMgmtTest extends OlatRestTestCase {
 				.queryParam("statusVisibleLimit", "all")
 				.build();
 
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 
 		Assert.assertNotNull(vos);
 		Assert.assertEquals(1, vos.size());
@@ -564,17 +576,19 @@ public class UserMgmtTest extends OlatRestTestCase {
 				.queryParam("statusVisibleLimit", "all")
 				.build();
 
-		HttpRequest negativeMethod = conn.createGet(negativeRequest, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> negativeResponse = conn.execute(negativeMethod);
-		Assert.assertEquals(200, negativeResponse.statusCode());
-		List<UserVO> negativeVos = conn.parseList(negativeResponse, UserVO.class);
+		HttpGet negativeMethod = conn.createGet(negativeRequest, MediaType.APPLICATION_JSON, true);
+		HttpResponse negativeResponse = conn.execute(negativeMethod);
+		Assert.assertEquals(200, negativeResponse.getStatusLine().getStatusCode());
+		List<UserVO> negativeVos = parseUserArray(negativeResponse.getEntity());
 
 		Assert.assertNotNull(negativeVos);
 		Assert.assertTrue(negativeVos.isEmpty());
+
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testFindUsersByExternalId_negatif() throws IOException, URISyntaxException, InterruptedException {
+	public void testFindUsersByExternalId_negatif() throws IOException, URISyntaxException {
 		//there is user-rest-...
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("user-external-id-2");
 		Assert.assertNotNull(id);
@@ -590,67 +604,72 @@ public class UserMgmtTest extends OlatRestTestCase {
 				.queryParam("statusVisibleLimit", "all")
 				.build();
 
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 
 		Assert.assertNotNull(vos);
 		Assert.assertTrue(vos.isEmpty());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testFindUsersByProperty() throws IOException, URISyntaxException, InterruptedException {
+	public void testFindUsersByProperty() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users")
 				.queryParam("telMobile","39847592")
 				.queryParam("gender","Female")
 				.queryParam("birthDay", "12/12/2009").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON, "en");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		method.addHeader("Accept-Language", "en");
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 	
 		assertNotNull(vos);
 		assertFalse(vos.isEmpty());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testFindAdminByAuth() throws IOException, URISyntaxException, InterruptedException {
+	public void testFindAdminByAuth() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users")
 				.queryParam("authUsername","administrator")
 				.queryParam("authProvider","OLAT").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		List<UserVO> vos = conn.parseList(response, UserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		List<UserVO> vos = parseUserArray(response.getEntity());
 	
 		assertNotNull(vos);
 		assertFalse(vos.isEmpty());
 		assertEquals(1, vos.size());
 		Identity admin = securityManager.findIdentityByLogin("administrator");
 		assertEquals(admin.getKey(), vos.get(0).getKey());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void findByUsername() throws IOException, URISyntaxException, InterruptedException {
+	public void findByUsername() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path("username")
 				.queryParam("username","administrator").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		UserVO userVo = conn.parse(response, UserVO.class);
 		
 		Assert.assertNotNull(userVo);
+		conn.shutdown();
 	}
 	
 	@Test
-	public void findByUsernameCheckProperties() throws IOException, URISyntaxException, InterruptedException {
+	public void findByUsernameCheckProperties() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		IdentityWithLogin meLogin = JunitTestHelper.createAndPersistRndUser("rest-users");
@@ -665,17 +684,18 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path("username")
 				.queryParam("username", meLogin.getLogin()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		UserVO userVo = conn.parse(response, UserVO.class);
 		
 		Assert.assertNotNull(userVo);
 		Assert.assertEquals("92737", userVo.getProperty("telPrivate"));
+		conn.shutdown();
 	}
 	
 	@Test
-	public void getUserLifecycle() throws IOException, URISyntaxException, InterruptedException {
+	public void getUserLifecycle() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		IdentityWithLogin identityLogin = JunitTestHelper.createAndPersistRndUser("rest-life-user-1");
@@ -684,9 +704,9 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(identity.getKey().toString())
 				.path("lifecycle").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		UserLifecycleVO lifecycleVo = conn.parse(response, UserLifecycleVO.class);
 		
 		Assert.assertEquals(identity.getKey(), lifecycleVo.getKey());
@@ -695,10 +715,11 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertNull(lifecycleVo.getExpirationDate());
 		Assert.assertNull(lifecycleVo.getInactivationDate());
 
+		conn.shutdown();
 	}
 	
 	@Test
-	public void updateUserLifecycle() throws IOException, URISyntaxException, InterruptedException {
+	public void updateUserLifecycle() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		IdentityWithLogin identityLogin = JunitTestHelper.createAndPersistRndUser("rest-life-user-2");
@@ -711,9 +732,11 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		URI updateRequest = UriBuilder.fromUri(getContextURI()).path("users").path(identity.getKey().toString())
 				.path("lifecycle").build();
-		HttpRequest updateMethod = conn.createPost(updateRequest, lifecycleVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(updateMethod);
-		assertEquals(200, response.statusCode());
+		HttpPost updateMethod = conn.createPost(updateRequest, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(updateMethod, lifecycleVo);
+	
+		HttpResponse response = conn.execute(updateMethod);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		UserLifecycleVO updatedLifecycleVo = conn.parse(response, UserLifecycleVO.class);
 		Assert.assertEquals(identity.getKey(), updatedLifecycleVo.getKey());
@@ -721,11 +744,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertNotNull(updatedLifecycleVo.getCreationDate());
 		Assert.assertNotNull(updatedLifecycleVo.getExpirationDate());
 		Assert.assertNull(updatedLifecycleVo.getInactivationDate());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void reactivateUserLifecycle() throws IOException, URISyntaxException, InterruptedException {
+	public void reactivateUserLifecycle() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		// Create an inactive user
@@ -749,9 +773,11 @@ public class UserMgmtTest extends OlatRestTestCase {
 
 		URI updateRequest = UriBuilder.fromUri(getContextURI()).path("users").path(identity.getKey().toString())
 				.path("lifecycle").build();
-		HttpRequest updateMethod = conn.createPost(updateRequest, lifecycleVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(updateMethod);
-		assertEquals(200, response.statusCode());
+		HttpPost updateMethod = conn.createPost(updateRequest, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(updateMethod, lifecycleVo);
+	
+		HttpResponse response = conn.execute(updateMethod);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		
 		UserLifecycleVO updatedLifecycleVo = conn.parse(response, UserLifecycleVO.class);
 		Assert.assertEquals(identity.getKey(), updatedLifecycleVo.getKey());
@@ -759,11 +785,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertNotNull(updatedLifecycleVo.getCreationDate());
 		Assert.assertNull(updatedLifecycleVo.getExpirationDate());
 		Assert.assertNull(updatedLifecycleVo.getInactivationDate());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetMe() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetMe() throws IOException, URISyntaxException {
 		IdentityWithLogin meLogin = JunitTestHelper.createAndPersistRndUser("rest-users");
 		Identity me = meLogin.getIdentity();
 		me.getUser().setProperty("telMobile", "39847592");
@@ -784,26 +811,27 @@ public class UserMgmtTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection(meLogin.getLogin(), meLogin.getPassword());
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/me").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		UserVO vo = conn.parse(response, UserVO.class);
 
 		assertNotNull(vo);
 		assertEquals(vo.getKey(), me.getKey());
 		//are the properties there?
 		assertFalse(vo.getProperties().isEmpty());
+		conn.shutdown();
 	}
 	
 	
 	@Test
-	public void testGetUser() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetUser() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + id1.getKey()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		UserVO vo = conn.parse(response, UserVO.class);
 
 		Assert.assertNotNull(vo);
@@ -811,26 +839,28 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertEquals(Identity.STATUS_ACTIV, vo.getStatus());
 		//are the properties there?
 		Assert.assertFalse(vo.getProperties().isEmpty());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetUserNotAdmin() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetUserNotAdmin() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + id2.getKey()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		UserVO vo = conn.parse(response, UserVO.class);
 
 		assertNotNull(vo);
 		assertEquals(vo.getKey(), id2.getKey());
 		//no properties for security reason
 		assertTrue(vo.getProperties().isEmpty());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetManagedUser() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetManagedUser() throws IOException, URISyntaxException {
 		String externalId = UUID.randomUUID().toString();
 		Identity managedId = JunitTestHelper.createAndPersistIdentityAsRndUser("managed-1");
 		dbInstance.commitAndCloseSession();
@@ -840,10 +870,10 @@ public class UserMgmtTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path("managed").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		List<ManagedUserVO> managedUsers = conn.parseList(response, ManagedUserVO.class);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		List<ManagedUserVO> managedUsers = parseManagedUserArray(response.getEntity());
 
 		boolean found = false;
 		for(ManagedUserVO managedUser:managedUsers) {
@@ -856,11 +886,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 			Assert.assertNotNull(managedUser.getStatus());
 		}
 		Assert.assertTrue(found);
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetManagedUser_onlyUserManagers() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetManagedUser_onlyUserManagers() throws IOException, URISyntaxException {
 		String externalId = UUID.randomUUID().toString();
 		Identity managedId = JunitTestHelper.createAndPersistIdentityAsRndUser("managed-1");
 		dbInstance.commitAndCloseSession();
@@ -870,11 +901,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path("managed").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(403, response.statusCode());
-		RestConnection.consume(response);
-
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(403, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
+		
+		conn.shutdown();
 	}
 		
 	/**
@@ -882,15 +914,16 @@ public class UserMgmtTest extends OlatRestTestCase {
 	 * @throws IOException
 	 */
 	@Test	
-	public void testGetRawJsonUser() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetRawJsonUser() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + id1.getKey()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		String bodyJson = RestConnection.toString(response);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		String bodyJson = EntityUtils.toString(response.getEntity());
 		log.info("User JSON: {}", bodyJson);
+		conn.shutdown();
 	}
 		
 	/**
@@ -898,19 +931,20 @@ public class UserMgmtTest extends OlatRestTestCase {
 	 * @throws IOException
 	 */
 	@Test	
-	public void testGetRawXmlUser() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetRawXmlUser() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + id1.getKey()).build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_XML);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		String bodyXml = RestConnection.toString(response);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_XML, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		String bodyXml = EntityUtils.toString(response.getEntity());
 		log.info("User XML: {}", bodyXml);
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testCreateUser() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateUser() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		UserVO vo = new UserVO();
@@ -926,9 +960,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		vo.putProperty("birthDay", "12/12/2009");
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON, "en");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertTrue(response.statusCode() == 200 || response.statusCode() == 201);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		method.addHeader("Accept-Language", "en");
+		
+		HttpResponse response = conn.execute(method);
+		assertTrue(response.getStatusLine().getStatusCode() == 200 || response.getStatusLine().getStatusCode() == 201);
 		UserVO savedVo = conn.parse(response, UserVO.class);
 		Identity savedIdent = securityManager.loadIdentityByKey(savedVo.getKey());
 
@@ -939,10 +976,11 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertEquals("Female", savedIdent.getUser().getProperty("gender", Locale.ENGLISH));
 		Assert.assertEquals("39847592", savedIdent.getUser().getProperty("telPrivate", Locale.ENGLISH));
 		Assert.assertEquals("12/12/2009", savedIdent.getUser().getProperty("birthDay", Locale.ENGLISH));
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testCreateUser_emptyLogin() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateUser_emptyLogin() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		UserVO vo = new UserVO();
@@ -957,15 +995,18 @@ public class UserMgmtTest extends OlatRestTestCase {
 		vo.putProperty("birthDay", "12/12/2009");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON, "en");
-		HttpResponse<InputStream> response = conn.execute(method);
-		int statusCode = response.statusCode();
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		method.addHeader("Accept-Language", "en");
+		
+		HttpResponse response = conn.execute(method);
+		int statusCode = response.getStatusLine().getStatusCode();
+		EntityUtils.consume(response.getEntity());
 		Assert.assertEquals(406, statusCode);
 	}
 	
 	@Test
-	public void testCreateUser_special() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateUser_special() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		UserVO vo = new UserVO();
@@ -980,10 +1021,13 @@ public class UserMgmtTest extends OlatRestTestCase {
 		vo.putProperty("birthDay", "12/12/2009");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON, "en");
-		HttpResponse<InputStream> response = conn.execute(method);
-		int statusCode = response.statusCode();
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		method.addHeader("Accept-Language", "en");
+		
+		HttpResponse response = conn.execute(method);
+		int statusCode = response.getStatusLine().getStatusCode();
+		EntityUtils.consume(response.getEntity());
 		Assert.assertEquals(200, statusCode);
 	}
 	
@@ -991,7 +1035,7 @@ public class UserMgmtTest extends OlatRestTestCase {
 	 * Test machine format for gender and date
 	 */
 	@Test
-	public void testCreateUser2() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateUser2() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		UserVO vo = new UserVO();
@@ -1006,9 +1050,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		vo.putProperty("birthDay", "20091212");
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON, "en");
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertTrue(response.statusCode() == 200 || response.statusCode() == 201);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		method.addHeader("Accept-Language", "en");
+		
+		HttpResponse response = conn.execute(method);
+		Assert.assertTrue(response.getStatusLine().getStatusCode() == 200 || response.getStatusLine().getStatusCode() == 201);
 		UserVO savedVo = conn.parse(response, UserVO.class);
 		Identity savedIdent = securityManager.loadIdentityByKey(savedVo.getKey());
 
@@ -1019,13 +1066,14 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertEquals("Female", savedIdent.getUser().getProperty("gender", Locale.ENGLISH));
 		Assert.assertEquals("39847592", savedIdent.getUser().getProperty("telPrivate", Locale.ENGLISH));
 		Assert.assertEquals("12/12/2009", savedIdent.getUser().getProperty("birthDay", Locale.ENGLISH));
+		conn.shutdown();
 	}
 	
 	/**
 	 * Test the trim of email
 	 */
 	@Test
-	public void testCreateUser_emailWithTrailingSpace() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateUser_emailWithTrailingSpace() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		UserVO vo = new UserVO();
@@ -1038,9 +1086,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON, "en");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertTrue(response.statusCode() == 200 || response.statusCode() == 201);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		method.addHeader("Accept-Language", "en");
+		
+		HttpResponse response = conn.execute(method);
+		assertTrue(response.getStatusLine().getStatusCode() == 200 || response.getStatusLine().getStatusCode() == 201);
 		UserVO savedVo = conn.parse(response, UserVO.class);
 		Identity savedIdent = securityManager.loadIdentityByKey(savedVo.getKey());
 
@@ -1049,13 +1100,14 @@ public class UserMgmtTest extends OlatRestTestCase {
 		assertEquals(savedVo.getKey(), savedIdent.getKey());
 		assertEquals(username + "@frentix.com", savedIdent.getUser().getProperty(UserConstants.EMAIL, null));
 
+		conn.shutdown();
 	}
 	
 	/**
 	 * Test if we can create two users with the same email addresses.
 	 */
 	@Test
-	public void testCreateUser_same_email() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateUser_same_email() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		String email = UUID.randomUUID() + "@frentix.com";
@@ -1069,10 +1121,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		vo.putProperty("gender", "male");//male or female
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON, "en");
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		method.addHeader("Accept-Language", "en");
 		
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertTrue(response.statusCode() == 200 || response.statusCode() == 201);
+		HttpResponse response = conn.execute(method);
+		assertTrue(response.getStatusLine().getStatusCode() == 200 || response.getStatusLine().getStatusCode() == 201);
 		UserVO savedVo = conn.parse(response, UserVO.class);
 		Identity savedIdent = securityManager.loadIdentityByKey(savedVo.getKey());
 
@@ -1089,21 +1143,24 @@ public class UserMgmtTest extends OlatRestTestCase {
 		vo2.putProperty("gender", "female");
 
 		URI request2 = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method2 = conn.createPut(request2, vo2, MediaType.APPLICATION_JSON, "en");
+		HttpPut method2 = conn.createPut(request2, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method2, vo2);
+		method2.addHeader("Accept-Language", "en");
 		
-		HttpResponse<InputStream> response2 = conn.execute(method2);
-		int  statusCode2 = response2.statusCode();
+		HttpResponse response2 = conn.execute(method2);
+		int  statusCode2 = response2.getStatusLine().getStatusCode();
 		Assert.assertEquals(406, statusCode2);
-		String errorMessage = RestConnection.toString(response2);
+		String errorMessage = EntityUtils.toString(response2.getEntity());
 		Assert.assertNotNull(errorMessage);
 
+		conn.shutdown();
 	}
 	
 	/**
 	 * Test if we can create two users with the same login.
 	 */
 	@Test
-	public void testCreateUser_same_login() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateUser_same_login() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		UserVO vo = new UserVO();
@@ -1115,9 +1172,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		vo.putProperty("gender", "male");//male or female
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON, "en");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertTrue(response.statusCode() == 200 || response.statusCode() == 201);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		method.addHeader("Accept-Language", "en");
+		
+		HttpResponse response = conn.execute(method);
+		assertTrue(response.getStatusLine().getStatusCode() == 200 || response.getStatusLine().getStatusCode() == 201);
 		UserVO savedVo = conn.parse(response, UserVO.class);
 		Identity savedIdent = securityManager.loadIdentityByKey(savedVo.getKey());
 
@@ -1134,17 +1194,21 @@ public class UserMgmtTest extends OlatRestTestCase {
 		vo2.putProperty("gender", "female");
 
 		URI request2 = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method2 = conn.createPut(request2, vo2, MediaType.APPLICATION_JSON, "en");
-		HttpResponse<InputStream> response2 = conn.execute(method2);
-		int  statusCode2 = response2.statusCode();
+		HttpPut method2 = conn.createPut(request2, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method2, vo2);
+		method2.addHeader("Accept-Language", "en");
+		
+		HttpResponse response2 = conn.execute(method2);
+		int  statusCode2 = response2.getStatusLine().getStatusCode();
 		Assert.assertEquals(406, statusCode2);
-		String errorMessage = RestConnection.toString(response2);
+		String errorMessage = EntityUtils.toString(response2.getEntity());
 		Assert.assertNotNull(errorMessage);
 
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testCreateUserWithValidationError() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateUserWithValidationError() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		String login = "rest-809-" + UUID.randomUUID();
@@ -1157,10 +1221,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		vo.putProperty("gender", "lu");
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(406, response.statusCode());
-		List<ErrorVO> errors = parseErrorArray(response);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		
+		HttpResponse response = conn.execute(method);
+		assertEquals(406, response.getStatusLine().getStatusCode());
+		List<ErrorVO> errors = parseErrorArray(response.getEntity());
  		assertNotNull(errors);
 		assertFalse(errors.isEmpty());
 		assertTrue(errors.size() >= 2);
@@ -1171,13 +1237,14 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		Identity savedIdent = securityManager.findIdentityByName(login);
 		assertNull(savedIdent);
+		conn.shutdown();
 	}
 	
 	/**
 	 * Test if we can create two users with the same email addresses.
 	 */
 	@Test
-	public void testCreateAndUpdateUser() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateAndUpdateUser() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		String username = UUID.randomUUID().toString();
@@ -1191,9 +1258,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		vo.putProperty("gender", "male");//male or female
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON, "en");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertTrue(response.statusCode() == 200 || response.statusCode() == 201);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		method.addHeader("Accept-Language", "en");
+		
+		HttpResponse response = conn.execute(method);
+		assertTrue(response.getStatusLine().getStatusCode() == 200 || response.getStatusLine().getStatusCode() == 201);
 		UserVO savedVo = conn.parse(response, UserVO.class);
 		Identity savedIdent = securityManager.loadIdentityByKey(savedVo.getKey());
 
@@ -1212,9 +1282,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		updateVo.putProperty("gender", "male");
 
 		URI updateRequest = UriBuilder.fromUri(getContextURI()).path("users").path(savedVo.getKey().toString()).build();
-		HttpRequest updateMethod = conn.createPost(updateRequest, updateVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> updateResponse = conn.execute(updateMethod);
-		int  statusCode = updateResponse.statusCode();
+		HttpPost updateMethod = conn.createPost(updateRequest, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(updateMethod, updateVo);
+		updateMethod.addHeader("Accept-Language", "en");
+		
+		HttpResponse updateResponse = conn.execute(updateMethod);
+		int  statusCode = updateResponse.getStatusLine().getStatusCode();
 		Assert.assertEquals(200, statusCode);
 		UserVO updatedVo = conn.parse(updateResponse, UserVO.class);
 		dbInstance.commitAndCloseSession();
@@ -1226,13 +1299,14 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertEquals(updatedVo.getKey(), updatedIdent.getKey());
 		Assert.assertEquals("Maximilien", updatedIdent.getUser().getFirstName());
 
+		conn.shutdown();
 	}
 	
 	/**
 	 * Test if we can create two users with the same email addresses.
 	 */
 	@Test
-	public void testCreateAndUpdateUser_same_email() throws IOException, URISyntaxException, InterruptedException {
+	public void testCreateAndUpdateUser_same_email() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		String email = UUID.randomUUID() + "@frentix.com";
@@ -1246,9 +1320,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		vo.putProperty("gender", "male");//male or female
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON, "en");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertTrue(response.statusCode() == 200 || response.statusCode() == 201);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(method, vo);
+		method.addHeader("Accept-Language", "en");
+		
+		HttpResponse response = conn.execute(method);
+		assertTrue(response.getStatusLine().getStatusCode() == 200 || response.getStatusLine().getStatusCode() == 201);
 		UserVO savedVo = conn.parse(response, UserVO.class);
 		Identity savedIdent = securityManager.loadIdentityByKey(savedVo.getKey());
 
@@ -1267,9 +1344,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		secondVo.putProperty("gender", "female");
 
 		URI secondRequest = UriBuilder.fromUri(getContextURI()).path("users").build();
-		HttpRequest secondMethod = conn.createPut(secondRequest, secondVo, MediaType.APPLICATION_JSON, "en");
-		HttpResponse<InputStream> secondResponse = conn.execute(secondMethod);
-		int secondStatusCode = secondResponse.statusCode();
+		HttpPut secondMethod = conn.createPut(secondRequest, MediaType.APPLICATION_JSON, true);
+		conn.addJsonEntity(secondMethod, secondVo);
+		secondMethod.addHeader("Accept-Language", "en");
+		
+		HttpResponse secondResponse = conn.execute(secondMethod);
+		int secondStatusCode = secondResponse.getStatusLine().getStatusCode();
 		Assert.assertEquals(200, secondStatusCode);
 		UserVO secondSavedVo = conn.parse(secondResponse, UserVO.class);
 		Assert.assertNotNull(secondSavedVo);
@@ -1289,11 +1369,14 @@ public class UserMgmtTest extends OlatRestTestCase {
 		updateVo.putProperty("gender", "female");
 
 		URI updateRequest = UriBuilder.fromUri(getContextURI()).path("users").path(secondSavedVo.getKey().toString()).build();
-		HttpRequest updateMethod = conn.createPost(updateRequest, updateVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> updateResponse = conn.execute(updateMethod);
-		int  statusCode = updateResponse.statusCode();
+		HttpPost updateMethod = conn.createPost(updateRequest, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(updateMethod, updateVo);
+		updateMethod.addHeader("Accept-Language", "en");
+		
+		HttpResponse updateResponse = conn.execute(updateMethod);
+		int  statusCode = updateResponse.getStatusLine().getStatusCode();
 		Assert.assertEquals(406, statusCode);
-		String errorMessage = RestConnection.toString(updateResponse);
+		String errorMessage = EntityUtils.toString(updateResponse.getEntity());
 		Assert.assertNotNull(errorMessage);
 		
 		// check that nothing has changed for the second user
@@ -1304,10 +1387,11 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertEquals("Smith", notUpdatedIdent.getUser().getLastName());
 		Assert.assertEquals(secondEmail, notUpdatedIdent.getUser().getEmail());
 
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUpdateUser_emptyInstitutionalEmail() throws IOException, URISyntaxException, InterruptedException {
+	public void testUpdateUser_emptyInstitutionalEmail() throws IOException, URISyntaxException {
 		String login = "update-" + UUID.randomUUID();
 		User user = userManager.createUser(login, login, login + "@openolat.com");
 		user.setProperty(UserConstants.INSTITUTIONALEMAIL, "inst" + login + "@openolat.com");
@@ -1329,11 +1413,14 @@ public class UserMgmtTest extends OlatRestTestCase {
 		updateVo.putProperty(UserConstants.INSTITUTIONALEMAIL, "");
 		
 		URI updateRequest = UriBuilder.fromUri(getContextURI()).path("users").path(id.getKey().toString()).build();
-		HttpRequest updateMethod = conn.createPost(updateRequest, updateVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> updateResponse = conn.execute(updateMethod);
-		int  statusCode = updateResponse.statusCode();
+		HttpPost updateMethod = conn.createPost(updateRequest, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(updateMethod, updateVo);
+		updateMethod.addHeader("Accept-Language", "en");
+		
+		HttpResponse updateResponse = conn.execute(updateMethod);
+		int  statusCode = updateResponse.getStatusLine().getStatusCode();
 		Assert.assertEquals(200, statusCode);
-		RestConnection.consume(updateResponse);
+		EntityUtils.consume(updateResponse.getEntity());
 		
 		Identity identity = securityManager.loadIdentityByKey(id.getKey());
 		String institutionalEmail = identity.getUser().getInstitutionalEmail();
@@ -1341,7 +1428,7 @@ public class UserMgmtTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void updateAdminUser_denied() throws IOException, URISyntaxException, InterruptedException {
+	public void updateAdminUser_denied() throws IOException, URISyntaxException {
 		String login = "rolemanager-" + UUID.randomUUID();
 		User user = userManager.createUser(login, login, login + "@openolat.com");
 		Identity id = securityManager.createAndPersistIdentityAndUser(null, login, null, user, "OLAT", BaseSecurity.DEFAULT_ISSUER, null, login, "2change-very-often", null);
@@ -1356,18 +1443,21 @@ public class UserMgmtTest extends OlatRestTestCase {
 		// Find administrator
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path("username")
 				.queryParam("username","administrator").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		UserVO adminVo = conn.parse(response, UserVO.class);
 		adminVo.setEmail(newEmail);
 		
 		URI updateRequest = UriBuilder.fromUri(getContextURI()).path("users").path(adminVo.getKey().toString()).build();
-		HttpRequest updateMethod = conn.createPost(updateRequest, adminVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> updateResponse = conn.execute(updateMethod);
-		int  statusCode = updateResponse.statusCode();
+		HttpPost updateMethod = conn.createPost(updateRequest, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(updateMethod, adminVo);
+		updateMethod.addHeader("Accept-Language", "en");
+		
+		HttpResponse updateResponse = conn.execute(updateMethod);
+		int  statusCode = updateResponse.getStatusLine().getStatusCode();
 		Assert.assertEquals(403, statusCode);
-		RestConnection.consume(updateResponse);
+		EntityUtils.consume(updateResponse.getEntity());
 		
 		Identity identity = securityManager.loadIdentityByKey(adminVo.getKey());
 		Assert.assertNotEquals(newEmail, identity.getUser().getEmail());
@@ -1375,7 +1465,7 @@ public class UserMgmtTest extends OlatRestTestCase {
 	
 	
 	@Test
-	public void testDeleteUser() throws IOException, URISyntaxException, InterruptedException {
+	public void testDeleteUser() throws IOException, URISyntaxException {
 		Identity idToDelete = JunitTestHelper.createAndPersistIdentityAsUser("user-to-delete-" + UUID.randomUUID());
 		dbInstance.commitAndCloseSession();
 		
@@ -1383,18 +1473,19 @@ public class UserMgmtTest extends OlatRestTestCase {
 
 		//delete an authentication token
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + idToDelete.getKey()).build();
-		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_XML);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_XML);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		Identity deletedIdent = securityManager.loadIdentityByKey(idToDelete.getKey());
 		assertNotNull(deletedIdent);//Identity aren't deleted anymore
 		assertEquals(Identity.STATUS_DELETED, deletedIdent.getStatus());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetRoles() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetRoles() throws IOException, URISyntaxException {
 		//create an author
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndAuthor("author-");
 		dbInstance.commitAndCloseSession();
@@ -1403,9 +1494,9 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//get roles of author
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + author.getKey() + "/roles").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		RolesVO roles = conn.parse(response, RolesVO.class);
 		Assert.assertNotNull(roles);
 		Assert.assertTrue(roles.isAuthor());
@@ -1415,10 +1506,11 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertFalse(roles.isInvitee());
 		Assert.assertFalse(roles.isOlatAdmin());
 		Assert.assertFalse(roles.isUserManager());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetRoles_xml() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetRoles_xml() throws IOException, URISyntaxException {
 		//create an author
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndAuthor("author-");
 		dbInstance.commitAndCloseSession();
@@ -1427,44 +1519,47 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//get roles of author
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + author.getKey() + "/roles").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_XML);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		String xmlOutput = RestConnection.toString(response);
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_XML, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		String xmlOutput = EntityUtils.toString(response.getEntity());
 		Assert.assertTrue(xmlOutput.contains("<rolesVO>"));
 		Assert.assertTrue(xmlOutput.contains("<olatAdmin>"));
+		conn.shutdown();
 	}
 	
 	@Test
-	public void getRoles_itself() throws IOException, URISyntaxException, InterruptedException {
+	public void getRoles_itself() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(id1);
 
 		URI rolesUri = UriBuilder.fromUri(getContextURI())
 			.path("users").path(id1.getKey().toString()).path("roles").build();
 		
-		HttpRequest method = conn.createGet(rolesUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(rolesUri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		RolesVO vo = conn.parse(response, RolesVO.class);
 		Assert.assertNotNull(vo);
 		Assert.assertFalse(vo.isInvitee());
 		Assert.assertFalse(vo.isGuestOnly());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void getRoles_notItself() throws IOException, URISyntaxException, InterruptedException {
+	public void getRoles_notItself() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(id1);
 
 		URI rolesUri = UriBuilder.fromUri(getContextURI())
 			.path("users").path(id2.getKey().toString()).path("roles").build();
 		
-		HttpRequest method = conn.createGet(rolesUri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(403, response.statusCode());
+		HttpGet method = conn.createGet(rolesUri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(403, response.getStatusLine().getStatusCode());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUpdateRolesAsAdmin() throws IOException, URISyntaxException, InterruptedException {
+	public void testUpdateRolesAsAdmin() throws IOException, URISyntaxException {
 		//create an author
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndAuthor("author-1");
 		dbInstance.commitAndCloseSession();
@@ -1478,9 +1573,10 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//get roles of author
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + author.getKey() + "/roles").build();
-		HttpRequest method = conn.createPost(request, roles, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, roles);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		RolesVO modRoles = conn.parse(response, RolesVO.class);
 		Assert.assertNotNull(modRoles);
 		
@@ -1496,19 +1592,20 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertTrue(reloadRoles.isUserManager());
 		Assert.assertFalse(reloadRoles.isAdministrator());
 		Assert.assertTrue(reloadRoles.isSystemAdmin());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUpdateRolesAsUserManager() throws IOException, URISyntaxException, InterruptedException {
+	public void testUpdateRolesAsUserManager() throws IOException, URISyntaxException {
 		//create an author
 		Identity user = JunitTestHelper.createAndPersistIdentityAsRndUser("user-2");
 		dbInstance.commitAndCloseSession();
 		
-		IdentityWithLogin userMgr = JunitTestHelper.createAndPersistRndUser("usermanager-1");
-		organisationService.addMember(userMgr.getIdentity(), OrganisationRoles.usermanager, userMgr.getIdentity());
+		IdentityWithLogin userManager = JunitTestHelper.createAndPersistRndUser("usermanager-1");
+		organisationService.addMember(userManager.getIdentity(), OrganisationRoles.usermanager, userManager.getIdentity());
 		dbInstance.commitAndCloseSession();
 				
-		RestConnection conn = new RestConnection(userMgr);
+		RestConnection conn = new RestConnection(userManager);
 		
 		RolesVO roles = new RolesVO();
 		roles.setAuthor(true);
@@ -1518,9 +1615,10 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//get roles of author
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + user.getKey() + "/roles").build();
-		HttpRequest method = conn.createPost(request, roles, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, roles);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		RolesVO modRoles = conn.parse(response, RolesVO.class);
 		Assert.assertNotNull(modRoles);
 		
@@ -1536,10 +1634,11 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertFalse(reloadRoles.isUserManager());
 		Assert.assertFalse(reloadRoles.isAdministrator());
 		Assert.assertFalse(reloadRoles.isSystemAdmin());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUpdateRolesAsRolesManager() throws IOException, URISyntaxException, InterruptedException {
+	public void testUpdateRolesAsRolesManager() throws IOException, URISyntaxException {
 		//create an author
 		Identity user = JunitTestHelper.createAndPersistIdentityAsRndUser("user-3");
 		dbInstance.commitAndCloseSession();
@@ -1558,9 +1657,10 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//get roles of author
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + user.getKey() + "/roles").build();
-		HttpRequest method = conn.createPost(request, roles, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, roles);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
 		RolesVO modRoles = conn.parse(response, RolesVO.class);
 		Assert.assertNotNull(modRoles);
 		
@@ -1576,10 +1676,11 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertTrue(reloadRoles.isUserManager());
 		Assert.assertFalse(reloadRoles.isAdministrator());
 		Assert.assertFalse(reloadRoles.isSystemAdmin());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetStatus() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetStatus() throws IOException, URISyntaxException {
 		//create an author
 		Identity user = JunitTestHelper.createAndPersistIdentityAsUser("status-" + UUID.randomUUID().toString());
 		dbInstance.commitAndCloseSession();
@@ -1588,17 +1689,18 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//get roles of author
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + user.getKey() + "/status").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		StatusVO status = conn.parse(response, StatusVO.class);
 		Assert.assertNotNull(status);
 		Assert.assertNotNull(status.getStatus());
 		Assert.assertEquals(2, status.getStatus().intValue());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUpdateStatus() throws IOException, URISyntaxException, InterruptedException {
+	public void testUpdateStatus() throws IOException, URISyntaxException {
 		//create a user
 		Identity user = JunitTestHelper.createAndPersistIdentityAsUser("login-denied-1-" + UUID.randomUUID().toString());
 		dbInstance.commitAndCloseSession();
@@ -1610,9 +1712,10 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//get roles of author
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + user.getKey() + "/status").build();
-		HttpRequest method = conn.createPost(request, status, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, status);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		StatusVO modStatus = conn.parse(response, StatusVO.class);
 		Assert.assertNotNull(modStatus);
 		Assert.assertNotNull(modStatus.getStatus());
@@ -1623,6 +1726,7 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Assert.assertNotNull(reloadIdentity);
 		Assert.assertNotNull(reloadIdentity.getStatus());
 		Assert.assertEquals(101, reloadIdentity.getStatus().intValue());
+		conn.shutdown();
 	}
 	
 	/**
@@ -1631,7 +1735,7 @@ public class UserMgmtTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void testUpdateStatus_denied() throws IOException, URISyntaxException, InterruptedException {
+	public void testUpdateStatus_denied() throws IOException, URISyntaxException {
 		//create a user
 		IdentityWithLogin user = JunitTestHelper.createAndPersistRndUser("login-denied-2");
 		IdentityWithLogin hacker = JunitTestHelper.createAndPersistRndUser("login-denied-2");
@@ -1644,15 +1748,17 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//get roles of author
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + user.getKey() + "/status").build();
-		HttpRequest method = conn.createPost(request, status, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(403, response.statusCode());
-		RestConnection.consume(response);
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, status);
+		HttpResponse response = conn.execute(method);
+		assertEquals(403, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetPreferences() throws IOException, URISyntaxException, InterruptedException {
+	public void testGetPreferences() throws IOException, URISyntaxException {
 		//create an author
 		Identity prefsId = JunitTestHelper.createAndPersistIdentityAsAuthor("prefs-1-" + UUID.randomUUID().toString());
 		dbInstance.commitAndCloseSession();
@@ -1664,16 +1770,17 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//get preferences of author
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + prefsId.getKey() + "/preferences").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		PreferencesVO prefsVo = conn.parse(response, PreferencesVO.class);
 		Assert.assertNotNull(prefsVo);
 		Assert.assertEquals("fr", prefsVo.getLanguage());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUpdatePreferences() throws IOException, URISyntaxException, InterruptedException {
+	public void testUpdatePreferences() throws IOException, URISyntaxException {
 		//create an author
 		Identity prefsId = JunitTestHelper.createAndPersistIdentityAsAuthor("prefs-1-" + UUID.randomUUID().toString());
 		dbInstance.commitAndCloseSession();
@@ -1688,9 +1795,10 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//get roles of author
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + prefsId.getKey() + "/preferences").build();
-		HttpRequest method = conn.createPost(request, prefsVo, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addJsonEntity(method, prefsVo);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		PreferencesVO modPrefs = conn.parse(response, PreferencesVO.class);
 		Assert.assertNotNull(modPrefs);
 		Assert.assertEquals("fr", prefsVo.getLanguage());
@@ -1699,19 +1807,20 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Identity reloadedPrefsId = securityManager.loadIdentityByKey(prefsId.getKey());
 		Assert.assertNotNull(reloadedPrefsId);
 		Assert.assertEquals("fr", reloadedPrefsId.getUser().getPreferences().getLanguage());
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserForums() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserForums() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("forums")
 				.queryParam("start", 0).queryParam("limit", 20).build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		ForumVOes forums = conn.parse(response, ForumVOes.class);
 		
 		assertNotNull(forums);
@@ -1734,53 +1843,56 @@ public class UserMgmtTest extends OlatRestTestCase {
 				assertNotNull(forum.getCourseKey());
 			}
 		}
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroupForum() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroupForum() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("forums")
 				.path("group").path(g1.getKey().toString())
 				.path("threads").queryParam("start", "0").queryParam("limit", "25").build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		MessageVOes threads = conn.parse(response, MessageVOes.class);
 		
 		assertNotNull(threads);
 		assertNotNull(threads.getMessages());
 		assertTrue(threads.getMessages().length > 0);
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserCourseForum() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserCourseForum() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("forums")
 				.path("course").path(demoCourse.getResourceableId().toString()).path(demoForumNode.getIdent())
 				.path("threads").queryParam("start", "0").queryParam("limit", 25).build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		MessageVOes threads = conn.parse(response, MessageVOes.class);
 		
 		assertNotNull(threads);
 		assertNotNull(threads.getMessages());
 		assertTrue(threads.getMessages().length > 0);
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserFolders() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserFolders() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("folders").build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		FolderVOes folders = conn.parse(response, FolderVOes.class);
 		
 		assertNotNull(folders);
@@ -1810,19 +1922,20 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//id1 is participant of g2. Make sure it found the folder
 		assertTrue(matchG2);
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroupFolder() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroupFolder() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("folders")
 				.path("group").path(g2.getKey().toString()).build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		List<FileVO> folders = parseFileArray(response);
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		List<FileVO> folders = parseFileArray(response.getEntity());
 
 		assertNotNull(folders);
 		assertFalse(folders.isEmpty());
@@ -1830,20 +1943,21 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		FileVO portrait = folders.get(0);
 		assertEquals("portrait.jpg", portrait.getTitle());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserBCCourseNodeFolder() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserBCCourseNodeFolder() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("folders")
 				.path("course").path(demoCourse.getResourceableId().toString()).path(demoBCCourseNode.getIdent()).build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 
-		List<FileVO> folders = parseFileArray(response);
+		List<FileVO> folders = parseFileArray(response.getEntity());
 
 		assertNotNull(folders);
 		assertFalse(folders.isEmpty());
@@ -1851,6 +1965,7 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		FileVO singlePage = folders.get(0);
 		assertEquals("singlepage.html", singlePage.getTitle());
+		conn.shutdown();
 	}
 	
 	@Test
@@ -1859,15 +1974,16 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("folders").path("personal").build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		
-		List<FileVO> files = parseFileArray(response);
+		List<FileVO> files = parseFileArray(response.getEntity());
 		
 		assertNotNull(files);
 		assertFalse(files.isEmpty());
 		assertEquals(2, files.size()); //private and public
+		conn.shutdown();
 	}
 	
 	@Test
@@ -1876,15 +1992,16 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users").path(id2.getKey().toString()).path("folders").path("personal").build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		
-		List<FileVO> files = parseFileArray(response);
+		List<FileVO> files = parseFileArray(response.getEntity());
 		
 		assertNotNull(files);
 		assertTrue(files.isEmpty());
 		assertEquals(0, files.size()); //private and public
+		conn.shutdown();
 	}
 	
 	@Test
@@ -1893,11 +2010,11 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users").path(id3.getKey().toString()).path("folders").path("personal").build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		
-		List<FileVO> files = parseFileArray(response);
+		List<FileVO> files = parseFileArray(response.getEntity());
 		
 		assertNotNull(files);
 		assertFalse(files.isEmpty());
@@ -1905,98 +2022,104 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		FileVO portrait = files.get(0);
 		assertEquals("portrait.jpg", portrait.getTitle());
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroup() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroup() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//retrieve all groups
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + id1.getKey() + "/groups").build();
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 
-		List<GroupVO> groups = conn.parseList(response, GroupVO.class);
+		List<GroupVO> groups = parseGroupArray(response.getEntity());
 		assertNotNull(groups);
 		assertEquals(3, groups.size());//g1, g2 and g3
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroup_managed() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroup_managed() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//retrieve managed groups
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("groups")
 				.queryParam("managed", "true").build();
 		
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 
-		List<GroupVO> groups = conn.parseList(response, GroupVO.class);
+		List<GroupVO> groups = parseGroupArray(response.getEntity());
 		assertNotNull(groups);
 		assertEquals(2, groups.size());//g1 and g3
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroup_notManaged() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroup_notManaged() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//retrieve free groups
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("groups")
 				.queryParam("managed", "false").build();
 		
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 
-		List<GroupVO> groups = conn.parseList(response, GroupVO.class);
+		List<GroupVO> groups = parseGroupArray(response.getEntity());
 		assertNotNull(groups);
 		assertEquals(1, groups.size());//g2
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroup_externalId() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroup_externalId() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//retrieve g1
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("groups")
 				.queryParam("externalId", g1externalId).build();
 		
-		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 
-		List<GroupVO> groups = conn.parseList(response, GroupVO.class);
+		List<GroupVO> groups = parseGroupArray(response.getEntity());
 		assertNotNull(groups);
 		assertEquals(1, groups.size());
 		assertEquals(g1.getKey(), groups.get(0).getKey());
 		assertEquals(g1externalId, groups.get(0).getExternalId());
 
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroupWithPaging() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroupWithPaging() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//retrieve all groups
 		URI uri =UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("groups")
 			.queryParam("start", 0).queryParam("limit", 1).build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		GroupVOes groups = conn.parse(response, GroupVOes.class);
 		
 		assertNotNull(groups);
 		assertNotNull(groups.getGroups());
 		assertEquals(1, groups.getGroups().length);
 		assertEquals(3, groups.getTotalCount());//g1, g2 and g3
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroup_checkRefusedAccess() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroup_checkRefusedAccess() throws IOException, URISyntaxException {
 		IdentityWithLogin alien = JunitTestHelper.createAndPersistRndUser("user-group-alien-");
 		dbInstance.commitAndCloseSession();
 		
@@ -2006,90 +2129,95 @@ public class UserMgmtTest extends OlatRestTestCase {
 		URI uri =UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("groups")
 			.queryParam("start", 0).queryParam("limit", 1).build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(Status.FORBIDDEN.getStatusCode(), response.statusCode());
-		RestConnection.consume(response);
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(Status.FORBIDDEN.getStatusCode(), response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroup_checkAllowedAccess() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroup_checkAllowedAccess() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection(id1);
 		
 		//retrieve all groups
 		URI uri =UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("groups")
 			.queryParam("start", 0).queryParam("limit", 1).build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		GroupVOes groups = conn.parse(response, GroupVOes.class);
 		
 		assertNotNull(groups);
 		assertNotNull(groups.getGroups());
 
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroup_owner() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroup_owner() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//retrieve all groups
 		URI uri =UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString())
 			.path("groups").path("owner").queryParam("start", 0).queryParam("limit", 1).build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		GroupVOes groups = conn.parse(response, GroupVOes.class);
 		
 		assertNotNull(groups);
 		assertNotNull(groups.getGroups());
 		assertEquals(1, groups.getGroups().length);
 		assertEquals(1, groups.getTotalCount());//g1
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroup_participant() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroup_participant() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//retrieve all groups
 		URI uri =UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString())
 			.path("groups").path("participant").queryParam("start", 0).queryParam("limit", 1).build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		GroupVOes groups = conn.parse(response, GroupVOes.class);
 		
 		assertNotNull(groups);
 		assertNotNull(groups.getGroups());
 		assertEquals(1, groups.getGroups().length);
 		assertEquals(2, groups.getTotalCount());//g2 and g3
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testUserGroupInfosWithPaging() throws IOException, URISyntaxException, InterruptedException {
+	public void testUserGroupInfosWithPaging() throws IOException, URISyntaxException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		//retrieve all groups
 		URI uri =UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).path("groups").path("infos")
 			.queryParam("start", 0).queryParam("limit", 1).build();
 
-		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
+		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
 		GroupInfoVOes groups = conn.parse(response, GroupInfoVOes.class);
 		
 		assertNotNull(groups);
 		assertNotNull(groups.getGroups());
 		assertEquals(1, groups.getGroups().length);
 		assertEquals(3, groups.getTotalCount());//g1, g2 and g3
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testPortrait() throws IOException, URISyntaxException, InterruptedException {
+	public void testPortrait() throws IOException, URISyntaxException {
 		URL portraitUrl = UserMgmtTest.class.getResource("portrait.jpg");
 		assertNotNull(portraitUrl);
 		File portrait = new File(portraitUrl.toURI());
@@ -2097,10 +2225,11 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//upload portrait
 		URI request = UriBuilder.fromUri(getContextURI()).path("/users/" + id1.getKey() + "/portrait").build();
-		HttpRequest method = conn.createPost(request, portrait, "portrait.jpg", List.of(), MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addMultipart(method, "portrait.jpg", portrait);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 
 		
 		//check if portraits exist
@@ -2111,10 +2240,10 @@ public class UserMgmtTest extends OlatRestTestCase {
 		
 		//check get portrait
 		URI getRequest = UriBuilder.fromUri(getContextURI()).path("/users/" + id1.getKey() + "/portrait").build();
-		HttpRequest getMethod = conn.createGet(getRequest, MediaType.APPLICATION_OCTET_STREAM);
-		HttpResponse<InputStream> getResponse = conn.execute(getMethod);
-		assertEquals(200, getResponse.statusCode());
-		InputStream in = getResponse.body();
+		HttpGet getMethod = conn.createGet(getRequest, MediaType.APPLICATION_OCTET_STREAM, true);
+		HttpResponse getResponse = conn.execute(getMethod);
+		assertEquals(200, getResponse.getStatusLine().getStatusCode());
+		InputStream in = getResponse.getEntity().getContent();
 		int b = 0;
 		int count = 0;
 		while((b = in.read()) > -1) {
@@ -2129,9 +2258,9 @@ public class UserMgmtTest extends OlatRestTestCase {
 
 		//check get portrait as Base64
 		UriBuilder getRequest2 = UriBuilder.fromUri(getContextURI()).path("users").path(id1.getKey().toString()).queryParam("withPortrait", "true");
-		HttpRequest getMethod2 = conn.createGet(getRequest2.build(), MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> getCode2 = conn.execute(getMethod2);
-		assertEquals(200, getCode2.statusCode());
+		HttpGet getMethod2 = conn.createGet(getRequest2.build(), MediaType.APPLICATION_JSON, true);
+		HttpResponse getCode2 = conn.execute(getMethod2);
+		assertEquals(200, getCode2.getStatusLine().getStatusCode());
 		UserVO userVo = conn.parse(getCode2, UserVO.class);
 		assertNotNull(userVo);
 		assertNotNull(userVo.getPortrait());
@@ -2148,11 +2277,12 @@ public class UserMgmtTest extends OlatRestTestCase {
 		} catch (Exception e) {
 			assertFalse("Cannot read the portrait after Base64 encoding/decoding", false);
 		}
-
+		
+		conn.shutdown();
 	}
 	
 	@Test
-	public void testPortrait_HEAD() throws IOException, URISyntaxException, InterruptedException {
+	public void testPortrait_HEAD() throws IOException, URISyntaxException {
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("portrait-1");
 		Identity idWithoutPortrait = JunitTestHelper.createAndPersistIdentityAsRndUser("portrait-2");
 		
@@ -2164,26 +2294,27 @@ public class UserMgmtTest extends OlatRestTestCase {
 		//upload portrait
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("users").path(id.getKey().toString()).path("portrait").build();
-		HttpRequest method = conn.createPost(request, portrait, "portrait.jpg", List.of(), MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addMultipart(method, "portrait.jpg", portrait);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		//check 200
 		URI headRequest = UriBuilder.fromUri(getContextURI())
 				.path("users").path(id.getKey().toString()).path("portrait").build();
-		HttpRequest headMethod = conn.createHead(headRequest, MediaType.APPLICATION_OCTET_STREAM);
-		HttpResponse<InputStream> headResponse = conn.execute(headMethod);
-		assertEquals(200, headResponse.statusCode());
-		RestConnection.consume(headResponse);
+		HttpHead headMethod = conn.createHead(headRequest, MediaType.APPLICATION_OCTET_STREAM, true);
+		HttpResponse headResponse = conn.execute(headMethod);
+		assertEquals(200, headResponse.getStatusLine().getStatusCode());
+		EntityUtils.consume(headResponse.getEntity());
 		
 		//check 404
 		URI headNoRequest = UriBuilder.fromUri(getContextURI())
 				.path("users").path(idWithoutPortrait.getKey().toString()).path("portrait").build();
-		HttpRequest headNoMethod = conn.createHead(headNoRequest, MediaType.APPLICATION_OCTET_STREAM);
-		HttpResponse<InputStream> headNoResponse = conn.execute(headNoMethod);
-		assertEquals(404, headNoResponse.statusCode());
-		RestConnection.consume(headNoResponse);
+		HttpHead headNoMethod = conn.createHead(headNoRequest, MediaType.APPLICATION_OCTET_STREAM, true);
+		HttpResponse headNoResponse = conn.execute(headNoMethod);
+		assertEquals(404, headNoResponse.getStatusLine().getStatusCode());
+		EntityUtils.consume(headNoResponse.getEntity());
 	}
 	
 	/**
@@ -2192,7 +2323,7 @@ public class UserMgmtTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void testPortrait_HEAD_sizes() throws IOException, URISyntaxException, InterruptedException {
+	public void testPortrait_HEAD_sizes() throws IOException, URISyntaxException {
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("portrait-3");
 		
 		URL portraitUrl = UserMgmtTest.class.getResource("portrait.jpg");
@@ -2203,38 +2334,39 @@ public class UserMgmtTest extends OlatRestTestCase {
 		//upload portrait
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("users").path(id.getKey().toString()).path("portrait").build();
-		HttpRequest method = conn.createPost(request, portrait, "portrait.jpg", List.of(), MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		conn.addMultipart(method, "portrait.jpg", portrait);
+		HttpResponse response = conn.execute(method);
+		assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		//check 200
 		URI headMasterRequest = UriBuilder.fromUri(getContextURI())
 				.path("users").path(id.getKey().toString()).path("portrait").path("master").build();
-		HttpRequest headMasterMethod = conn.createHead(headMasterRequest, MediaType.APPLICATION_OCTET_STREAM);
-		HttpResponse<InputStream> headMasterResponse = conn.execute(headMasterMethod);
-		assertEquals(200, headMasterResponse.statusCode());
-		RestConnection.consume(headMasterResponse);
+		HttpHead headMasterMethod = conn.createHead(headMasterRequest, MediaType.APPLICATION_OCTET_STREAM, true);
+		HttpResponse headMasterResponse = conn.execute(headMasterMethod);
+		assertEquals(200, headMasterResponse.getStatusLine().getStatusCode());
+		EntityUtils.consume(headMasterResponse.getEntity());
 		
 		//check 200
 		URI headBigRequest = UriBuilder.fromUri(getContextURI())
 				.path("users").path(id.getKey().toString()).path("portrait").path("big").build();
-		HttpRequest headBigMethod = conn.createHead(headBigRequest, MediaType.APPLICATION_OCTET_STREAM);
-		HttpResponse<InputStream> headBigResponse = conn.execute(headBigMethod);
-		assertEquals(200, headBigResponse.statusCode());
-		RestConnection.consume(headBigResponse);
+		HttpHead headBigMethod = conn.createHead(headBigRequest, MediaType.APPLICATION_OCTET_STREAM, true);
+		HttpResponse headBigResponse = conn.execute(headBigMethod);
+		assertEquals(200, headBigResponse.getStatusLine().getStatusCode());
+		EntityUtils.consume(headBigResponse.getEntity());
 		
 		//check 200
 		URI headSmallRequest = UriBuilder.fromUri(getContextURI())
 				.path("users").path(id.getKey().toString()).path("portrait").path("small").build();
-		HttpRequest headSmallMethod = conn.createHead(headSmallRequest, MediaType.APPLICATION_OCTET_STREAM);
-		HttpResponse<InputStream> headSmallResponse = conn.execute(headSmallMethod);
-		assertEquals(200, headSmallResponse.statusCode());
-		RestConnection.consume(headSmallResponse);
+		HttpHead headSmallMethod = conn.createHead(headSmallRequest, MediaType.APPLICATION_OCTET_STREAM, true);
+		HttpResponse headSmallResponse = conn.execute(headSmallMethod);
+		assertEquals(200, headSmallResponse.getStatusLine().getStatusCode());
+		EntityUtils.consume(headSmallResponse.getEntity());
 	}
 	
 	@Test
-	public void rename() throws URISyntaxException, IOException, InterruptedException {
+	public void rename() throws URISyntaxException, IOException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		IdentityWithLogin id = JunitTestHelper.createAndPersistRndUser("portrait-3");
@@ -2243,10 +2375,10 @@ public class UserMgmtTest extends OlatRestTestCase {
 		URI request = UriBuilder.fromUri(getContextURI()).path("users").path(id.getKey().toString())
 			.path("username").queryParam("username", newUsername).build();
 		
-		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
-		HttpResponse<InputStream> response = conn.execute(method);
-		Assert.assertEquals(200, response.statusCode());
-		RestConnection.consume(response);
+		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
+		HttpResponse response = conn.execute(method);
+		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		EntityUtils.consume(response.getEntity());
 		
 		Identity renamedId = securityManager.loadIdentityByKey(id.getKey());
 		Assert.assertEquals(newUsername, renamedId.getUser().getNickName());
@@ -2254,5 +2386,35 @@ public class UserMgmtTest extends OlatRestTestCase {
 		Authentication auth = securityManager.findAuthentication(renamedId, "OLAT", BaseSecurity.DEFAULT_ISSUER);
 		Assert.assertNotNull(auth);
 		Assert.assertEquals(newUsername, auth.getAuthusername());
+	}
+
+	protected List<UserVO> parseUserArray(HttpEntity entity) {
+		try(InputStream in=entity.getContent()) {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(in, new TypeReference<List<UserVO>>(){/* */});
+		} catch (Exception e) {
+			log.error("", e);
+			return null;
+		}
+	}
+	
+	protected List<ManagedUserVO> parseManagedUserArray(HttpEntity entity) {
+		try(InputStream in=entity.getContent()) {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(in, new TypeReference<List<ManagedUserVO>>(){/* */});
+		} catch (Exception e) {
+			log.error("", e);
+			return null;
+		}
+	}
+	
+	protected List<GroupVO> parseGroupArray(HttpEntity entity) {
+		try(InputStream in=entity.getContent()) {
+			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
+			return mapper.readValue(in, new TypeReference<List<GroupVO>>(){/* */});
+		} catch (Exception e) {
+			log.error("", e);
+			return null;
+		}
 	}
 }

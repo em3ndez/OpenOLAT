@@ -33,14 +33,9 @@ import static io.undertow.servlet.Servlets.servlet;
 
 import java.io.InputStream;
 import java.net.URI;
-import java.net.http.HttpResponse;
 import java.util.List;
 
-import jakarta.servlet.DispatcherType;
-import jakarta.servlet.MultipartConfigElement;
-import jakarta.servlet.ServletException;
-import jakarta.ws.rs.core.UriBuilder;
-
+import org.apache.http.HttpEntity;
 import org.apache.logging.log4j.Logger;
 import org.junit.Before;
 import org.olat.core.helpers.SettingsTest;
@@ -64,6 +59,10 @@ import io.undertow.server.handlers.PathHandler;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.ServletInfo;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.MultipartConfigElement;
+import jakarta.servlet.ServletException;
+import jakarta.ws.rs.core.UriBuilder;
 
 /**
  * 
@@ -154,8 +153,8 @@ public abstract class OlatRestTestCase extends OlatTestCase {
 		return UriBuilder.fromUri(getBaseURI()).path(CONTEXT_PATH).build();
 	}
 	
-	protected List<ErrorVO> parseErrorArray(HttpResponse<InputStream> body) {
-		try(InputStream in=body.body()) {
+	protected List<ErrorVO> parseErrorArray(HttpEntity body) {
+		try(InputStream in=body.getContent()) {
 			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
 			return mapper.readValue(in, new TypeReference<List<ErrorVO>>(){/* */});
 		} catch (Exception e) {
@@ -164,8 +163,8 @@ public abstract class OlatRestTestCase extends OlatTestCase {
 		}
 	}
 	
-	protected List<LinkVO> parseLinkArray(HttpResponse<InputStream> body) {
-		try(InputStream in = body.body()) {
+	protected List<LinkVO> parseLinkArray(HttpEntity body) {
+		try(InputStream in = body.getContent()) {
 			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
 			return mapper.readValue(in, new TypeReference<List<LinkVO>>(){/* */});
 		} catch (Exception e) {
@@ -174,8 +173,8 @@ public abstract class OlatRestTestCase extends OlatTestCase {
 		}
 	}
 	
-	protected List<FileVO> parseFileArray(HttpResponse<InputStream> body) {
-		try(InputStream in = body.body()) {
+	protected List<FileVO> parseFileArray(HttpEntity body) {
+		try(InputStream in = body.getContent()) {
 			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
 			return mapper.readValue(in, new TypeReference<List<FileVO>>(){/* */});
 		} catch (Exception e) {
