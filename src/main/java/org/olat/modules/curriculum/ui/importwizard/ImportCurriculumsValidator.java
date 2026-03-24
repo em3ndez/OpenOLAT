@@ -560,10 +560,16 @@ public class ImportCurriculumsValidator {
 		}
 		
 		// Object type matches repository entry runtime type
-		if(entry != null && ((importedRow.type() == CurriculumExportType.TMPL && entry.getRuntimeType() != RepositoryEntryRuntimeType.template)
-				|| (importedRow.type() == CurriculumExportType.COURSE && entry.getRuntimeType() != RepositoryEntryRuntimeType.curricular))) {
+		if(entry != null && importedRow.type() == CurriculumExportType.TMPL && entry.getRuntimeType() != RepositoryEntryRuntimeType.template) {
 			String column = translate(ImportCurriculumsCols.objectType.i18nHeaderKey());
 			importedRow.addValidationError(ImportCurriculumsCols.objectType, column, null, translate("error.wrong.runtime.type"));
+		} else if(entry != null && importedRow.type() == CurriculumExportType.COURSE && entry.getRuntimeType() != RepositoryEntryRuntimeType.curricular) {
+			String column = translate(ImportCurriculumsCols.objectType.i18nHeaderKey());
+			if(roles.isAdministrator() && entry.getRuntimeType() == RepositoryEntryRuntimeType.standalone) {
+				importedRow.addValidationWarning(ImportCurriculumsCols.objectType, column, null, translate("error.wrong.runtime.type"));
+			} else {
+				importedRow.addValidationError(ImportCurriculumsCols.objectType, column, null, translate("error.wrong.runtime.type"));
+			}
 		}
 
 		// Dates
