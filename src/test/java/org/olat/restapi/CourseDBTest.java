@@ -22,24 +22,22 @@ package org.olat.restapi;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.util.EntityUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
 import org.olat.core.id.OLATResourceable;
+import org.olat.core.util.httpclient.ConnectionUtilities.NameValuePair;
 import org.olat.core.util.resource.OresHelper;
 import org.olat.course.CourseFactory;
 import org.olat.course.ICourse;
@@ -85,7 +83,7 @@ public class CourseDBTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void createEntry_putQuery() throws IOException, URISyntaxException {
+	public void createEntry_putQuery() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(auth);
 		
 		String category = createRndCategory();
@@ -94,13 +92,12 @@ public class CourseDBTest extends OlatRestTestCase {
 		
 		UriBuilder uri = getUriBuilder(course.getResourceableId(), category).path("values")
 				.path(key).queryParam("value", value);
-		HttpPut put = conn.createPut(uri.build(), MediaType.APPLICATION_JSON, true);
+		HttpRequest put = conn.createPut(uri.build(), MediaType.APPLICATION_JSON);
 	
-		HttpResponse response = conn.execute(put);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
-		
-		conn.shutdown();
+		HttpResponse<InputStream> response = conn.execute(put);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
+
 		
 		CourseDBEntry entry = courseDbManager.getValue(course, auth.getIdentity(), category, key);
 		Assert.assertNotNull(entry);
@@ -110,7 +107,7 @@ public class CourseDBTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void createEntry_putQuery_repoKey() throws IOException, URISyntaxException {
+	public void createEntry_putQuery_repoKey() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(auth);
 		
 		OLATResourceable courseOres = OresHelper.createOLATResourceableInstance("CourseModule", course.getResourceableId());
@@ -122,13 +119,12 @@ public class CourseDBTest extends OlatRestTestCase {
 		
 		UriBuilder uri = getUriBuilder(courseRe.getKey(), category).path("values")
 				.path(key).queryParam("value", value);
-		HttpPut put = conn.createPut(uri.build(), MediaType.APPLICATION_JSON, true);
+		HttpRequest put = conn.createPut(uri.build(), MediaType.APPLICATION_JSON);
 	
-		HttpResponse response = conn.execute(put);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
-		
-		conn.shutdown();
+		HttpResponse<InputStream> response = conn.execute(put);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
+
 		
 		CourseDBEntry entry = courseDbManager.getValue(course, auth.getIdentity(), category, key);
 		Assert.assertNotNull(entry);
@@ -138,7 +134,7 @@ public class CourseDBTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void createEntry_putJsonEntity() throws IOException, URISyntaxException {
+	public void createEntry_putJsonEntity() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(auth);
 		
 		String category = createRndCategory();
@@ -148,18 +144,15 @@ public class CourseDBTest extends OlatRestTestCase {
 		keyValuePair.setValue("first value");
 		
 		UriBuilder uri = getUriBuilder(course.getResourceableId(), category).path("values");
-		HttpPut put = conn.createPut(uri.build(), MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(put, keyValuePair);
-		
-		HttpResponse response = conn.execute(put);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
-		
-		conn.shutdown();
+		HttpRequest put = conn.createPut(uri.build(), keyValuePair, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(put);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
+
 	}
 	
 	@Test
-	public void createEntry_post() throws IOException, URISyntaxException {
+	public void createEntry_post() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(auth);
 		
 		String category = createRndCategory();
@@ -167,14 +160,12 @@ public class CourseDBTest extends OlatRestTestCase {
 		String value = "create the value by POST";
 		
 		UriBuilder uri = getUriBuilder(course.getResourceableId(), category).path("values").path(key);
-		HttpPost put = conn.createPost(uri.build(), MediaType.APPLICATION_JSON);
-		conn.addEntity(put, new BasicNameValuePair("val", value));
-		
-		HttpResponse response = conn.execute(put);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
-		
-		conn.shutdown();
+		List<NameValuePair> formParameters = List.of(new NameValuePair("val", value));
+		HttpRequest put = conn.createPost(uri.build(), formParameters, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(put);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
+
 		
 		CourseDBEntry entry = courseDbManager.getValue(course, auth.getIdentity(), category, key);
 		Assert.assertNotNull(entry);
@@ -184,7 +175,7 @@ public class CourseDBTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void createEntry_get() throws IOException, URISyntaxException {
+	public void createEntry_get() throws IOException, URISyntaxException, InterruptedException {
 		String category = createRndCategory();
 		String key = "getit";
 		String value = "get a value";
@@ -196,13 +187,12 @@ public class CourseDBTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection(auth);
 
 		UriBuilder uri = getUriBuilder(course.getResourceableId(), category).path("values").path(key);
-		HttpGet get = conn.createGet(uri.build(), MediaType.APPLICATION_JSON, true);
+		HttpRequest get = conn.createGet(uri.build(), MediaType.APPLICATION_JSON);
 		
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		KeyValuePair savedEntry = conn.parse(response, KeyValuePair.class);
-		
-		conn.shutdown();
+
 		
 		Assert.assertNotNull(savedEntry);
 		Assert.assertEquals(key, savedEntry.getKey());
@@ -210,7 +200,7 @@ public class CourseDBTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void getUsedCategories() throws IOException, URISyntaxException {
+	public void getUsedCategories() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(auth);
 		
 		String category = createRndCategory();
@@ -220,14 +210,11 @@ public class CourseDBTest extends OlatRestTestCase {
 		keyValuePair.setValue("category value");
 		
 		UriBuilder uri = getUriBuilder(course.getResourceableId(), category).path("values");
-		HttpPut put = conn.createPut(uri.build(), MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(put, keyValuePair);
-		
-		HttpResponse response = conn.execute(put);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
-		
-		conn.shutdown();
+		HttpRequest put = conn.createPut(uri.build(), keyValuePair, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(put);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
+
 		
 		List<String> categories = courseDbManager.getUsedCategories(course);
 		Assert.assertNotNull(categories);

@@ -34,18 +34,18 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.Locale;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPut;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.basesecurity.GroupRoles;
@@ -82,18 +82,17 @@ public class CoursesFoldersTest extends OlatRestTestCase {
 	private RepositoryService repositoryService;
 	
 	@Test
-	public void testGetFolderInfo() throws IOException, URISyntaxException {
+	public void testGetFolderInfo() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		CourseWithBC courseWithBc = deployCourse();
 		URI uri = UriBuilder.fromUri(getNodeURI(courseWithBc)).build();
-		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		FolderVO folder = conn.parse(response, FolderVO.class);
 		assertNotNull(folder);
-		
-		conn.shutdown();
+
 	}
 	
 	/**
@@ -102,7 +101,7 @@ public class CoursesFoldersTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void testGetFolderInfoByUser() throws IOException, URISyntaxException {
+	public void testGetFolderInfoByUser() throws IOException, URISyntaxException, InterruptedException {
 		IdentityWithLogin user = JunitTestHelper.createAndPersistRndUser("rest-user-bc");
 		RestConnection conn = new RestConnection(user);
 		
@@ -114,35 +113,33 @@ public class CoursesFoldersTest extends OlatRestTestCase {
 		dbInstance.commitAndCloseSession();
 		
 		URI uri = UriBuilder.fromUri(getNodeURI(courseWithBc)).build();
-		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		FolderVO folder = conn.parse(response, FolderVO.class);
 		assertNotNull(folder);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testGetFoldersInfo() throws IOException, URISyntaxException {
+	public void testGetFoldersInfo() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		CourseWithBC courseWithBc = deployCourse();
 
 		URI uri = UriBuilder.fromUri(getNodesURI(courseWithBc)).build();
-		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		FolderVOes folders = conn.parse(response, FolderVOes.class);
 		assertNotNull(folders);
 		assertEquals(1, folders.getTotalCount());
 		assertNotNull(folders.getFolders());
 		assertEquals(1, folders.getFolders().length);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testUploadFile() throws IOException, URISyntaxException {
+	public void testUploadFile() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		CourseWithBC courseWithBc = deployCourse();
 		
@@ -153,10 +150,9 @@ public class CoursesFoldersTest extends OlatRestTestCase {
 		Assert.assertNotNull(fileUrl);
 		File file = new File(fileUrl.toURI());
 		
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		conn.addMultipart(method, file.getName(), file);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, file, file.getName(), List.of(), MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
 		String relPath = "course/" + courseWithBc.course.getResourceableId() + "/foldernodes/" + courseWithBc.bcNode.getIdent();
 		VFSMetadata fileMetadata = vfsMetadataDao.getMetadata(relPath, file.getName(), Boolean.FALSE);
@@ -166,13 +162,12 @@ public class CoursesFoldersTest extends OlatRestTestCase {
 		VFSContainer folder = BCCourseNode.getNodeFolderContainer((BCCourseNode)courseWithBc.bcNode, courseWithBc.course.getCourseEnvironment());
 		VFSItem item = folder.resolve(file.getName());
 		Assert.assertNotNull(item);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
 
-	public void testUploadFileWithSpecialCharacter() throws IOException, URISyntaxException {
+	public void testUploadFileWithSpecialCharacter() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		CourseWithBC courseWithBc = deployCourse();
@@ -185,10 +180,9 @@ public class CoursesFoldersTest extends OlatRestTestCase {
 		File file = new File(fileUrl.toURI());
 		String filename = "SingleP\u00E4ge.html";
 		
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		conn.addMultipart(method, filename, file);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, file, filename, List.of(), MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
 		String relPath = "course/" + courseWithBc.course.getResourceableId() + "/foldernodes/" + courseWithBc.bcNode.getIdent();
 		VFSMetadata fileMetadata = vfsMetadataDao.getMetadata(relPath, filename, Boolean.FALSE);
@@ -200,19 +194,18 @@ public class CoursesFoldersTest extends OlatRestTestCase {
 		VFSItem item = folder.resolve(filename);
 		Assert.assertNotNull(item);
 		Assert.assertEquals(filename, item.getName());
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testCreateFolder() throws IOException, URISyntaxException {
+	public void testCreateFolder() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		CourseWithBC courseWithBc = deployCourse();
 		
 		URI uri = UriBuilder.fromUri(getNodeURI(courseWithBc)).path("files").path("RootFolder").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
 		String relPath = "course/" + courseWithBc.course.getResourceableId() + "/foldernodes/" + courseWithBc.bcNode.getIdent();
 		VFSMetadata folderMetadata = vfsMetadataDao.getMetadata(relPath, "RootFolder", Boolean.TRUE);
@@ -222,19 +215,18 @@ public class CoursesFoldersTest extends OlatRestTestCase {
 		VFSItem item = folder.resolve("RootFolder");
 		Assert.assertNotNull(item);
 		Assert.assertTrue(item instanceof VFSContainer);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testCreateFolders() throws IOException, URISyntaxException {
+	public void testCreateFolders() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		CourseWithBC courseWithBc = deployCourse();
 		
 		URI uri = UriBuilder.fromUri(getNodeURI(courseWithBc)).path("files").path("NewFolder1").path("NewFolder2").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		
 		VFSContainer folder = BCCourseNode.getNodeFolderContainer((BCCourseNode)courseWithBc.bcNode, courseWithBc.course.getCourseEnvironment());
 		VFSItem item = folder.resolve("NewFolder1");
@@ -245,12 +237,11 @@ public class CoursesFoldersTest extends OlatRestTestCase {
 		VFSItem item2 = newFolder1.resolve("NewFolder2");
 		assertNotNull(item2);
 		assertTrue(item2 instanceof VFSContainer);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testCreateFolders_tooMany() throws IOException, URISyntaxException {
+	public void testCreateFolders_tooMany() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		CourseWithBC courseWithBc = deployCourse();
 		URI uri = UriBuilder.fromUri(getNodeURI(courseWithBc)).path("files").path("RootFolder")
@@ -258,35 +249,33 @@ public class CoursesFoldersTest extends OlatRestTestCase {
 				.path("Folder").path("Folder").path("Folder").path("Folder").path("Folder")
 				.path("Folder").path("Folder").path("Folder").path("Folder").path("Folder")
 				.path("Folder").path("Folder").path("Folder").path("Folder").path("Folder").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(406, response.getStatusLine().getStatusCode());
-		
-		conn.shutdown();
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(406, response.statusCode());
+
 	}
 	
 	@Test
-	public void testCreateFolders_withSpecialCharacters() throws IOException, URISyntaxException {
+	public void testCreateFolders_withSpecialCharacters() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		CourseWithBC courseWithBc = deployCourse();
 		
 		URI uri = UriBuilder.fromUri(getNodeURI(courseWithBc)).path("files").path("RootFolder")
 				.path("F\u00FClder").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		
 		VFSContainer folder = BCCourseNode.getNodeFolderContainer((BCCourseNode)courseWithBc.bcNode, courseWithBc.course.getCourseEnvironment());
 		VFSItem item = folder.resolve("RootFolder/F\u00FClder");
 		assertNotNull(item);
 		assertTrue(item instanceof VFSContainer);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void deleteFolder() throws IOException, URISyntaxException {
+	public void deleteFolder() throws IOException, URISyntaxException, InterruptedException {
 		CourseWithBC courseWithBc = deployCourse();
 		
 		//add some folders
@@ -300,14 +289,13 @@ public class CoursesFoldersTest extends OlatRestTestCase {
 
 		
 		URI uri = UriBuilder.fromUri(getNodeURI(courseWithBc)).path("files").path("FolderToDelete").build();
-		HttpDelete method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		
 		VFSItem deletedItem = folder.resolve("FolderToDelete");
 		assertNull(deletedItem);
-		
-		conn.shutdown();
+
 	}
 	
 	private URI getNodeURI(CourseWithBC courseWithBc) {

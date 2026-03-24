@@ -23,9 +23,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -36,20 +39,11 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
 import org.apache.commons.lang3.time.DateUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpHead;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.HttpMultipartMode;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.util.EntityUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
 import org.olat.core.id.Identity;
+import org.olat.core.util.httpclient.ConnectionUtilities.NameValuePair;
 import org.olat.core.util.vfs.VFSLeaf;
 import org.olat.course.certificate.Certificate;
 import org.olat.course.certificate.CertificateLight;
@@ -87,7 +81,7 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 	private CertificationProgramService certificationProgramService;
 	
 	@Test
-	public void getUserCertificatesInformations() throws IOException, URISyntaxException {
+	public void getUserCertificatesInformations() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		Identity assessedIdentity = JunitTestHelper.createAndPersistIdentityAsRndUser("user-cert-1");
@@ -107,9 +101,9 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users")
 				.path(assessedIdentity.getKey().toString())
 				.path("certificates").build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
 		CertificateVOes certificateVoes = conn.parse(response, CertificateVOes.class);
 		Assert.assertNotNull(certificateVoes);
@@ -127,11 +121,10 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		Assert.assertEquals(assessedIdentity.getUser().getFirstName(), user.getFirstName());
 		Assert.assertEquals(assessedIdentity.getUser().getLastName(), user.getLastName());
 
-		conn.shutdown();
 	}
 	
 	@Test
-	public void getUserManagedCertificatesInfos() throws IOException, URISyntaxException {
+	public void getUserManagedCertificatesInfos() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		Identity identity = JunitTestHelper.createAndPersistIdentityAsRndUser("user-cert-6");
@@ -152,9 +145,9 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 				.queryParam("managed", "true")
 				.queryParam("last", "true")
 				.build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
 		CertificateVOes certificateVoes = conn.parse(response, CertificateVOes.class);
 		Assert.assertNotNull(certificateVoes);
@@ -171,9 +164,9 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 				.path("certificates")
 				.queryParam("last", "true")
 				.build();
-		HttpGet allMethod = conn.createGet(allUri, MediaType.APPLICATION_JSON, true);
-		HttpResponse allResponse = conn.execute(allMethod);
-		Assert.assertEquals(200, allResponse.getStatusLine().getStatusCode());
+		HttpRequest allMethod = conn.createGet(allUri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> allResponse = conn.execute(allMethod);
+		Assert.assertEquals(200, allResponse.statusCode());
 		
 		CertificateVOes allCertificateVoes = conn.parse(allResponse, CertificateVOes.class);
 		Assert.assertNotNull(allCertificateVoes);
@@ -183,12 +176,11 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 			.hasSize(2)
 			.map(CertificateVO::getKey)
 			.containsExactlyInAnyOrder(certificate.getKey(), managedCertificate.getKey());
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void getUserManagedCertificatesInfosByExternalId() throws IOException, URISyntaxException {
+	public void getUserManagedCertificatesInfosByExternalId() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		Identity identity = JunitTestHelper.createAndPersistIdentityAsRndUser("user-cert-6");
@@ -206,9 +198,9 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 				.path("certificates")
 				.queryParam("externalId", externalId)
 				.build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
 		CertificateVOes certificateVoes = conn.parse(response, CertificateVOes.class);
 		Assert.assertNotNull(certificateVoes);
@@ -218,12 +210,11 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		CertificateVO certificateVo = certificateVoes.getCertificates().get(0);
 		Assert.assertNotNull(certificateVo);
 		Assert.assertEquals(managedCertificate.getKey(), certificateVo.getKey());
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void getUserCertificatePdf() throws IOException, URISyntaxException {
+	public void getUserCertificatePdf() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		Identity assessedIdentity = JunitTestHelper.createAndPersistIdentityAsRndUser("user-cert-2");
@@ -243,22 +234,21 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users")
 				.path(assessedIdentity.getKey().toString())
 				.path("certificates").path(certificate.getKey().toString()).build();
-		HttpHead method = conn.createHead(uri, "application/pdf", true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createHead(uri, "application/pdf");
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		//check  with a stupid number
-		HttpGet getMethod = conn.createGet(uri, "application/pdf", true);
-		HttpResponse getResponse = conn.execute(getMethod);
-		Assert.assertEquals(200, getResponse.getStatusLine().getStatusCode());
-		EntityUtils.consume(getResponse.getEntity());
+		HttpRequest getMethod = conn.createGet(uri, "application/pdf");
+		HttpResponse<InputStream> getResponse = conn.execute(getMethod);
+		Assert.assertEquals(200, getResponse.statusCode());
+		RestConnection.consume(getResponse);
 
-		conn.shutdown();
 	}
 	
 	@Test
-	public void getUserCertificateInfos() throws IOException, URISyntaxException {
+	public void getUserCertificateInfos() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		Identity identity = JunitTestHelper.createAndPersistIdentityAsRndUser("user-cert-5");
@@ -282,9 +272,9 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users")
 				.path(identity.getKey().toString())
 				.path("certificates").path(certificate.getKey().toString()).build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		CertificateVO certificateVo = conn.parse(response, CertificateVO.class);
 		
 		Assert.assertNotNull(certificateVo);
@@ -295,11 +285,10 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		Assert.assertEquals(Long.valueOf(-1l), certificateVo.getCourseResourceKey());
 		Assert.assertEquals(nextCertificationDate, certificateVo.getNextCertificationDate());
 
-		conn.shutdown();
 	}
 	
 	@Test
-	public void uploadCertificateStandalone() throws IOException, URISyntaxException {
+	public void uploadCertificateStandalone() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		Identity assessedIdentity = JunitTestHelper.createAndPersistIdentityAsRndUser("cert-4");
@@ -312,7 +301,6 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		URL certificateUrl = CourseCertificationTest.class.getResource("certificate.pdf");
 		Assert.assertNotNull(certificateUrl);
 		File certificateFile = new File(certificateUrl.toURI());
-		HttpPost method = conn.createPost(uri, MediaType.APPLICATION_JSON);
 		
 		Calendar cal = Calendar.getInstance();
 		cal.set(Calendar.MINUTE, 0);
@@ -322,20 +310,16 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		cal.add(Calendar.DATE, 3);
 		Date nextCertificationDate = cal.getTime();
 		
-		MultipartEntityBuilder builder = MultipartEntityBuilder.create()
-				.setMode(HttpMultipartMode.BROWSER_COMPATIBLE)
-				.addTextBody("filename", certificateFile.getName())
-				.addTextBody("archivedResourceKey", "726348723")
-				.addTextBody("externalId", "DM-726348723")
-				.addTextBody("managedFlags", "delete")
-				.addTextBody("creationDate", ObjectFactory.formatDate(creationDate))
-				.addTextBody("nextRecertificationDate", ObjectFactory.formatDate(nextCertificationDate))
-				.addBinaryBody("file", certificateFile, ContentType.APPLICATION_OCTET_STREAM, certificateFile.getName());
-		method.setEntity(builder.build());
-
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		List<NameValuePair> formParameters = List.of(
+				new NameValuePair("archivedResourceKey", "726348723"),
+				new NameValuePair("externalId", "DM-726348723"),
+				new NameValuePair("managedFlags", "delete"),
+				new NameValuePair("creationDate", ObjectFactory.formatDate(creationDate)),
+				new NameValuePair("nextRecertificationDate", ObjectFactory.formatDate(nextCertificationDate)));
+		HttpRequest method = conn.createPost(uri, certificateFile, certificateFile.getName(), formParameters, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 
 		//Check certificate
 		List<CertificateLight> certificates = certificatesManager.getLastCertificates(assessedIdentity);
@@ -356,7 +340,7 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void deleteUserCertificate() throws IOException, URISyntaxException {
+	public void deleteUserCertificate() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		Identity identity = JunitTestHelper.createAndPersistIdentityAsRndUser("user-cert-5");
@@ -372,18 +356,17 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users")
 				.path(identity.getKey().toString())
 				.path("certificates").path(certificate.getKey().toString()).build();
-		HttpDelete method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
 		Certificate deletedCertificate = certificatesManager.getCertificateById(certificate.getKey());
 		Assert.assertNull(deletedCertificate);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void deleteUserCourseCertificate() throws IOException, URISyntaxException {
+	public void deleteUserCourseCertificate() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		Identity identity = JunitTestHelper.createAndPersistIdentityAsRndUser("user-cert-5");
@@ -400,18 +383,17 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users")
 				.path(identity.getKey().toString())
 				.path("certificates").path(certificate.getKey().toString()).build();
-		HttpDelete method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
 		Certificate deletedCertificate = certificatesManager.getCertificateById(certificate.getKey());
 		Assert.assertNull(deletedCertificate);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void updateCertificate() throws IOException, URISyntaxException {
+	public void updateCertificate() throws IOException, URISyntaxException, InterruptedException {
 		Identity participant = JunitTestHelper.createAndPersistIdentityAsRndUser("prog-participant-4", Locale.ENGLISH);
 		CertificationProgram program = certificationProgramService.createCertificationProgram("program-to-curriculum-5", "CP5", null);
 		program.setRecertificationEnabled(true);
@@ -438,9 +420,9 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		URI uri = UriBuilder.fromUri(getContextURI()).path("users")
 				.path(participant.getKey().toString())
 				.path("certificates").path(certificate.getKey().toString()).build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		CertificateVO certificateVo = conn.parse(response, CertificateVO.class);
 		
 		Assert.assertNotNull(certificateVo);
@@ -456,11 +438,11 @@ public class UserCertificationWebServiceTest extends OlatRestTestCase {
 		URI updateUri = UriBuilder.fromUri(getContextURI()).path("users")
 				.path(participant.getKey().toString())
 				.path("certificates").build();
-		HttpPut putMethod = conn.createPut(updateUri, MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(putMethod, certificateVo);
-		HttpResponse putResponse = conn.execute(putMethod);
-		Assert.assertEquals(200, putResponse.getStatusLine().getStatusCode());
+		HttpRequest putMethod = conn.createPut(updateUri, certificateVo, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> putResponse = conn.execute(putMethod);
+		Assert.assertEquals(200, putResponse.statusCode());
 		CertificateVO updatedCertificateVo = conn.parse(putResponse, CertificateVO.class);
+		
 		Assert.assertNotNull(updatedCertificateVo);
 		Assert.assertEquals(program.getKey(), updatedCertificateVo.getCertificationProgramKey());
 		Assert.assertNotNull(updatedCertificateVo.getNextCertificationDate());

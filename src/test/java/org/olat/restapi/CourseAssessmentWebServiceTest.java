@@ -24,10 +24,13 @@ import static org.olat.test.JunitTestHelper.random;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -35,11 +38,6 @@ import java.util.Locale;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Before;
@@ -126,7 +124,7 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getCourseRootResultsAllParticipants()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		ICourse course = deployQtiCourse();
@@ -139,9 +137,9 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		waitAssessmentEntries(participant, course);
 
 		URI uri = getCourseURI(course).build();
-		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		
 		List<AssessableResultsVO> results = conn.parseList(response, AssessableResultsVO.class);
 		Assert.assertNotNull(results);
@@ -154,12 +152,11 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		Assert.assertNull(result.getLastUserModified());
 		Assert.assertNull(result.getLastCoachModified());
 
-		conn.shutdown();
 	}
 	
 	@Test
 	public void getCourseRootResultsByIdentityKey()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		ICourse course = deployQtiCourse();
@@ -174,23 +171,22 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		waitAssessmentEntries(participant2, course);
 
 		URI uri = getCourseURI(course).path("users").path(participant2.getKey().toString()).build();
-		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		
-		AssessableResultsVO result = conn.parse(response.getEntity(), AssessableResultsVO.class);
+		AssessableResultsVO result = conn.parse(response, AssessableResultsVO.class);
 		Assert.assertNotNull(result);
 		Assert.assertEquals(participant2.getKey(), result.getIdentityKey());
 		Assert.assertNotNull(result.getLastModifiedDate());
 		Assert.assertNull(result.getLastUserModified());
 		Assert.assertNull(result.getLastCoachModified());
 
-		conn.shutdown();
 	}
 	
 	@Test
 	public void getCourseNodeResults()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		ICourse course = deployQtiCourse();
@@ -205,9 +201,9 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		waitAssessmentEntries(participant2, course);
 
 		URI uri = getCourseURI(course).path(QTI_NODE_IDENT).build();
-		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		
 		List<AssessableResultsVO> results = conn.parseList(response, AssessableResultsVO.class);
 		Assert.assertNotNull(results);
@@ -218,12 +214,11 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 			Assert.assertNull(result.getAssessmentStatus());
 		}
 
-		conn.shutdown();
 	}
 	
 	@Test
 	public void getCourseNodeResultsByIdentity()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		ICourse course = deployQtiCourse();
@@ -238,21 +233,20 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		waitAssessmentEntries(participant2, course);
 
 		URI uri = getCourseURI(course).path(QTI_NODE_IDENT).path("users").path(participant1.getKey().toString()).build();
-		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		
-		AssessableResultsVO result = conn.parse(response.getEntity(), AssessableResultsVO.class);
+		AssessableResultsVO result = conn.parse(response, AssessableResultsVO.class);
 		Assert.assertNotNull(result);
 		Assert.assertEquals(participant1.getKey(), result.getIdentityKey());
 		Assert.assertNull(result.getAssessmentStatus());
 
-		conn.shutdown();
 	}
 	
 	@Test
 	public void getCourseNodeResultsByIdentityWithScore()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		ICourse course = deployGTACourse();
@@ -276,11 +270,11 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		
 		// Attempts user
 		URI uri = getCourseURI(course).path(GTA_NODE_IDENT).path("users").path(participant.getKey().toString()).build();
-		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		
-		AssessableResultsVO result = conn.parse(response.getEntity(), AssessableResultsVO.class);
+		AssessableResultsVO result = conn.parse(response, AssessableResultsVO.class);
 		Assert.assertNotNull(result);
 		Assert.assertEquals(participant.getKey(), result.getIdentityKey());
 		Assert.assertEquals(GTA_NODE_IDENT, result.getNodeIdent());
@@ -302,11 +296,11 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		courseAssessmentService.updateScoreEvaluation(courseNode, coachEval, assessedUserCourseEnv, coach, false, Role.coach);
 		
 		URI uriCoach = getCourseURI(course).path(GTA_NODE_IDENT).path("users").path(participant.getKey().toString()).build();
-		HttpGet getCoach = conn.createGet(uriCoach, MediaType.APPLICATION_JSON, true);
-		HttpResponse responseCoach = conn.execute(getCoach);
-		assertEquals(200, responseCoach.getStatusLine().getStatusCode());
+		HttpRequest getCoach = conn.createGet(uriCoach, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> responseCoach = conn.execute(getCoach);
+		assertEquals(200, responseCoach.statusCode());
 		
-		AssessableResultsVO resultCoach = conn.parse(responseCoach.getEntity(), AssessableResultsVO.class);
+		AssessableResultsVO resultCoach = conn.parse(responseCoach, AssessableResultsVO.class);
 		Assert.assertNotNull(resultCoach);
 		Assert.assertEquals(participant.getKey(), resultCoach.getIdentityKey());
 		Assert.assertEquals(GTA_NODE_IDENT, resultCoach.getNodeIdent());
@@ -319,12 +313,11 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		Assert.assertEquals(AssessmentEntryStatus.done.name(), resultCoach.getAssessmentStatus());
 		Assert.assertNotNull(resultCoach.getAssessmentDone());
 
-		conn.shutdown();
 	}
 	
 	@Test
 	public void postCourseNodeResultsByIdentityWithScore()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		ICourse course = deployGTACourse();
@@ -346,11 +339,10 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		
 		// Attempts user
 		URI uri = getCourseURI(course).path(GTA_NODE_IDENT).build();
-		HttpPut put = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(put, result);
-		HttpResponse response = conn.execute(put);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consumeQuietly(response.getEntity());
+		HttpRequest put = conn.createPut(uri, result, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(put);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		// Check the results saved on the database
 		UserCourseEnvironment assessedUserCourseEnv = AssessmentHelper
@@ -365,12 +357,11 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		Assert.assertTrue(new BigDecimal("1.0").compareTo(assessmentEntry.getWeightedScore()) == 0);
 		Assert.assertEquals(Boolean.TRUE, assessmentEntry.getUserVisibility());
 	
-		conn.shutdown();
 	}
 	
 	@Test
 	public void postCourseNodeResultsByIdentityWithAttemptsAndCompletion()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		ICourse course = deployGTACourse();
@@ -395,11 +386,10 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		
 		// Attempts user
 		URI uri = getCourseURI(course).path(GTA_NODE_IDENT).build();
-		HttpPut put = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(put, result);
-		HttpResponse response = conn.execute(put);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consumeQuietly(response.getEntity());
+		HttpRequest put = conn.createPut(uri, result, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(put);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		// Check the results saved on the database
 		UserCourseEnvironment assessedUserCourseEnv = AssessmentHelper
@@ -416,12 +406,11 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 		Assert.assertEquals(Integer.valueOf(3), assessmentEntry.getAttempts());
 		Assert.assertEquals(0.8d, assessmentEntry.getCompletion().doubleValue(), 0.001);
 	
-		conn.shutdown();
 	}
 	
 	@Test
 	public void postCourseNodeResultsByIdentityWithGradeAuto()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		ICourse course = deployGTAAutoGradedCourse();
@@ -447,11 +436,10 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 
 		// Attempts user
 		URI uri = getCourseURI(course).path(GTA_NODE_IDENT).build();
-		HttpPost post = conn.createPost(uri, MediaType.APPLICATION_JSON);
-		conn.addJsonEntity(post, result);
-		HttpResponse response = conn.execute(post);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consumeQuietly(response.getEntity());
+		HttpRequest post = conn.createPost(uri, result, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(post);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		// Check the results saved on the database
 		UserCourseEnvironment assessedUserCourseEnv = AssessmentHelper
@@ -474,7 +462,7 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void postCourseNodeResultsByIdentityWithGradeManual()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(defaultUnitTestAdministrator);
 		
 		ICourse course = deployGTAManualGradedCourse();
@@ -501,11 +489,10 @@ public class CourseAssessmentWebServiceTest extends OlatRestTestCase {
 
 		// Attempts user
 		URI uri = getCourseURI(course).path(GTA_NODE_IDENT).build();
-		HttpPost post = conn.createPost(uri, MediaType.APPLICATION_JSON);
-		conn.addJsonEntity(post, result);
-		HttpResponse response = conn.execute(post);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consumeQuietly(response.getEntity());
+		HttpRequest post = conn.createPost(uri, result, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(post);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		// Check the results saved on the database
 		UserCourseEnvironment assessedUserCourseEnv = AssessmentHelper

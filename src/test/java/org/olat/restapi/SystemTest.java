@@ -63,7 +63,7 @@ import org.olat.test.OlatRestTestCase;
 public class SystemTest extends OlatRestTestCase {
 	
 	@Test
-	public void testMonitoringStatus() throws IOException, URISyntaxException {
+	public void testMonitoringStatus() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("status").build();
@@ -74,11 +74,10 @@ public class SystemTest extends OlatRestTestCase {
 		Assert.assertTrue(stats.getConcurrentDispatchThreads() >= 0l);
 		Assert.assertTrue(stats.getSecureAuthenticatedCount() >= 0l);
 		Assert.assertTrue(StringHelper.containsNonWhitespace(stats.getUnixTimestamp()));
-		conn.shutdown();
 	}
 	
 	@Test
-	public void testRuntimeStatisticsInfos() throws IOException, URISyntaxException {
+	public void testRuntimeStatisticsInfos() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("runtime").build();
@@ -87,12 +86,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertNotNull(runtimeStats.getClasses());
 		assertNotNull(runtimeStats.getMemory());
 		assertNotNull(runtimeStats.getThreads());
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testSystemThreads() throws IOException, URISyntaxException {
+	public void testSystemThreads() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("threads").build();
@@ -101,12 +99,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertNotNull(threadInfos);
 		assertTrue(threadInfos.getDaemonCount() > 0);
 		assertTrue(threadInfos.getThreadCount() > 0);
-		
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testSystemThreadDetails() throws IOException, URISyntaxException {
+	public void testSystemThreadDetails() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("threads").path("cpu").build();
@@ -121,12 +118,11 @@ public class SystemTest extends OlatRestTestCase {
 		Assert.assertNotNull(threadVo.getName());
 		Assert.assertTrue(threadVo.getCpuTime() >= 0);
 		Assert.assertTrue(threadVo.getCpuUsage() >= 0.0f);
-		Assert.assertTrue(threadVo.getId() > 0l);
-		conn.shutdown();	
+		Assert.assertTrue(threadVo.getId() > 0l);	
 	}
 
 	@Test
-	public void testSystemMemory() throws IOException, URISyntaxException {
+	public void testSystemMemory() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("memory").build();
@@ -136,12 +132,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertTrue(memoryInfos.getMaxAvailable() > 0);
 		assertTrue(memoryInfos.getTotalMem() > 0);
 		assertTrue(memoryInfos.getTotalUsed() > 0);
-		
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testSystemSessions() throws IOException, URISyntaxException {
+	public void testSystemSessions() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("openolat").path("sessions").build();
@@ -156,12 +151,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertTrue(sessionInfos.getWebdavCount() >= 0);
 		assertTrue(sessionInfos.getRestCount() >= 0);
 		assertTrue(sessionInfos.getSecureRestCount() >= 0);
-		
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testSystemUserStatistics() throws IOException, URISyntaxException {
+	public void testSystemUserStatistics() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("openolat").path("users").build();
@@ -196,12 +190,11 @@ public class SystemTest extends OlatRestTestCase {
 		
 		long totalGroupCount = userStats.getTotalGroupCount();
 		assertTrue(totalGroupCount >= 0);
-		
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testSystemRepositoryStatistics() throws IOException, URISyntaxException {
+	public void testSystemRepositoryStatistics() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("openolat").path("repository").build();
@@ -210,12 +203,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertNotNull(repoStats);
 		assertTrue(repoStats.getCoursesCount() >= 0);
 		assertTrue(repoStats.getPublishedCoursesCount() >= 0);
-		
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testSystemIndexerStatistics() throws IOException, URISyntaxException {
+	public void testSystemIndexerStatistics() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("openolat").path("indexer").build();
@@ -231,12 +223,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertTrue(indexerStats.getRunningFolderIndexerCount() >= 0);
 		assertTrue(indexerStats.getIndexingTime() >= 0);
 		assertTrue(indexerStats.getIndexSize() >= 0);
-		
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testSystemOpenOLATStatistics() throws IOException, URISyntaxException {
+	public void testSystemOpenOLATStatistics() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("openolat").build();
@@ -250,12 +241,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertNotNull(stats.getIndexerStatistics().getStatus());
 		assertTrue(stats.getIndexerStatistics().getIndexedDocumentCount() >= 0);
 		assertTrue(stats.getIndexerStatistics().getExcludedDocumentCount() >= 0);
-		
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testEnvironmentSystem() throws IOException, URISyntaxException {
+	public void testEnvironmentSystem() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("environment").build();
@@ -270,12 +260,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertNotNull(envInfos.getVmName());
 		assertNotNull(envInfos.getVmVendor());
 		assertNotNull(envInfos.getVmVersion());
-
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testRuntimeStatsSystem() throws IOException, URISyntaxException {
+	public void testRuntimeStatsSystem() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("runtime").build();
@@ -288,12 +277,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertNotNull(runInfos.getThreads());
 		assertTrue(runInfos.getSystemLoadAverage() > 0.0d);
 		assertTrue(runInfos.getUpTime() > 0);
-
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testRuntimeClassesStatsSystem() throws IOException, URISyntaxException {
+	public void testRuntimeClassesStatsSystem() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("runtime").path("classes").build();
@@ -303,12 +291,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertTrue(classesInfos.getLoadedClassCount() > 0);
 		assertTrue(classesInfos.getTotalLoadedClassCount() > 0);
 		assertTrue(classesInfos.getUnloadedClassCount() >= 0);
-
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testRuntimeThreadsStatsSystem() throws IOException, URISyntaxException {
+	public void testRuntimeThreadsStatsSystem() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("runtime").path("threads").build();
@@ -318,12 +305,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertTrue(threadsInfos.getDaemonCount() > 0);
 		assertTrue(threadsInfos.getPeakThreadCount() > 0);
 		assertTrue(threadsInfos.getThreadCount() >= 0);
-
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testRuntimeMemoryStatsSystem() throws IOException, URISyntaxException {
+	public void testRuntimeMemoryStatsSystem() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("runtime").path("memory").build();
@@ -342,12 +328,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertTrue(memoryInfos.getCommittedNonHeap() > 0);
 		assertTrue(memoryInfos.getMaxHeap() > 0);
 		assertTrue(memoryInfos.getMaxNonHeap() >= 0);
-
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testReleaseInfos() throws IOException, URISyntaxException {
+	public void testReleaseInfos() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("release").build();
@@ -358,12 +343,11 @@ public class SystemTest extends OlatRestTestCase {
 		assertNotNull(versionInfos.getBuildVersion());
 		assertNotNull(versionInfos.getOlatVersion());
 		assertNotNull(versionInfos.getRepoRevision());
-
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testDatabase() throws IOException, URISyntaxException {
+	public void testDatabase() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("database").build();
@@ -383,24 +367,22 @@ public class SystemTest extends OlatRestTestCase {
 		assertNotNull(databaseInfos.getHibernateStatistics().getQueryExecutionMaxTimeQueryString());
 		assertTrue(databaseInfos.getHibernateStatistics().getSuccessfulTransactionCount() > 0);
 		assertTrue(databaseInfos.getHibernateStatistics().getTransactionsCount() > 0);
-
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testTasks() throws IOException, URISyntaxException {
+	public void testTasks() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI tasksUri = conn.getContextURI().path("system").path("monitoring").path("openolat").path("tasks").build();
 		TasksVO infos = conn.get(tasksUri, TasksVO.class);
 		assertNotNull(infos);
 		assertNotNull(infos.getLongRunningTasks());
-
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testMonitoringInfos() throws IOException, URISyntaxException {
+	public void testMonitoringInfos() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("configuration").build();
@@ -409,19 +391,17 @@ public class SystemTest extends OlatRestTestCase {
 		assertNotNull(databaseInfos.getDependencies());
 		assertNotNull(databaseInfos.getProbes());
 		assertNotNull(databaseInfos.getType());
-
-		conn.shutdown();	
+	
 	}
 	
 	@Test
-	public void testVFSStats() throws IOException, URISyntaxException {
+	public void testVFSStats() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI systemUri = conn.getContextURI().path("system").path("monitoring").path("revisionsSize").build();
 		VFSStatsVO revisionsInfos = conn.get(systemUri, VFSStatsVO.class);
 		assertNotNull(revisionsInfos);
 		assertNotNull(revisionsInfos.getRevisionsSize());
-		
-		conn.shutdown();
+
 	}
 }

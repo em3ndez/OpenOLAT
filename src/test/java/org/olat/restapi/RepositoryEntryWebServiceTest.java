@@ -28,6 +28,8 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -36,15 +38,6 @@ import java.util.stream.Collectors;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpHead;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.util.EntityUtils;
-import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.admin.securitygroup.gui.IdentitiesAddEvent;
@@ -55,7 +48,7 @@ import org.olat.core.commons.persistence.DB;
 import org.olat.core.id.Identity;
 import org.olat.core.id.Organisation;
 import org.olat.core.id.Roles;
-import org.olat.core.logging.Tracing;
+import org.olat.core.util.httpclient.ConnectionUtilities;
 import org.olat.core.util.mail.MailPackage;
 import org.olat.core.util.vfs.VFSLeaf;
 import org.olat.fileresource.types.ImsQTI21Resource;
@@ -90,9 +83,6 @@ import org.olat.user.restapi.UserVO;
 import org.olat.user.restapi.UserVOFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 /**
  * 
  * Initial date: 2 mai 2018<br>
@@ -101,8 +91,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 
-	private static final Logger log = Tracing.createLoggerFor(RepositoryEntryWebServiceTest.class);
-	
 	@Autowired
 	private DB dbInstance;
 	@Autowired
@@ -126,7 +114,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void exportCourse()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndUser("course-owner");
 		RepositoryEntry course = JunitTestHelper.deployBasicCourse(author);
@@ -134,17 +122,17 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(course.getKey().toString()).path("file").build();
-		HttpGet method = conn.createGet(request, "application/zip", true);
-		HttpResponse response = conn.execute(method);
+		HttpRequest method = conn.createGet(request, "application/zip");
+		HttpResponse<InputStream> response = conn.execute(method);
 
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		byte[] exportedFile = EntityUtils.toByteArray(response.getEntity());
+		Assert.assertEquals(200, response.statusCode());
+		byte[] exportedFile = ConnectionUtilities.toByteArray(response);
 		Assert.assertTrue(exportedFile.length > 1000);	
 	}
 	
 	@Test
 	public void exportQTI21Test()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		//deploy QTI 2.1 test
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndUser("test-owner");
 		URL testUrl = JunitTestHelper.class.getResource("file_resources/qti21/simple_QTI_21_hotspot.zip");
@@ -159,17 +147,17 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(testEntry.getKey().toString()).path("file").build();
-		HttpGet method = conn.createGet(request, "application/zip", true);
-		HttpResponse response = conn.execute(method);
+		HttpRequest method = conn.createGet(request, "application/zip");
+		HttpResponse<InputStream> response = conn.execute(method);
 
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		byte[] exportedFile = EntityUtils.toByteArray(response.getEntity());
+		Assert.assertEquals(200, response.statusCode());
+		byte[] exportedFile = ConnectionUtilities.toByteArray(response);
 		Assert.assertTrue(exportedFile.length > 1000);
 	}
 	
 
 	@Test
-	public void getOwners() throws IOException, URISyntaxException {
+	public void getOwners() throws IOException, URISyntaxException, InterruptedException {
 		Identity owner1 = JunitTestHelper.createAndPersistIdentityAsRndAuthor("author-1");
 		Identity owner2 = JunitTestHelper.createAndPersistIdentityAsRndAuthor("author-2");
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
@@ -181,10 +169,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("repo/entries").path(re.getKey().toString()).path("owners").build();
-		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		List<UserVO> users = parseUserArray(response.getEntity());
+		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		List<UserVO> users = conn.parseList(response, UserVO.class);
 		Assert.assertNotNull(users);
 		Assert.assertEquals(2, users.size());//our 2
 		
@@ -197,12 +185,11 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 			}
 		}
 		Assert.assertEquals(2, found);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void addOwner() throws IOException, URISyntaxException {
+	public void addOwner() throws IOException, URISyntaxException, InterruptedException {
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndAuthor("author-3");
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
 		dbInstance.commitAndCloseSession();
@@ -214,12 +201,11 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 				.path("repo/entries").path(re.getKey().toString()).path("owners").path(owner.getKey().toString())
 				.build();
 		
-		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 
-		conn.shutdown();
 		
 		//check
 		List<Identity> owners = repositoryService.getMembers(re, RepositoryEntryRelationType.defaultGroup, GroupRoles.owner.name());
@@ -229,7 +215,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void addOwners() throws IOException, URISyntaxException {
+	public void addOwners() throws IOException, URISyntaxException, InterruptedException {
 		Identity owner1 = JunitTestHelper.createAndPersistIdentityAsRndUser("author-3b-");
 		Identity owner2 = JunitTestHelper.createAndPersistIdentityAsRndUser("author-3c-");
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
@@ -244,13 +230,11 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("repo").path("entries").path(re.getKey().toString()).path("owners").build();
-		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(method, newOwners);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPut(request, newOwners, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 
-		conn.shutdown();
 		
 		//check
 		List<Identity> owners = repositoryService.getMembers(re, RepositoryEntryRelationType.defaultGroup, GroupRoles.owner.name());
@@ -261,7 +245,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void removeOwner() throws IOException, URISyntaxException {
+	public void removeOwner() throws IOException, URISyntaxException, InterruptedException {
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndAuthor("author-4-");
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
 		repositoryManager.addOwners(owner, new IdentitiesAddEvent(owner), re, new MailPackage(false));
@@ -272,11 +256,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("repo/entries").path(re.getKey().toString()).path("owners").path(owner.getKey().toString()).build();
-		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
-		conn.shutdown();
+		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		//check
 		List<Identity> owners = repositoryService.getMembers(re, RepositoryEntryRelationType.defaultGroup, GroupRoles.owner.name());
@@ -286,7 +269,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void getCoaches() throws IOException, URISyntaxException {
+	public void getCoaches() throws IOException, URISyntaxException, InterruptedException {
 		Identity coach1 = JunitTestHelper.createAndPersistIdentityAsRndAuthor("coach-1");
 		Identity coach2 = JunitTestHelper.createAndPersistIdentityAsRndAuthor("coach-2");
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
@@ -298,10 +281,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("repo/entries").path(re.getKey().toString()).path("coaches").build();
-		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		List<UserVO> users = parseUserArray(response.getEntity());
+		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		List<UserVO> users = conn.parseList(response, UserVO.class);
 		Assert.assertNotNull(users);
 		Assert.assertEquals(2, users.size());//our 2
 		
@@ -314,12 +297,11 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 			}
 		}
 		Assert.assertEquals(2, found);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void addCoach() throws IOException, URISyntaxException {
+	public void addCoach() throws IOException, URISyntaxException, InterruptedException {
 		Identity coach = JunitTestHelper.createAndPersistIdentityAsRndAuthor("coach-3");
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
 		dbInstance.commitAndCloseSession();
@@ -331,12 +313,11 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 				.path("repo/entries").path(re.getKey().toString()).path("coaches").path(coach.getKey().toString())
 				.build();
 		
-		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 
-		conn.shutdown();
 		
 		//check
 		List<Identity> coaches = repositoryService.getMembers(re, RepositoryEntryRelationType.defaultGroup, GroupRoles.coach.name());
@@ -346,7 +327,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void addCoaches() throws IOException, URISyntaxException {
+	public void addCoaches() throws IOException, URISyntaxException, InterruptedException {
 		Identity coach1 = JunitTestHelper.createAndPersistIdentityAsRndUser("coach-3b-");
 		Identity coach2 = JunitTestHelper.createAndPersistIdentityAsRndUser("coach-3c-");
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
@@ -361,13 +342,11 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("repo").path("entries").path(re.getKey().toString()).path("coaches").build();
-		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(method, newCoaches);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPut(request, newCoaches, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 
-		conn.shutdown();
 		
 		//check
 		List<Identity> coaches = repositoryService.getMembers(re, RepositoryEntryRelationType.defaultGroup, GroupRoles.coach.name());
@@ -378,7 +357,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void removeCoach() throws IOException, URISyntaxException {
+	public void removeCoach() throws IOException, URISyntaxException, InterruptedException {
 		Identity coach = JunitTestHelper.createAndPersistIdentityAsRndAuthor("coach-4");
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
 		repositoryManager.addTutors(coach, Roles.administratorRoles(), new IdentitiesAddEvent(coach), re, new MailPackage(false));
@@ -389,11 +368,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("repo/entries").path(re.getKey().toString()).path("coaches").path(coach.getKey().toString()).build();
-		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
-		conn.shutdown();
+		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		//check
 		List<Identity> coaches = repositoryService.getMembers(re, RepositoryEntryRelationType.defaultGroup, GroupRoles.coach.name());
@@ -403,7 +381,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void getParticipants() throws IOException, URISyntaxException {
+	public void getParticipants() throws IOException, URISyntaxException, InterruptedException {
 		Identity participant1 = JunitTestHelper.createAndPersistIdentityAsRndAuthor("participant-1");
 		Identity participant2 = JunitTestHelper.createAndPersistIdentityAsRndAuthor("participant-2");
 		Roles part1Roles = securityManager.getRoles(participant1);
@@ -416,10 +394,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("repo/entries").path(re.getKey().toString()).path("participants").build();
-		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		List<UserVO> users = parseUserArray(response.getEntity());
+		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		List<UserVO> users = conn.parseList(response, UserVO.class);
 		Assert.assertNotNull(users);
 		Assert.assertEquals(2, users.size());//our 2 
 		
@@ -432,11 +410,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 			}
 		}
 		Assert.assertEquals(2, found);
-		conn.shutdown();
 	}
 	
 	@Test
-	public void addParticipant() throws IOException, URISyntaxException {
+	public void addParticipant() throws IOException, URISyntaxException, InterruptedException {
 		Identity participant = JunitTestHelper.createAndPersistIdentityAsRndAuthor("participant-3");
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
 		dbInstance.commitAndCloseSession();
@@ -448,12 +425,11 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 				.path("repo/entries").path(re.getKey().toString()).path("participants").path(participant.getKey().toString())
 				.build();
 		
-		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 
-		conn.shutdown();
 		
 		//check
 		List<Identity> participants = repositoryService.getMembers(re, RepositoryEntryRelationType.defaultGroup, GroupRoles.participant.name());
@@ -463,7 +439,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void addParticipants() throws IOException, URISyntaxException {
+	public void addParticipants() throws IOException, URISyntaxException, InterruptedException {
 		Identity participant1 = JunitTestHelper.createAndPersistIdentityAsRndUser("participant-3b-");
 		Identity participant2 = JunitTestHelper.createAndPersistIdentityAsRndUser("participant-3c-");
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
@@ -480,13 +456,11 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		URI request = UriBuilder.fromUri(getContextURI()).path("repo/entries")
 				.path(re.getKey().toString()).path("participants").build();
 		
-		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(method, newParticipants);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPut(request, newParticipants, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 
-		conn.shutdown();
 		
 		//check
 		List<Identity> participants = repositoryService.getMembers(re, RepositoryEntryRelationType.defaultGroup, GroupRoles.participant.name());
@@ -497,7 +471,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void testRemoveParticipant() throws IOException, URISyntaxException {
+	public void testRemoveParticipant() throws IOException, URISyntaxException, InterruptedException {
 		Identity participant = JunitTestHelper.createAndPersistIdentityAsRndAuthor("participant-4");
 		Roles partRoles = securityManager.getRoles(participant);
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
@@ -509,11 +483,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("repo/entries").path(re.getKey().toString()).path("participants").path(participant.getKey().toString()).build();
-		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
-		conn.shutdown();
+		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		//check
 		List<Identity> participants = repositoryService.getMembers(re, RepositoryEntryRelationType.defaultGroup, GroupRoles.participant.name());
@@ -524,7 +497,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	
 	
 	@Test
-	public void getMetadata() throws IOException, URISyntaxException {
+	public void getMetadata() throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
 		dbInstance.commitAndCloseSession();
 		
@@ -540,11 +513,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("repo/entries").path(re.getKey().toString()).path("metadata").build();
-		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		RepositoryEntryMetadataVO metadataVo = conn.parse(response, RepositoryEntryMetadataVO.class);
-		conn.shutdown();
 		
 		//check
 		Assert.assertNotNull(metadataVo);
@@ -568,7 +540,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void updatePublicAccess() throws IOException, URISyntaxException {
+	public void updatePublicAccess() throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
 		re = repositoryManager.setStatus(re, RepositoryEntryStatusEnum.published);
 		dbInstance.commitAndCloseSession();
@@ -589,10 +561,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 				.queryParam("allUsers", "true")
 				.build();
 		
-		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		// Check if the resource is public
 		List<RepositoryEntryMyView> resources = repositoryService.searchMyView(params, 0, -1);
@@ -600,7 +572,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void removePublicAccess() throws IOException, URISyntaxException {
+	public void removePublicAccess() throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
 		re = repositoryManager.setStatus(re, RepositoryEntryStatusEnum.published);
 		
@@ -631,10 +603,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 				.queryParam("allUsers", "false")
 				.build();
 		
-		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPut(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		// Check if the resource is public
 		List<RepositoryEntryMyView> resources = repositoryService.searchMyView(params, 0, -1);
@@ -642,7 +614,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void updateStatus() throws IOException, URISyntaxException {
+	public void updateStatus() throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry(false);
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("audit-2-");
 		dbInstance.commitAndCloseSession();
@@ -661,10 +633,9 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 				.queryParam("newStatus", RepositoryEntryStatusEnum.coachpublished.name())
 				.build();
 
-		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		conn.shutdown();
+		HttpRequest method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
 		// Check database value
 		RepositoryEntry updatedRe = repositoryService.loadByKey(re.getKey());
@@ -684,7 +655,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void closeRepositoryEntry() throws IOException, URISyntaxException {
+	public void closeRepositoryEntry() throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry(false);
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("close-1-");
 		dbInstance.commitAndCloseSession();
@@ -703,10 +674,9 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 				.queryParam("newStatus", RepositoryEntryStatusEnum.closed.name())
 				.build();
 
-		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		conn.shutdown();
+		HttpRequest method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
 		// Check database value
 		RepositoryEntry updatedRe = repositoryService.loadByKey(re.getKey());
@@ -714,7 +684,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 
 	@Test
-	public void updateStatusToSameStatus() throws IOException, URISyntaxException {
+	public void updateStatusToSameStatus() throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry(false);
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("audit-4-");
 		dbInstance.commitAndCloseSession();
@@ -735,10 +705,9 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 				.queryParam("newStatus", RepositoryEntryStatusEnum.published.name())
 				.build();
 
-		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		conn.shutdown();
+		HttpRequest method = conn.createPost(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 
 		// Check database value
 		RepositoryEntry updatedRe = repositoryService.loadByKey(re.getKey());
@@ -752,7 +721,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void updateMetadata() throws IOException, URISyntaxException {
+	public void updateMetadata() throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry();
 		dbInstance.commitAndCloseSession();
 
@@ -760,9 +729,9 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("repo/entries").path(re.getKey().toString()).path("metadata").build();
-		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		RepositoryEntryMetadataVO metadataVo = conn.parse(response, RepositoryEntryMetadataVO.class);
 		
 		// fill the metadata
@@ -782,10 +751,9 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 
 		URI updateRequest = UriBuilder.fromUri(getContextURI())
 				.path("repo/entries").path(re.getKey().toString()).path("metadata").build();
-		HttpPost updateMethod = conn.createPost(updateRequest, MediaType.APPLICATION_JSON);
-		conn.addJsonEntity(updateMethod, metadataVo);
-		HttpResponse updateResponse = conn.execute(updateMethod);
-		Assert.assertEquals(200, updateResponse.getStatusLine().getStatusCode());
+		HttpRequest updateMethod = conn.createPost(updateRequest, metadataVo, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> updateResponse = conn.execute(updateMethod);
+		Assert.assertEquals(200, updateResponse.statusCode());
 		RepositoryEntryMetadataVO updatedMetadataVo = conn.parse(updateResponse, RepositoryEntryMetadataVO.class);
 
 		//check the response
@@ -826,7 +794,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	
 	
 	@Test
-	public void headRepositoryEntryImage() throws IOException, URISyntaxException {
+	public void headRepositoryEntryImage() throws IOException, URISyntaxException, InterruptedException {
 		URL imageUrl = RepositoryEntryWebServiceTest.class.getResource("portrait.jpg");
 		Assert.assertNotNull(imageUrl);
 		File image = new File(imageUrl.toURI());
@@ -843,14 +811,14 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("repo").path("entries").path(entry.getKey().toString())
 				.path("image").build();
-		HttpHead method = conn.createHead(request, "image/jpg", true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createHead(request, "image/jpg");
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 	}
 	
 	@Test
-	public void getCourseImage() throws IOException, URISyntaxException {
+	public void getCourseImage() throws IOException, URISyntaxException, InterruptedException {
 		URL imageUrl = RepositoryEntryWebServiceTest.class.getResource("portrait.jpg");
 		Assert.assertNotNull(imageUrl);
 		File image = new File(imageUrl.toURI());
@@ -866,16 +834,16 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("repo").path("entries").path(entry.getKey().toString())
 				.path("image").build();
-		HttpGet method = conn.createGet(request, "image/jpg", true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		byte[] imageArr = EntityUtils.toByteArray(response.getEntity());
+		HttpRequest method = conn.createGet(request, "image/jpg");
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		byte[] imageArr = ConnectionUtilities.toByteArray(response);
 		Assert.assertNotNull(imageArr);
 		Assert.assertEquals(image.length(), imageArr.length);
 	}
 	
 	@Test
-	public void postCourseSmallImage() throws IOException, URISyntaxException {
+	public void postCourseSmallImage() throws IOException, URISyntaxException, InterruptedException {
 		URL imageUrl = RepositoryEntryWebServiceTest.class.getResource("portrait.jpg");
 		Assert.assertNotNull(imageUrl);
 		File image = new File(imageUrl.toURI());
@@ -888,12 +856,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("repo").path("entries").path(entry.getKey().toString())
 				.path("image").build();
-		
-		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
-		conn.addMultipart(method, "image.jpg", image);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPost(request, image, "image.jpg", List.of(), MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		VFSLeaf imageLeaf = repositoryManager.getImage(entry);
 		Assert.assertNotNull(imageLeaf);
@@ -902,7 +868,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void postCourseBigImage() throws IOException, URISyntaxException {
+	public void postCourseBigImage() throws IOException, URISyntaxException, InterruptedException {
 		URL imageUrl = JunitTestHelper.class.getResource("file_resources/house_big.jpg");
 		Assert.assertNotNull(imageUrl);
 		File image = new File(imageUrl.toURI());
@@ -916,11 +882,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 				.path("repo").path("entries").path(entry.getKey().toString())
 				.path("image").build();
 		
-		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
-		conn.addMultipart(method, "image.jpg", image);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPost(request, image, "image.jpg", List.of(), MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		VFSLeaf imageLeaf = repositoryManager.getImage(entry);
 		Assert.assertNotNull(imageLeaf);
@@ -930,7 +895,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	
 	
 	@Test
-	public void getTaxonomylevels() throws IOException, URISyntaxException {
+	public void getTaxonomylevels() throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry re = JunitTestHelper.createAndPersistRepositoryEntry(false);
 		dbInstance.commit();
 		
@@ -944,11 +909,11 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		URI request = UriBuilder.fromUri(getContextURI())
 				.path("repo/entries").path(re.getKey().toString())
 				.path("taxonomy").path("levels").build();
-		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
-		List<TaxonomyLevelVO> levels = parseTaxonomyLevelVOArray(response.getEntity());
+		List<TaxonomyLevelVO> levels = conn.parseList(response, TaxonomyLevelVO.class);
 		Assert.assertNotNull(levels);
 		Assert.assertEquals(1, levels.size());
 		Assert.assertEquals(level.getKey(), levels.get(0).getKey());
@@ -956,7 +921,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void addTaxonomyLevels()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry entry = JunitTestHelper.createAndPersistRepositoryEntry(false);
 		dbInstance.commit();
 		
@@ -969,10 +934,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(entry.getKey().toString())
 				.path("taxonomy").path("levels").path(level.getKey().toString()).build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		RepositoryEntry reloadedEntry = repositoryService.loadByKey(entry.getKey());
 		Set<RepositoryEntryToTaxonomyLevel> relationToLevels = reloadedEntry.getTaxonomyLevels();
@@ -984,7 +949,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void addTwiceTaxonomyLevels()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry entry = JunitTestHelper.createAndPersistRepositoryEntry(false);
 		dbInstance.commit();
 		
@@ -998,10 +963,10 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(entry.getKey().toString())
 				.path("taxonomy").path("levels").path(level.getKey().toString()).build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(304, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(304, response.statusCode());
+		RestConnection.consume(response);
 		
 		RepositoryEntry reloadedEntry = repositoryService.loadByKey(entry.getKey());
 		Set<RepositoryEntryToTaxonomyLevel> relationToLevels = reloadedEntry.getTaxonomyLevels();
@@ -1013,7 +978,7 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void deleteTaxonomyLevel()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry entry = JunitTestHelper.createAndPersistRepositoryEntry(false);
 		dbInstance.commit();
 		
@@ -1034,34 +999,14 @@ public class RepositoryEntryWebServiceTest extends OlatRestTestCase {
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(entry.getKey().toString())
 				.path("taxonomy").path("levels").path(level1.getKey().toString()).build();
-		HttpDelete method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		// check that the right relation was deleted
 		List<TaxonomyLevel> survivingLevels = repositoryEntryToTaxonomyLevelDao.getTaxonomyLevels(entry);
 		Assert.assertEquals(1, survivingLevels.size());
 		Assert.assertEquals(level2, survivingLevels.get(0));
-	}
-	
-	private List<TaxonomyLevelVO> parseTaxonomyLevelVOArray(HttpEntity entity) {
-		try(InputStream in=entity.getContent()) {
-			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
-			return mapper.readValue(in, new TypeReference<List<TaxonomyLevelVO>>(){/* */});
-		} catch (Exception e) {
-			log.error("", e);
-			return null;
-		}
-	}
-	
-	private List<UserVO> parseUserArray(HttpEntity entity) {
-		try(InputStream in=entity.getContent()) {
-			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
-			return mapper.readValue(in, new TypeReference<List<UserVO>>(){/* */});
-		} catch (Exception e) {
-			log.error("", e);
-			return null;
-		}
 	}
 }

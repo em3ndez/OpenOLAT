@@ -26,6 +26,8 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Locale;
 
@@ -34,10 +36,6 @@ import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.UriBuilder;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
@@ -47,6 +45,7 @@ import org.olat.core.commons.persistence.DB;
 import org.olat.core.id.Identity;
 import org.olat.core.id.Organisation;
 import org.olat.core.logging.Tracing;
+import org.olat.core.util.httpclient.ConnectionUtilities;
 import org.olat.core.util.vfs.VFSContainer;
 import org.olat.core.util.vfs.VFSItem;
 import org.olat.core.util.vfs.VFSLeaf;
@@ -85,7 +84,7 @@ public class SharedFolderTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void getDirectories() throws IOException, URISyntaxException {
+	public void getDirectories() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("shared-owner-");
@@ -95,16 +94,15 @@ public class SharedFolderTest extends OlatRestTestCase {
 		copyFileInResourceFolder(container, "portrait.jpg", "1_");
 		
 		URI uri = UriBuilder.fromUri(getFolderURI(sharedFolder)).build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
-		List<LinkVO> links = parseLinkArray(response.getEntity());
+		List<LinkVO> links = parseLinkArray(response);
 		Assert.assertNotNull(links);
 		Assert.assertEquals(1, links.size());
 		Assert.assertTrue(links.get(0).getHref().contains("1_portrait.jpg"));
 
-		conn.shutdown();
 	}
 	
 	/**
@@ -114,7 +112,7 @@ public class SharedFolderTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void putDirectories_owner() throws IOException, URISyntaxException {
+	public void putDirectories_owner() throws IOException, URISyntaxException, InterruptedException {
 		IdentityWithLogin owner = JunitTestHelper.createAndPersistRndUser("shared-owner-");
 		Organisation defOrganisation = organisationService.getDefaultOrganisation();
 		RepositoryEntry sharedFolder = new SharedFolderHandler()
@@ -131,13 +129,10 @@ public class SharedFolderTest extends OlatRestTestCase {
 		File file = new File(fileUrl.toURI());
 		
 		URI uri = UriBuilder.fromUri(getFolderURI(sharedFolder)).build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		conn.addMultipart(method, file.getName(), file);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(405, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
-
-		conn.shutdown();
+		HttpRequest method = conn.createPut(uri, file, file.getName(), List.of(), MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(405, response.statusCode());
+		RestConnection.consume(response);
 	}
 	
 	/**
@@ -147,7 +142,7 @@ public class SharedFolderTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void getFiles() throws IOException, URISyntaxException {
+	public void getFiles() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("shared-owner-");
@@ -157,17 +152,16 @@ public class SharedFolderTest extends OlatRestTestCase {
 		copyFileInResourceFolder(container, "portrait.jpg", "2_");
 		
 		URI uri = UriBuilder.fromUri(getFolderURI(sharedFolder)).path("files").build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 
-		List<FileVO> links = parseFileArray(response.getEntity());
+		List<FileVO> links = parseFileArray(response);
 		
 		Assert.assertNotNull(links);
 		Assert.assertEquals(1, links.size());
 		Assert.assertTrue(links.get(0).getHref().contains("2_portrait.jpg"));
 
-		conn.shutdown();
 	}
 	
 	/**
@@ -177,7 +171,7 @@ public class SharedFolderTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void getFolders_deep() throws IOException, URISyntaxException {
+	public void getFolders_deep() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("shared-owner-");
@@ -191,16 +185,15 @@ public class SharedFolderTest extends OlatRestTestCase {
 		
 		URI uri = UriBuilder.fromUri(getFolderURI(sharedFolder)).path("files")
 				.path("First").path("Second").build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 
-		List<FileVO> links = parseFileArray(response.getEntity());
+		List<FileVO> links = parseFileArray(response);
 		Assert.assertNotNull(links);
 		Assert.assertEquals(1, links.size());
 		Assert.assertEquals("Third", links.get(0).getTitle());
 
-		conn.shutdown();
 	}
 	
 	/**
@@ -210,7 +203,7 @@ public class SharedFolderTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void getFolders_notFound() throws IOException, URISyntaxException {
+	public void getFolders_notFound() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("shared-owner-");
@@ -224,11 +217,10 @@ public class SharedFolderTest extends OlatRestTestCase {
 		
 		URI uri = UriBuilder.fromUri(getFolderURI(sharedFolder)).path("files")
 				.path("First").path("Second").path("Trois").build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(404, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(404, response.statusCode());
 
-		conn.shutdown();
 	}
 	
 	/**
@@ -238,7 +230,7 @@ public class SharedFolderTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void putFiles_owner() throws IOException, URISyntaxException {
+	public void putFiles_owner() throws IOException, URISyntaxException, InterruptedException {
 		//create a shared folder
 		IdentityWithLogin owner = JunitTestHelper.createAndPersistRndUser("shared-owner-");
 		Organisation defOrganisation = organisationService.getDefaultOrganisation();
@@ -254,10 +246,9 @@ public class SharedFolderTest extends OlatRestTestCase {
 		File file = new File(fileUrl.toURI());
 		
 		URI uri = UriBuilder.fromUri(getFolderURI(sharedFolder)).path("files").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		conn.addMultipart(method, file.getName(), file);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, file, file.getName(), List.of(), MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
 		//check the reality of the file
 		VFSItem item = container.resolve("certificate.pdf");
@@ -274,7 +265,7 @@ public class SharedFolderTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void getFiles_participant() throws IOException, URISyntaxException {
+	public void getFiles_participant() throws IOException, URISyntaxException, InterruptedException {
 		//a shared folder with a participant
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("shared-owner-");
 		IdentityWithLogin participant = JunitTestHelper.createAndPersistRndUser("shared-part-");
@@ -290,11 +281,11 @@ public class SharedFolderTest extends OlatRestTestCase {
 
 		// check directories
 		URI uri = UriBuilder.fromUri(getFolderURI(sharedFolder)).path("files").build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 
-		List<FileVO> links = parseFileArray(response.getEntity());
+		List<FileVO> links = parseFileArray(response);
 		
 		Assert.assertNotNull(links);
 		Assert.assertEquals(1, links.size());
@@ -302,14 +293,13 @@ public class SharedFolderTest extends OlatRestTestCase {
 		
 		// download the file
 		URI fileUri = UriBuilder.fromUri(getFolderURI(sharedFolder)).path("files").path("3_portrait.jpg").build();
-		HttpGet fileMethod = conn.createGet(fileUri, "*/*", true);
-		HttpResponse fileResponse = conn.execute(fileMethod);
-		Assert.assertEquals(200, fileResponse.getStatusLine().getStatusCode());
-		byte[] fileBytes = EntityUtils.toByteArray(fileResponse.getEntity());
+		HttpRequest fileMethod = conn.createGet(fileUri, "*/*");
+		HttpResponse<InputStream> fileResponse = conn.execute(fileMethod);
+		Assert.assertEquals(200, fileResponse.statusCode());
+		byte[] fileBytes = ConnectionUtilities.toByteArray(fileResponse);
 		Assert.assertNotNull(fileBytes);
 		Assert.assertTrue(fileBytes.length > 10);
 	
-		conn.shutdown();
 	}
 	
 	/**
@@ -319,7 +309,7 @@ public class SharedFolderTest extends OlatRestTestCase {
 	 * @throws URISyntaxException
 	 */
 	@Test
-	public void putFiles_participant() throws IOException, URISyntaxException {
+	public void putFiles_participant() throws IOException, URISyntaxException, InterruptedException {
 		//a shared folder with a participant
 		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("shared-owner-");
 		IdentityWithLogin participant = JunitTestHelper.createAndPersistRndUser("shared-part-");
@@ -337,10 +327,9 @@ public class SharedFolderTest extends OlatRestTestCase {
 		File file = new File(fileUrl.toURI());
 		
 		URI uri = UriBuilder.fromUri(getFolderURI(sharedFolder)).path("files").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		conn.addMultipart(method, file.getName(), file);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(Status.FORBIDDEN.getStatusCode(), response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, file, file.getName(), List.of(), MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(Status.FORBIDDEN.getStatusCode(), response.statusCode());
 		
 		//check the absence of the file
 		VFSItem item = container.resolve("certificate.pdf");

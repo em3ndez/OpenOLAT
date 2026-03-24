@@ -85,7 +85,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void importQuestionsCSV()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
 		authorLoginPage.loginAs(author.getLogin(), author.getPassword());
@@ -167,7 +167,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void importQuestionsCSVMatchVariants()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
 		authorLoginPage.loginAs(author.getLogin(), author.getPassword());
@@ -250,7 +250,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorSingleChoices()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
@@ -396,7 +396,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorSingleChoices_conditionalAttemptsFeedback()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
 		authorLoginPage.loginAs(author.getLogin(), author.getPassword());
@@ -470,7 +470,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorMultipleChoices()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
 		UserVO eric = new UserRestClient(deploymentUrl).createRandomUser("Eric");
@@ -647,7 +647,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorMultipleChoices_complexConditionalFeedback()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
 		authorLoginPage.loginAs(author.getLogin(), author.getPassword());
@@ -752,7 +752,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorKprim()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO rei = new UserRestClient(deploymentUrl).createRandomUser("Rei");
 		UserVO melissa = new UserRestClient(deploymentUrl).createRandomUser("Melissa");
@@ -928,7 +928,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorHotspot_singleChoice()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
 		authorLoginPage.loginAs(author.getLogin(), author.getPassword());
@@ -1105,7 +1105,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorHotspot_multipleChoice()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
 		authorLoginPage.loginAs(author.getLogin(), author.getPassword());
@@ -1285,7 +1285,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorFib_text()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
@@ -1461,7 +1461,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorNumericalInput_exact()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
@@ -1636,7 +1636,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorNumericalInput_absolut()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
@@ -1807,7 +1807,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorHottext()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
@@ -1915,7 +1915,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorOrder()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
@@ -2027,7 +2027,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorInlineChoice()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
@@ -2215,7 +2215,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorMatch()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO rei = new UserRestClient(deploymentUrl).createRandomUser("Rei");
 		UserVO melissa = new UserRestClient(deploymentUrl).createRandomUser("Melissa");
@@ -2411,7 +2411,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorMatch_distractors()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO rei = new UserRestClient(deploymentUrl).createRandomUser("Rei");
 		UserVO melissa = new UserRestClient(deploymentUrl).createRandomUser("Melissa");
@@ -2603,7 +2603,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorMatchDragAndDrop()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO asuka = new UserRestClient(deploymentUrl).createRandomUser("Asuka");
 		UserVO chara = new UserRestClient(deploymentUrl).createRandomUser("Chara");
@@ -2798,7 +2798,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorMatchDragAndDrop_distractors()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO asuka = new UserRestClient(deploymentUrl).createRandomUser("Asuka");
 		UserVO chara = new UserRestClient(deploymentUrl).createRandomUser("Chara");
@@ -2989,7 +2989,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorMatchTrueFalse()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO rei = new UserRestClient(deploymentUrl).createRandomUser("Rei");
 		UserVO asuka = new UserRestClient(deploymentUrl).createRandomUser("Asuka");
@@ -3168,7 +3168,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorUpload()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO rei = new UserRestClient(deploymentUrl).createRandomUser("Rei");
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
@@ -3271,7 +3271,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorEssay()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO rei = new UserRestClient(deploymentUrl).createRandomUser("Rei");
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
@@ -3373,7 +3373,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorDrawing()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO rei = new UserRestClient(deploymentUrl).createRandomUser("Rei");
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
@@ -3482,7 +3482,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorHiddenSection()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
 		LoginPage authorLoginPage = LoginPage.load(browser, deploymentUrl);
@@ -3593,7 +3593,7 @@ public class ImsQTI21EditorTest extends Deployments {
 	@Test
 	@RunAsClient
 	public void qti21EditorNegativePoints()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		UserVO author = new UserRestClient(deploymentUrl).createAuthor();
 		UserVO ryomou = new UserRestClient(deploymentUrl).createRandomUser("Ryomou");
 		UserVO asuka = new UserRestClient(deploymentUrl).createRandomUser("Asuka");

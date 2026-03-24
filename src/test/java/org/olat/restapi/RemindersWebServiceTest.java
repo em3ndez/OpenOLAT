@@ -23,24 +23,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
 import org.olat.core.id.Identity;
-import org.olat.core.logging.Tracing;
 import org.olat.course.nodes.gta.rule.AssignTaskRuleSPI;
 import org.olat.modules.reminder.Reminder;
 import org.olat.modules.reminder.ReminderRule;
@@ -60,9 +54,6 @@ import org.olat.test.JunitTestHelper.IdentityWithLogin;
 import org.olat.test.OlatRestTestCase;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 /**
  * 
  * Initial date: 25 mars 2019<br>
@@ -70,8 +61,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *
  */
 public class RemindersWebServiceTest extends OlatRestTestCase {
-	
-	private static final Logger log = Tracing.createLoggerFor(RemindersWebServiceTest.class);
 
 	@Autowired
 	private DB dbInstance;
@@ -84,7 +73,7 @@ public class RemindersWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getReminders_repo()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		Identity creator = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-rem-1");
@@ -97,11 +86,11 @@ public class RemindersWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(entry.getKey().toString()).path("reminders").build();
-		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 
-		List<ReminderVO> reminderVoes = parseReminderArray(response.getEntity());
+		List<ReminderVO> reminderVoes = conn.parseList(response, ReminderVO.class);
 		Assert.assertNotNull(reminderVoes);
 		Assert.assertEquals(1, reminderVoes.size());
 		ReminderVO reminderVo = reminderVoes.get(0);
@@ -111,7 +100,7 @@ public class RemindersWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getReminders_course()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		Identity creator = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-rem-1");
@@ -124,11 +113,11 @@ public class RemindersWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("repo").path("courses")
 				.path(courseEntry.getOlatResource().getResourceableId().toString()).path("reminders").build();
-		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 
-		List<ReminderVO> reminderVoes = parseReminderArray(response.getEntity());
+		List<ReminderVO> reminderVoes = conn.parseList(response, ReminderVO.class);
 		Assert.assertNotNull(reminderVoes);
 		Assert.assertEquals(1, reminderVoes.size());
 		ReminderVO reminderVo = reminderVoes.get(0);
@@ -138,7 +127,7 @@ public class RemindersWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void putNewReminder()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		IdentityWithLogin creator = JunitTestHelper.createAndPersistRndAdmin("rest-rem-1");
 		RepositoryEntry entry = JunitTestHelper.createAndPersistRepositoryEntry();
 		dbInstance.commitAndCloseSession();
@@ -160,10 +149,9 @@ public class RemindersWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(entry.getKey().toString()).path("reminders").build();
-		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(method, reminderVo);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(request, reminderVo, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 
 		// check the return value
 		ReminderVO savedReminderVo = conn.parse(response, ReminderVO.class);
@@ -201,7 +189,7 @@ public class RemindersWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void postReminder()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		IdentityWithLogin creator = JunitTestHelper.createAndPersistRndAdmin("rest-rem-3");
 		RepositoryEntry entry = JunitTestHelper.createAndPersistRepositoryEntry();
 		
@@ -251,10 +239,9 @@ public class RemindersWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(entry.getKey().toString()).path("reminders").build();
-		HttpPost method = conn.createPost(request, MediaType.APPLICATION_JSON);
-		conn.addJsonEntity(method, reminderVo);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPost(request, reminderVo, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 
 		// check the return value
 		ReminderVO savedReminderVo = conn.parse(response, ReminderVO.class);
@@ -296,7 +283,7 @@ public class RemindersWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void deleteReminder() 
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		Identity creator = JunitTestHelper.createAndPersistIdentityAsRndUser("rest-rem-1");
@@ -313,22 +300,11 @@ public class RemindersWebServiceTest extends OlatRestTestCase {
 		URI request = UriBuilder.fromUri(getContextURI()).path("repo").path("entries")
 				.path(courseEntry.getKey().toString()).path("reminders")
 				.path(reminder.getKey().toString()).build();
-		HttpDelete method = conn.createDelete(request, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createDelete(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 
 		Reminder deletedReminder = reminderService.loadByKey(reminder.getKey());
 		Assert.assertNull(deletedReminder);
-	}
-	
-	
-	private List<ReminderVO> parseReminderArray(HttpEntity entity) {
-		try(InputStream content=entity.getContent()) {
-			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
-			return mapper.readValue(content, new TypeReference<List<ReminderVO>>(){/* */});
-		} catch (Exception e) {
-			log.error("", e);
-			return null;
-		}
 	}
 }

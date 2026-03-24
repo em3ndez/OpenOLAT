@@ -39,22 +39,18 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
 
 import javax.imageio.ImageIO;
+
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Before;
@@ -64,6 +60,7 @@ import org.junit.runners.MethodSorters;
 import org.olat.core.commons.persistence.DB;
 import org.olat.core.logging.Tracing;
 import org.olat.core.util.FileUtils;
+import org.olat.core.util.httpclient.ConnectionUtilities.NameValuePair;
 import org.olat.core.util.vfs.VFSContainer;
 import org.olat.core.util.vfs.VFSItem;
 import org.olat.core.util.vfs.VFSLeaf;
@@ -79,9 +76,6 @@ import org.olat.test.JunitTestHelper;
 import org.olat.test.JunitTestHelper.IdentityWithLogin;
 import org.olat.test.OlatRestTestCase;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ForumTest extends OlatRestTestCase {
@@ -135,83 +129,79 @@ public class ForumTest extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void testGetThreads() throws IOException, URISyntaxException  {
+	public void testGetThreads() throws IOException, URISyntaxException, InterruptedException  {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI uri = getForumUriBuilder().path("threads").build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		List<MessageVO> threads = parseMessageArray(response.getEntity());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		List<MessageVO> threads = conn.parseList(response, MessageVO.class);
 		
 		assertNotNull(threads);
 		assertFalse(threads.isEmpty());	
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testGetThreadsWithPaging() throws IOException, URISyntaxException  {
+	public void testGetThreadsWithPaging() throws IOException, URISyntaxException, InterruptedException  {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI uri = getForumUriBuilder().path("threads")
 				.queryParam("start", "0").queryParam("limit", "2").build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		MessageVOes threads = conn.parse(response, MessageVOes.class);
 		
 		assertNotNull(threads);
 		assertNotNull(threads.getMessages());
 		assertTrue(threads.getTotalCount() >= 2);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testGetThread() throws IOException, URISyntaxException  {
+	public void testGetThread() throws IOException, URISyntaxException, InterruptedException  {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI uri = getForumUriBuilder().path("posts").path(m1.getKey().toString()).build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		List<MessageVO> threads = parseMessageArray(response.getEntity());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		List<MessageVO> threads = conn.parseList(response, MessageVO.class);
 		
 		assertNotNull(threads);
 		assertFalse(threads.isEmpty());
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testGetThreadWithPaging() throws IOException, URISyntaxException  {
+	public void testGetThreadWithPaging() throws IOException, URISyntaxException, InterruptedException  {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI uri = getForumUriBuilder().path("posts").path(m1.getKey().toString())
 				.queryParam("start", "0").queryParam("limit", "2").build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		MessageVOes threads = conn.parse(response, MessageVOes.class);
 		
 		assertNotNull(threads);
 		assertNotNull(threads.getMessages());
 		assertTrue(threads.getTotalCount() >= 2);
-		
-		conn.shutdown();
+
 	}
 
 	@Test
-	public void testNewThread() throws IOException, URISyntaxException {
+	public void testNewThread() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI uri = getForumUriBuilder().path("threads").queryParam("authorKey", id1.getKey())
 			.queryParam("title", "New thread")
 			.queryParam("body", "A very interesting thread").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		MessageVO thread = conn.parse(response, MessageVO.class);
 		assertNotNull(thread);
 		assertNotNull(thread.getKey());
@@ -227,21 +217,20 @@ public class ForumTest extends OlatRestTestCase {
 			}
 		}
 		assertTrue(saved);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testNewMessage() throws IOException, URISyntaxException {
+	public void testNewMessage() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		URI uri = getForumUriBuilder().path("posts").path(m1.getKey().toString())
 			.queryParam("authorKey", id1.getKey())
 			.queryParam("title", "New message")
 			.queryParam("body", "A very interesting response in Thread-1").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		MessageVO message = conn.parse(response, MessageVO.class);
 		assertNotNull(message);
 		assertNotNull(message.getKey());
@@ -258,11 +247,10 @@ public class ForumTest extends OlatRestTestCase {
 			}
 		}
 		assertTrue(saved);
-		conn.shutdown();
 	}
 	
 	@Test
-	public void testNewMessageWithEntity() throws IOException, URISyntaxException {
+	public void testNewMessageWithEntity() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
 		ReplyVO vo = new ReplyVO();
@@ -270,10 +258,9 @@ public class ForumTest extends OlatRestTestCase {
 		vo.setBody("Reply with attachment body");
 		
 		URI uri = getForumUriBuilder().path("posts").path(m1.getKey().toString()).build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(method, vo);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, vo, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		MessageVO message = conn.parse(response, MessageVO.class);
 		assertNotNull(message);
 		assertNotNull(message.getKey());
@@ -289,11 +276,10 @@ public class ForumTest extends OlatRestTestCase {
 			}
 		}
 		assertTrue(saved);
-		conn.shutdown();
 	}
 	
 	@Test
-	public void testGetAttachment() throws IOException, URISyntaxException {
+	public void testGetAttachment() throws IOException, URISyntaxException, InterruptedException {
 		//set a attachment
 		VFSContainer container = forumManager.getMessageContainer(m1.getForum().getKey(), m1.getKey());
 		VFSLeaf attachment = container.createChildLeaf(UUID.randomUUID().toString().replace("-", "") + ".jpg");
@@ -309,10 +295,10 @@ public class ForumTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		URI uri = getForumUriBuilder().path("posts").path(m1.getKey().toString()).path("attachments").build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		List<FileVO> files = parseFileArray(response.getEntity());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
+		List<FileVO> files = parseFileArray(response);
 		assertNotNull(files);
 		
 		FileVO attachmentVO = null;
@@ -325,25 +311,24 @@ public class ForumTest extends OlatRestTestCase {
 		assertNotNull(attachmentVO);
 		
 		URI downloadURI = new URI(attachmentVO.getHref());
-		HttpGet download = conn.createGet(downloadURI, MediaType.APPLICATION_JSON, true);
-		HttpResponse downloadResponse = conn.execute(download);
-		assertEquals(200, downloadResponse.getStatusLine().getStatusCode());
+		HttpRequest download = conn.createGet(downloadURI, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> downloadResponse = conn.execute(download);
+		assertEquals(200, downloadResponse.statusCode());
 		//String contentType = downloadResponse.getEntity().getContentType().getValue();
 		//doesn't work with grizzly assertEquals("image/jpeg", contentType);
-		conn.shutdown();
 	}
 	
 	@Test
-	public void testUploadAttachment() throws IOException, URISyntaxException {
+	public void testUploadAttachment() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI uri = getForumUriBuilder().path("posts").path(m1.getKey().toString())
 			.queryParam("authorKey", id1.getKey())
 			.queryParam("title", "New message with attachment ")
 			.queryParam("body", "A very interesting response in Thread-1 with an attachment").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		MessageVO message = conn.parse(response, MessageVO.class);
 		assertNotNull(message);
 		
@@ -354,10 +339,9 @@ public class ForumTest extends OlatRestTestCase {
 		
 		//upload portrait
 		URI attachUri = getForumUriBuilder().path("posts").path(message.getKey().toString()).path("attachments").build();
-		HttpPost attachMethod = conn.createPost(attachUri, MediaType.APPLICATION_JSON);
-		conn.addMultipart(attachMethod, "portrait.jpg", portrait);
-		HttpResponse attachResponse = conn.execute(attachMethod);
-		assertEquals(200, attachResponse.getStatusLine().getStatusCode());
+		HttpRequest attachMethod = conn.createPost(attachUri, portrait, "portrait.jpg", List.of(), MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> attachResponse = conn.execute(attachMethod);
+		assertEquals(200, attachResponse.statusCode());
 		
 		//check if the file exists
 		VFSContainer container = forumManager.getMessageContainer(message.getForumKey(), message.getKey());
@@ -374,21 +358,20 @@ public class ForumTest extends OlatRestTestCase {
 			log.error("", e);
 			Assert.fail();
 		}
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testUploadAttachmentOutOfBox() throws IOException, URISyntaxException {
+	public void testUploadAttachmentOutOfBox() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI uri = getForumUriBuilder().path("posts").path(m1.getKey().toString())
 			.queryParam("authorKey", id1.getKey())
 			.queryParam("title", "New message with attachment ")
 			.queryParam("body", "A very interesting response in Thread-1 with an attachment").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		MessageVO message = conn.parse(response, MessageVO.class);
 		assertNotNull(message);
 		
@@ -399,46 +382,40 @@ public class ForumTest extends OlatRestTestCase {
 		
 		//upload portrait
 		URI attachUri = getForumUriBuilder().path("posts").path(message.getKey().toString()).path("attachments").build();
-		HttpPost attachMethod = conn.createPost(attachUri, MediaType.APPLICATION_JSON);
-		conn.addMultipart(attachMethod, "../../portrait.jpg", portrait);
-		HttpResponse attachResponse = conn.execute(attachMethod);
-		assertEquals(200, attachResponse.getStatusLine().getStatusCode());
+		HttpRequest attachMethod = conn.createPost(attachUri, portrait, "../../portrait.jpg", List.of(), MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> attachResponse = conn.execute(attachMethod);
+		assertEquals(200, attachResponse.statusCode());
 		
 		//check if the file exists
 		VFSContainer container = forumManager.getMessageContainer(message.getForumKey(), message.getKey());
 		VFSItem uploadedFile = container.resolve("portrait.jpg");
 		Assert.assertNull(uploadedFile);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testUpload64Attachment() throws IOException, URISyntaxException {
+	public void testUpload64Attachment() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI uri = getForumUriBuilder().path("posts").path(m1.getKey().toString())
 			.queryParam("authorKey", id1.getKey())
 			.queryParam("title", "New message with attachment ")
 			.queryParam("body", "A very interesting response in Thread-1 with an attachment").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		MessageVO message = conn.parse(response, MessageVO.class);
 		assertNotNull(message);
-		
 		
 		//upload portrait
 		URI attachUri = getForumUriBuilder().path("posts").path(message.getKey().toString()).path("attachments").build();
 		byte[] portraitBytes = getPortrait(); //attachment
 		byte[] portrait64 = Base64.encodeBase64(portraitBytes, true);
-		HttpPost attachMethod = conn.createPost(attachUri, MediaType.APPLICATION_JSON);
-		
-		attachMethod.addHeader("Content-Type", MediaType.APPLICATION_FORM_URLENCODED);
-		conn.addEntity(attachMethod, new BasicNameValuePair("file", new String(portrait64)),
-				new BasicNameValuePair("filename", "portrait64.jpg"));
-
-		HttpResponse attachCode = conn.execute(attachMethod);
-		assertEquals(200, attachCode.getStatusLine().getStatusCode());
+		List<NameValuePair> formParameters = List.of(new NameValuePair("file", new String(portrait64)),
+				new NameValuePair("filename", "portrait64.jpg"));
+		HttpRequest attachMethod = conn.createPost(attachUri, formParameters, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> attachCode = conn.execute(attachMethod);
+		assertEquals(200, attachCode.statusCode());
 		
 		//check if the file exists
 		VFSContainer container = forumManager.getMessageContainer(message.getForumKey(), message.getKey());
@@ -456,11 +433,10 @@ public class ForumTest extends OlatRestTestCase {
 			Assert.fail();
 		}
 
-		conn.shutdown();
 	}
 	
 	@Test
-	public void testReplyWithTwoAttachments() throws IOException, URISyntaxException {
+	public void testReplyWithTwoAttachments() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(id1);
 
 		ReplyVO vo = new ReplyVO();
@@ -486,12 +462,9 @@ public class ForumTest extends OlatRestTestCase {
 		vo.setAttachments(files);
 
 		URI uri = getForumUriBuilder().path("posts").path(m1.getKey().toString()).build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(method, vo);
-		method.addHeader("Accept-Language", "en");
-		
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, vo, MediaType.APPLICATION_JSON, "en");
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		MessageVO message = conn.parse(response, MessageVO.class);
 		assertNotNull(message);
 		
@@ -503,10 +476,10 @@ public class ForumTest extends OlatRestTestCase {
 			assertNotNull(title);
 			String href = attachment.getHref();
 			URI attachmentUri = new URI(href);
-			HttpGet getAttachment = conn.createGet(attachmentUri, "*/*", true);
-			HttpResponse attachmentCode = conn.execute(getAttachment);
-			assertEquals(200, attachmentCode.getStatusLine().getStatusCode());
-			EntityUtils.consume(attachmentCode.getEntity());
+			HttpRequest getAttachment = conn.createGet(attachmentUri, "*/*");
+			HttpResponse<InputStream> attachmentCode = conn.execute(getAttachment);
+			assertEquals(200, attachmentCode.statusCode());
+			RestConnection.consume(attachmentCode);
 		}
 		
 		
@@ -531,20 +504,19 @@ public class ForumTest extends OlatRestTestCase {
 		VFSItem uploadedPage = container.resolve("singlepage64.html");
 		assertNotNull(uploadedPage);
 		assertTrue(uploadedPage instanceof VFSLeaf);
-		conn.shutdown();
 	}
 	
 	@Test
-	public void testUploadAttachmentWithFile64VO() throws IOException, URISyntaxException {
+	public void testUploadAttachmentWithFile64VO() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI uri = getForumUriBuilder().path("posts").path(m1.getKey().toString())
 			.queryParam("authorKey", id1.getKey())
 			.queryParam("title", "New message with attachment ")
 			.queryParam("body", "A very interesting response in Thread-1 with an attachment").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		MessageVO message = conn.parse(response, MessageVO.class);
 		assertNotNull(message);
 		
@@ -552,18 +524,14 @@ public class ForumTest extends OlatRestTestCase {
 		byte[] portraitBytes = getPortrait();
 		
 		//upload portrait
-		URI attachUri = getForumUriBuilder().path("posts").path(message.getKey().toString()).path("attachments").build();
-		HttpPut attachMethod = conn.createPut(attachUri, MediaType.APPLICATION_JSON, true);
-		attachMethod.addHeader("Content-Type", MediaType.APPLICATION_JSON);
-		
-		
 		byte[] portrait64 = Base64.encodeBase64(portraitBytes, true);
 		File64VO fileVo = new File64VO();
 		fileVo.setFile(new String(portrait64));
 		fileVo.setFilename("portrait64vo.jpg");
-		conn.addJsonEntity(attachMethod, fileVo);
-		HttpResponse attachCode = conn.execute(attachMethod);
-		assertEquals(200, attachCode.getStatusLine().getStatusCode());
+		URI attachUri = getForumUriBuilder().path("posts").path(message.getKey().toString()).path("attachments").build();
+		HttpRequest attachMethod = conn.createPut(attachUri, fileVo, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> attachCode = conn.execute(attachMethod);
+		assertEquals(200, attachCode.statusCode());
 		
 		//check if the file exists
 		VFSContainer container = forumManager.getMessageContainer(message.getForumKey(), message.getKey());
@@ -581,21 +549,20 @@ public class ForumTest extends OlatRestTestCase {
 			log.error("", e);
 			Assert.fail();
 		}
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testUploadAttachmentAndRename() throws IOException, URISyntaxException {
+	public void testUploadAttachmentAndRename() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection(id1);
 		
 		URI uri = getForumUriBuilder().path("posts").path(m1.getKey().toString())
 			.queryParam("authorKey", id1.getKey())
 			.queryParam("title", "New message with attachment ")
 			.queryParam("body", "A very interesting response in Thread-1 with an attachment").build();
-		HttpPut method = conn.createPut(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPut(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertEquals(200, response.statusCode());
 		MessageVO message = conn.parse(response, MessageVO.class);
 		assertNotNull(message);
 		
@@ -606,30 +573,27 @@ public class ForumTest extends OlatRestTestCase {
 		
 		//upload portrait
 		URI attachUri = getForumUriBuilder().path("posts").path(m1.getKey().toString()).path("attachments").build();
-		HttpPost attachMethod = conn.createPost(attachUri, MediaType.APPLICATION_JSON);
-		conn.addMultipart(attachMethod, "portrait.jpg", portrait);
-		HttpResponse attachCode = conn.execute(attachMethod);
-		assertEquals(200, attachCode.getStatusLine().getStatusCode());
-		EntityUtils.consume(attachCode.getEntity());
+		HttpRequest attachMethod = conn.createPost(attachUri, portrait, "portrait.jpg", List.of(), MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> attachCode = conn.execute(attachMethod);
+		assertEquals(200, attachCode.statusCode());
+		RestConnection.consume(attachCode);
 
 		//upload portrait a second time
 		URI attach2Uri = getForumUriBuilder().path("posts").path(m1.getKey().toString()).path("attachments").build();
-		HttpPost attach2Method = conn.createPost(attach2Uri, MediaType.APPLICATION_JSON);
-		conn.addMultipart(attach2Method, "portrait.jpg", portrait);
-		HttpResponse attach2Code = conn.execute(attach2Method);
-		assertEquals(200, attach2Code.getStatusLine().getStatusCode());
-		EntityUtils.consume(attach2Code.getEntity());
+		HttpRequest attach2Method = conn.createPost(attach2Uri, portrait, "portrait.jpg", List.of(), MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> attach2Code = conn.execute(attach2Method);
+		assertEquals(200, attach2Code.statusCode());
+		RestConnection.consume(attach2Code);
 		
 		// load the attachments
 		URI loadUri = getForumUriBuilder().path("posts").path(m1.getKey().toString()).path("attachments").build();
-		HttpGet loadMethod = conn.createGet(loadUri, MediaType.APPLICATION_JSON, true);
-		HttpResponse loadResponse = conn.execute(loadMethod);
-		assertEquals(200, loadResponse.getStatusLine().getStatusCode());
-		List<FileVO> files = parseFileArray(loadResponse.getEntity());
+		HttpRequest loadMethod = conn.createGet(loadUri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> loadResponse = conn.execute(loadMethod);
+		assertEquals(200, loadResponse.statusCode());
+		List<FileVO> files = parseFileArray(loadResponse);
 		assertNotNull(files);
 		assertEquals(2, files.size());
-		
-		conn.shutdown();
+
 	}
 	
 	private UriBuilder getForumUriBuilder() {
@@ -640,16 +604,6 @@ public class ForumTest extends OlatRestTestCase {
 		try(InputStream  portraitStream = CoursesElementsTest.class.getResourceAsStream("portrait.jpg")) {
 			return IOUtils.toByteArray(portraitStream);
 		} catch(IOException e) {
-			log.error("", e);
-			return null;
-		}
-	}
-	
-	protected List<MessageVO> parseMessageArray(HttpEntity entity) {
-		try(InputStream in=entity.getContent()) {
-			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
-			return mapper.readValue(in, new TypeReference<List<MessageVO>>(){/* */});
-		} catch (Exception e) {
 			log.error("", e);
 			return null;
 		}

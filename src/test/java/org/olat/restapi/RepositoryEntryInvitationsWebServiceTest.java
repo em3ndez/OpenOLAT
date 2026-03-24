@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -31,13 +33,6 @@ import java.util.UUID;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.util.EntityUtils;
-import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.basesecurity.BaseSecurity;
@@ -45,7 +40,6 @@ import org.olat.basesecurity.Group;
 import org.olat.basesecurity.Invitation;
 import org.olat.core.commons.persistence.DB;
 import org.olat.core.id.Identity;
-import org.olat.core.logging.Tracing;
 import org.olat.core.util.DateUtils;
 import org.olat.course.CourseFactory;
 import org.olat.course.ICourse;
@@ -59,9 +53,6 @@ import org.olat.test.JunitTestHelper;
 import org.olat.test.OlatRestTestCase;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 /**
  * 
  * Initial date: 16 déc. 2022<br>
@@ -69,8 +60,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *
  */
 public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
-	
-	private static final Logger log = Tracing.createLoggerFor(RepositoryEntryInvitationsWebServiceTest.class);
 	
 	@Autowired
 	private DB dbInstance;
@@ -83,7 +72,7 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void createInvitationInRepositoryEntry()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		RepositoryEntry courseEntry = JunitTestHelper.deployBasicCourse(admin, "course-invitation 1",
 				RepositoryEntryStatusEnum.published);
@@ -101,9 +90,9 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 				.queryParam("expiration", "6")
 				.build();
 		
-		HttpPost method = conn.createPost(uri, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPost(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		InvitationVO invitation = conn.parse(response, InvitationVO.class);
 		
 		Assert.assertNotNull(invitation);
@@ -124,7 +113,7 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void createInvitationVOInRepositoryEntry()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		RepositoryEntry entry = JunitTestHelper.createAndPersistRepositoryEntry();
 		Assert.assertNotNull(entry);
 
@@ -142,11 +131,9 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 				.path("repo").path("entries").path(entry.getKey().toString()).path("invitations")
 				.build();
 		
-		HttpPost method = conn.createPost(uri, MediaType.APPLICATION_JSON);
-		conn.addJsonEntity(method, invitationVo);
-		
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPost(uri, invitationVo, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		InvitationVO savedInvitationVo = conn.parse(response, InvitationVO.class);
 		
 		Assert.assertNotNull(savedInvitationVo);
@@ -166,7 +153,7 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void updateInvitationVOInRepositoryEntry()
-	throws IOException, URISyntaxException {	
+	throws IOException, URISyntaxException, InterruptedException {	
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		
 		RepositoryEntry entry = JunitTestHelper.createAndPersistRepositoryEntry();
@@ -198,11 +185,9 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 				.path("repo").path("entries").path(entry.getKey().toString()).path("invitations")
 				.build();
 		
-		HttpPost method = conn.createPost(uri, MediaType.APPLICATION_JSON);
-		conn.addJsonEntity(method, invitationVo);
-		
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPost(uri, invitationVo, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		InvitationVO updatedInvitationVo = conn.parse(response, InvitationVO.class);
 		
 		Assert.assertNotNull(updatedInvitationVo);
@@ -224,7 +209,7 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void updateInvitationsInRepositoryEntryWithReactivation()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		
 		String email = "albert.v@" + UUID.randomUUID();
@@ -253,9 +238,9 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 				.queryParam("expiration", "6")
 				.build();
 		
-		HttpPost method = conn.createPost(uri, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPost(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		InvitationVO invitation = conn.parse(response, InvitationVO.class);
 		Assert.assertNotNull(invitation);
 
@@ -274,7 +259,7 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 	 */
 	@Test
 	public void createInvitationInRepositoryEntryWithExistingUser()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		Identity existingInvitee = JunitTestHelper.createAndPersistIdentityAsRndUser("invitee-1");
 		RepositoryEntry courseEntry = JunitTestHelper.deployBasicCourse(admin, "course-invitation 8",
@@ -294,9 +279,9 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 				.queryParam("expiration", "6")
 				.build();
 		
-		HttpPost method = conn.createPost(uri, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createPost(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		InvitationVO invitation = conn.parse(response, InvitationVO.class);
 		
 		Assert.assertNotNull(invitation);
@@ -316,7 +301,7 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getListOfInvitationsInRepositoryEntry()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		
 		RepositoryEntry entry = JunitTestHelper.createAndPersistRepositoryEntry();
@@ -331,10 +316,10 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		List<InvitationVO> invitations = parseInvitationArray(response.getEntity());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		List<InvitationVO> invitations = conn.parseList(response, InvitationVO.class);
 		Assert.assertNotNull(invitations);
 		Assert.assertEquals(1, invitations.size());
 		
@@ -349,7 +334,7 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 
 	@Test
 	public void getInvitationInRepositoryEntryByKey()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		
 		RepositoryEntry entry = JunitTestHelper.createAndPersistRepositoryEntry();
@@ -367,9 +352,9 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		InvitationVO invitationVo = conn.parse(response, InvitationVO.class);
 		Assert.assertEquals(invitation.getKey(), invitationVo.getKey());
 		Assert.assertEquals(id.getKey(), invitationVo.getIdentityKey());
@@ -382,7 +367,7 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void deleteInvitationInRepositoryEntryByKey()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity admin = JunitTestHelper.findIdentityByLogin("administrator");
 		
 		RepositoryEntry entry = JunitTestHelper.createAndPersistRepositoryEntry();
@@ -402,22 +387,12 @@ public class RepositoryEntryInvitationsWebServiceTest extends OlatRestTestCase {
 
 		RestConnection conn = new RestConnection("administrator", "openolat");
 		
-		HttpDelete method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createDelete(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		Invitation deletedInvitation = invitationService.findInvitation(tmpInvitation.getToken());
 		Assert.assertNull(deletedInvitation);
-	}
-	
-	private List<InvitationVO> parseInvitationArray(HttpEntity entity) {
-		try(InputStream content=entity.getContent()) {
-			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
-			return mapper.readValue(content, new TypeReference<List<InvitationVO>>(){/* */});
-		} catch (Exception e) {
-			log.error("", e);
-			return null;
-		}
 	}
 }

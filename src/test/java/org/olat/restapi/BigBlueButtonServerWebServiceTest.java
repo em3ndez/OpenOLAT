@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,9 +34,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPut;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
@@ -66,7 +65,7 @@ public class BigBlueButtonServerWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getServers()
-	throws IOException, URISyntaxException  {
+	throws IOException, URISyntaxException, InterruptedException  {
 		
 		String name = UUID.randomUUID().toString();
 		String url = "https://" + name + "/bigbluebutton";
@@ -79,11 +78,11 @@ public class BigBlueButtonServerWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");			
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("bigbluebutton").path("servers").build();
-		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
-		List<BigBlueButtonServerVO> serverVoes = parseCourseArray(response.getEntity());
+		List<BigBlueButtonServerVO> serverVoes = conn.parseList(response, BigBlueButtonServerVO.class);
 		assertThat(serverVoes)
 			.isNotNull()
 			.isNotEmpty()
@@ -93,7 +92,7 @@ public class BigBlueButtonServerWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void getServer()
-	throws IOException, URISyntaxException  {
+	throws IOException, URISyntaxException, InterruptedException  {
 		
 		String name = UUID.randomUUID().toString();
 		String url = "https://" + name + "/bigbluebutton";
@@ -107,11 +106,11 @@ public class BigBlueButtonServerWebServiceTest extends OlatRestTestCase {
 		
 		URI request = UriBuilder.fromUri(getContextURI()).path("bigbluebutton")
 				.path("servers").path(server.getKey().toString()).build();
-		HttpGet method = conn.createGet(request, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest method = conn.createGet(request, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
 		
-		BigBlueButtonServerVO serverVo = conn.parse(response.getEntity(), BigBlueButtonServerVO.class);
+		BigBlueButtonServerVO serverVo = conn.parse(response, BigBlueButtonServerVO.class);
 		Assert.assertNotNull(serverVo);
 		Assert.assertEquals(name, serverVo.getName());
 		Assert.assertEquals(server.getKey(), serverVo.getKey());
@@ -119,7 +118,7 @@ public class BigBlueButtonServerWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void createServer()
-	throws IOException, URISyntaxException  {
+	throws IOException, URISyntaxException, InterruptedException  {
 		String name = UUID.randomUUID().toString();
 		String url = "https://" + name + "/bigbluebutton";
 		String recordingUrl = "https://" + name + "/bigbluebutton/recordings";
@@ -135,14 +134,13 @@ public class BigBlueButtonServerWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");		
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("bigbluebutton").path("servers").build();
-		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(method, vo);
+		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON);
 		
-		HttpResponse response = conn.execute(method);
-		assertThat(response.getStatusLine().getStatusCode())
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertThat(response.statusCode())
 			.isIn(200, 201);
 		
-		BigBlueButtonServerVO savedVo = conn.parse(response.getEntity(), BigBlueButtonServerVO.class);
+		BigBlueButtonServerVO savedVo = conn.parse(response, BigBlueButtonServerVO.class);
 		Assert.assertNotNull(savedVo);
 		Assert.assertEquals(name, savedVo.getName());
 		Assert.assertEquals(url, savedVo.getUrl());
@@ -154,7 +152,7 @@ public class BigBlueButtonServerWebServiceTest extends OlatRestTestCase {
 	
 	@Test
 	public void updateServer()
-	throws IOException, URISyntaxException  {
+	throws IOException, URISyntaxException, InterruptedException  {
 		String name = UUID.randomUUID().toString();
 		String url = "https://" + name + "/bigbluebutton";
 		String recordingUrl = "https://" + name + "/bigbluebutton/recordings";
@@ -178,14 +176,13 @@ public class BigBlueButtonServerWebServiceTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");		
 
 		URI request = UriBuilder.fromUri(getContextURI()).path("bigbluebutton").path("servers").build();
-		HttpPut method = conn.createPut(request, MediaType.APPLICATION_JSON, true);
-		conn.addJsonEntity(method, vo);
+		HttpRequest method = conn.createPut(request, vo, MediaType.APPLICATION_JSON);
 		
-		HttpResponse response = conn.execute(method);
-		assertThat(response.getStatusLine().getStatusCode())
+		HttpResponse<InputStream> response = conn.execute(method);
+		assertThat(response.statusCode())
 			.isIn(200, 201);
 		
-		BigBlueButtonServerVO savedVo = conn.parse(response.getEntity(), BigBlueButtonServerVO.class);
+		BigBlueButtonServerVO savedVo = conn.parse(response, BigBlueButtonServerVO.class);
 		Assert.assertNotNull(savedVo);
 		Assert.assertEquals(newName, savedVo.getName());
 		Assert.assertEquals(newUrl, savedVo.getUrl());

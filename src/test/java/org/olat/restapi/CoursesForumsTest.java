@@ -23,15 +23,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Locale;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
 import org.junit.Before;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
@@ -91,48 +92,45 @@ public class CoursesForumsTest  extends OlatRestTestCase {
 	}
 	
 	@Test
-	public void testGetForumInfo() throws IOException, URISyntaxException {
+	public void testGetForumInfo() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		URI uri = UriBuilder.fromUri(getNodeURI()).build();
-		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		ForumVO forum = conn.parse(response, ForumVO.class);
 		assertNotNull(forum);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testGetForumsInfo() throws IOException, URISyntaxException {
+	public void testGetForumsInfo() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		URI uri = UriBuilder.fromUri(getNodesURI()).build();
-		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		ForumVOes forums = conn.parse(response, ForumVOes.class);
 		assertNotNull(forums);
 		assertEquals(1, forums.getTotalCount());
 		assertNotNull(forums.getForums());
 		assertEquals(1, forums.getForums().length);
-		
-		conn.shutdown();
+
 	}
 	
 	@Test
-	public void testGetForum() throws IOException, URISyntaxException {
+	public void testGetForum() throws IOException, URISyntaxException, InterruptedException {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		URI uri = UriBuilder.fromUri(getForumURI()).path("threads").build();
-		HttpGet get = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0", true);
-		HttpResponse response = conn.execute(get);
-		assertEquals(200, response.getStatusLine().getStatusCode());
+		HttpRequest get = conn.createGet(uri, MediaType.APPLICATION_JSON + ";pagingspec=1.0");
+		HttpResponse<InputStream> response = conn.execute(get);
+		assertEquals(200, response.statusCode());
 		MessageVOes threads = conn.parse(response, MessageVOes.class);
 		assertNotNull(threads);
-		
-		conn.shutdown();
+
 	}
 	
 	private URI getNodeURI() {

@@ -28,16 +28,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriBuilder;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Before;
@@ -104,7 +101,7 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 	 */
 	@Test
 	public void getRightsByCourseEmpty()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndUser("rights-1", defaultUnitTestOrganisation, null);
 		RepositoryEntry entry = JunitTestHelper.deployBasicCourse(author, defaultUnitTestOrganisation);
 
@@ -116,9 +113,9 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 				.path("rights").path("course")
 				.build();
 
-		HttpGet method = conn.createGet(rightsUri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		List<RightsVO> rights = parseUserArray(response.getEntity());
+		HttpRequest method = conn.createGet(rightsUri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		List<RightsVO> rights = parseUserArray(response);
 		assertThat(rights)
 			.isNotNull()
 			.hasSize(2)
@@ -134,8 +131,7 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 		Assert.assertNotNull(participantsRights);
 		Assert.assertNotNull(participantsRights.getRights());
 		Assert.assertTrue(participantsRights.getRights().isEmpty());
-		
-		conn.shutdown();
+
 	}
 	
 	/**
@@ -143,7 +139,7 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 	 */
 	@Test
 	public void getRightsByCourse()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndUser("rights-1", defaultUnitTestOrganisation, null);
 		RepositoryEntry entry = JunitTestHelper.deployBasicCourse(author, defaultUnitTestOrganisation);
 		
@@ -161,10 +157,10 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 				.path("rights").path("course")
 				.build();
 
-		HttpGet method = conn.createGet(rightsUri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		List<RightsVO> rights = parseUserArray(response.getEntity());
+		HttpRequest method = conn.createGet(rightsUri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		List<RightsVO> rights = parseUserArray(response);
 		assertThat(rights)
 			.isNotNull()
 			.hasSize(2)
@@ -183,7 +179,6 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 			.hasSize(2)
 			.containsExactlyInAnyOrder(CourseRights.RIGHT_ARCHIVING, CourseRights.RIGHT_DB);
 
-		conn.shutdown();
 	}
 	
 	/**
@@ -191,7 +186,7 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 	 */
 	@Test
 	public void addRightsByCourse()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndUser("rights-1", defaultUnitTestOrganisation, null);
 		RepositoryEntry entry = JunitTestHelper.deployBasicCourse(author, defaultUnitTestOrganisation);
 		
@@ -217,12 +212,10 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 				.path("rights").path("course")
 				.build();
 
-		HttpPost method = conn.createPost(rightsUri, MediaType.APPLICATION_JSON);
-		conn.addJsonEntity(method, new RightsVO[] { newCoachRights, newParticipantsRights });
-
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPost(rightsUri, new RightsVO[] { newCoachRights, newParticipantsRights }, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		// Check the database
 		List<BGRights> currentRights = rightManager.findBGRights(List.of(defGroup), entry.getOlatResource());
@@ -244,7 +237,6 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 			.hasSize(2)
 			.containsExactlyInAnyOrder(CourseRights.RIGHT_DB, CourseRights.RIGHT_GLOSSARY);
 
-		conn.shutdown();
 	}
 	
 	/**
@@ -252,7 +244,7 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 	 */
 	@Test
 	public void getRightsByBusinessGroup()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndUser("rights-3", defaultUnitTestOrganisation, null);
 		RepositoryEntry entry = JunitTestHelper.deployBasicCourse(author, defaultUnitTestOrganisation);
 
@@ -276,10 +268,10 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 				.path("rights").path("group").path(group1.getKey().toString())
 				.build();
 
-		HttpGet method = conn.createGet(rightsUri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		List<RightsVO> rights = parseUserArray(response.getEntity());
+		HttpRequest method = conn.createGet(rightsUri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		List<RightsVO> rights = parseUserArray(response);
 		assertThat(rights)
 			.isNotNull()
 			.hasSize(2)
@@ -298,7 +290,6 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 			.hasSize(2)
 			.containsExactlyInAnyOrder(CourseRights.RIGHT_ARCHIVING, CourseRights.RIGHT_DB);
 
-		conn.shutdown();
 	}
 	
 	/**
@@ -306,7 +297,7 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 	 */
 	@Test
 	public void updateRightsByBusinessGroup()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndUser("rights-4", defaultUnitTestOrganisation, null);
 		RepositoryEntry entry = JunitTestHelper.deployBasicCourse(author, defaultUnitTestOrganisation);
 		
@@ -338,12 +329,10 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 				.path("rights").path("group").path(group1.getKey().toString())
 				.build();
 
-		HttpPost method = conn.createPost(rightsUri, MediaType.APPLICATION_JSON);
-		conn.addJsonEntity(method, new RightsVO[] { newCoachRights, newParticipantsRights });
-
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		EntityUtils.consume(response.getEntity());
+		HttpRequest method = conn.createPost(rightsUri,  new RightsVO[] { newCoachRights, newParticipantsRights }, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(200, response.statusCode());
+		RestConnection.consume(response);
 		
 		// Check the database
 		List<BGRights> currentRights = rightManager.findBGRights(List.of(group1.getBaseGroup()), entry.getOlatResource());
@@ -365,7 +354,6 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 			.hasSize(2)
 			.containsExactlyInAnyOrder(CourseRights.RIGHT_GROUPMANAGEMENT, CourseRights.RIGHT_MEMBERMANAGEMENT);
 
-		conn.shutdown();
 	}
 	
 	/**
@@ -374,7 +362,7 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 	 */
 	@Test
 	public void updateRightsByWrongBusinessGroup()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndUser("rights-4", defaultUnitTestOrganisation, null);
 		RepositoryEntry entry1 = JunitTestHelper.deployBasicCourse(author, defaultUnitTestOrganisation);
 		RepositoryEntry entry2 = JunitTestHelper.deployBasicCourse(author, defaultUnitTestOrganisation);
@@ -397,18 +385,15 @@ public class CourseRightsWebServiceTest extends OlatRestTestCase {
 				.path("rights").path("group").path(group2.getKey().toString())
 				.build();
 
-		HttpPost method = conn.createPost(rightsUri, MediaType.APPLICATION_JSON);
-		conn.addJsonEntity(method, new RightsVO[] { newCoachRights });
+		HttpRequest method = conn.createPost(rightsUri, new RightsVO[] { newCoachRights }, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		RestConnection.consume(response);
+		Assert.assertEquals(404, response.statusCode());
 
-		HttpResponse response = conn.execute(method);
-		EntityUtils.consume(response.getEntity());
-		Assert.assertEquals(404, response.getStatusLine().getStatusCode());
-		
-		conn.shutdown();
 	}
 
-	protected List<RightsVO> parseUserArray(HttpEntity body) {
-		try(InputStream in=body.getContent()) {
+	protected List<RightsVO> parseUserArray(HttpResponse<InputStream> body) {
+		try(InputStream in=body.body()) {
 			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
 			return mapper.readValue(in, new TypeReference<List<RightsVO>>(){/* */});
 		} catch (Exception e) {

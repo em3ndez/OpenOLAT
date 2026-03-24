@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -31,9 +33,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.UriBuilder;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.util.EntityUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.olat.core.commons.persistence.DB;
@@ -47,9 +46,6 @@ import org.olat.test.JunitTestHelper;
 import org.olat.test.JunitTestHelper.IdentityWithLogin;
 import org.olat.test.OlatRestTestCase;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * 
@@ -72,7 +68,7 @@ public class LecturesBlocksRootTest extends OlatRestTestCase {
 	 */
 	@Test
 	public void getLecturesBlock_administrator()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndAuthor("lect-root-all");
 		
 		RepositoryEntry entry = deployCourseWithLecturesEnabled(author);
@@ -84,11 +80,11 @@ public class LecturesBlocksRootTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection("administrator", "openolat");
 
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("lectures").build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
 		
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		List<LectureBlockVO> voList = parseLectureBlockArray(response.getEntity().getContent());
+		Assert.assertEquals(200, response.statusCode());
+		List<LectureBlockVO> voList = conn.parseList(response, LectureBlockVO.class);
 		Assert.assertNotNull(voList);
 		Assert.assertFalse(voList.isEmpty());
 		
@@ -112,7 +108,7 @@ public class LecturesBlocksRootTest extends OlatRestTestCase {
 	 */
 	@Test
 	public void getLecturesBlock_permissionDenied()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndAuthor("lect-root-all");
 		IdentityWithLogin user = JunitTestHelper.createAndPersistRndAuthor("lect-root-hacker");
 		
@@ -125,15 +121,15 @@ public class LecturesBlocksRootTest extends OlatRestTestCase {
 		RestConnection conn = new RestConnection(user);
 
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("lectures").build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
-		Assert.assertEquals(Status.FORBIDDEN.getStatusCode(), response.getStatusLine().getStatusCode());
-		EntityUtils.consumeQuietly(response.getEntity());
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
+		Assert.assertEquals(Status.FORBIDDEN.getStatusCode(), response.statusCode());
+		RestConnection.consume(response);
 	}
 	
 	@Test
 	public void getLecturesBlock_date()
-	throws IOException, URISyntaxException {
+	throws IOException, URISyntaxException, InterruptedException {
 		Identity author = JunitTestHelper.createAndPersistIdentityAsRndAuthor("lect-root-1");
 		RepositoryEntry entry = deployCourseWithLecturesEnabled(author);
 		LectureBlock block = createLectureBlock(entry);
@@ -145,11 +141,11 @@ public class LecturesBlocksRootTest extends OlatRestTestCase {
 
 		String date = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss").format(new Date());
 		URI uri = UriBuilder.fromUri(getContextURI()).path("repo").path("lectures").queryParam("date", date).build();
-		HttpGet method = conn.createGet(uri, MediaType.APPLICATION_JSON, true);
-		HttpResponse response = conn.execute(method);
+		HttpRequest method = conn.createGet(uri, MediaType.APPLICATION_JSON);
+		HttpResponse<InputStream> response = conn.execute(method);
 		
-		Assert.assertEquals(200, response.getStatusLine().getStatusCode());
-		List<LectureBlockVO> voList = parseLectureBlockArray(response.getEntity().getContent());
+		Assert.assertEquals(200, response.statusCode());
+		List<LectureBlockVO> voList = conn.parseList(response, LectureBlockVO.class);
 		Assert.assertNotNull(voList);
 		Assert.assertFalse(voList.isEmpty());
 		
@@ -181,15 +177,5 @@ public class LecturesBlocksRootTest extends OlatRestTestCase {
 		lectureBlock.setTitle("Hello lecturers");
 		lectureBlock.setPlannedLecturesNumber(4);
 		return lectureService.save(lectureBlock, null);
-	}
-	
-	protected List<LectureBlockVO> parseLectureBlockArray(InputStream body) {
-		try {
-			ObjectMapper mapper = new ObjectMapper(jsonFactory); 
-			return mapper.readValue(body, new TypeReference<List<LectureBlockVO>>(){/* */});
-		} catch (Exception e) {
-			e.printStackTrace();
-			return null;
-		}
 	}
 }
