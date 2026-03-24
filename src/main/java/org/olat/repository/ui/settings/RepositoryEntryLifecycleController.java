@@ -285,7 +285,8 @@ public class RepositoryEntryLifecycleController extends FormBasicController {
 		
 		if (privateDatesEl != null ) {
 			privateDatesEl.clearError();
-			if (privateDatesEl.getDate() != null && privateDatesEl.getSecondDate() != null && privateDatesEl.getDate().after(privateDatesEl.getSecondDate())) {
+			if (privateDatesEl.isEnabled() && privateDatesEl.isVisible() 
+					&& privateDatesEl.getDate() != null && privateDatesEl.getSecondDate() != null && privateDatesEl.getDate().after(privateDatesEl.getSecondDate())) {
 				privateDatesEl.setErrorKey("form.error.first.after.second.date");
 				allOk &= false;
 			}
