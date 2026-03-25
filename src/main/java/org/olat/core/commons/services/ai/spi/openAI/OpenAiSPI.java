@@ -30,6 +30,7 @@ import org.olat.core.commons.services.ai.AiImageDescriptionSPI;
 import org.olat.core.commons.services.ai.AiMCQuestionGeneratorSPI;
 import org.olat.core.commons.services.ai.AiPromptHelper;
 import org.olat.core.commons.services.ai.AiSPI;
+import org.olat.core.commons.services.ai.LangChain4jHttpClientBuilder;
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
 import org.olat.core.commons.services.ai.model.AiMCQuestionsResponse;
 import org.olat.core.commons.services.ai.ui.GenericAiApiKeyAdminController;
@@ -40,9 +41,12 @@ import org.olat.core.gui.control.WindowControl;
 import org.olat.core.logging.Tracing;
 import org.olat.core.util.StringHelper;
 import org.olat.core.util.coordinate.CoordinatorManager;
+import org.olat.core.util.httpclient.HttpClientService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import dev.langchain4j.http.client.HttpClientBuilder;
 
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -88,8 +92,15 @@ public class OpenAiSPI extends AbstractSpringModule implements AiSPI, AiApiKeySP
 	AiPromptHelper aiPromptHelper;
 
 	@Autowired
+	HttpClientService httpClientService;
+
+	@Autowired
 	public OpenAiSPI(CoordinatorManager coordinatorManager) {
 		super(coordinatorManager);
+	}
+
+	private HttpClientBuilder langChain4jHttpClientBuilder() {
+		return new LangChain4jHttpClientBuilder(httpClientService);
 	}
 
 	@Override
@@ -113,6 +124,7 @@ public class OpenAiSPI extends AbstractSpringModule implements AiSPI, AiApiKeySP
 	private void rebuildModel() {
 		if (StringHelper.containsNonWhitespace(apiKey) && StringHelper.containsNonWhitespace(mcGeneratorModel)) {
 			model = OpenAiChatModel.builder()
+					.httpClientBuilder(langChain4jHttpClientBuilder())
 					.apiKey(apiKey)
 					.modelName(mcGeneratorModel)
 					.maxCompletionTokens(4000)
@@ -125,6 +137,7 @@ public class OpenAiSPI extends AbstractSpringModule implements AiSPI, AiApiKeySP
 	private void rebuildImageDescModel() {
 		if (StringHelper.containsNonWhitespace(apiKey) && StringHelper.containsNonWhitespace(imageDescriptionModelName)) {
 			imageDescModel = OpenAiChatModel.builder()
+					.httpClientBuilder(langChain4jHttpClientBuilder())
 					.apiKey(apiKey)
 					.modelName(imageDescriptionModelName)
 					.maxCompletionTokens(2000)
@@ -226,6 +239,7 @@ public class OpenAiSPI extends AbstractSpringModule implements AiSPI, AiApiKeySP
 	 */
 	public List<String> verifyApiKey(String apiKey) throws Exception {
 		return OpenAiModelCatalog.builder()
+				.httpClientBuilder(langChain4jHttpClientBuilder())
 				.apiKey(apiKey)
 				.build()
 				.listModels()

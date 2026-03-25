@@ -31,6 +31,7 @@ import org.olat.core.commons.services.ai.AiImageDescriptionSPI;
 import org.olat.core.commons.services.ai.AiMCQuestionGeneratorSPI;
 import org.olat.core.commons.services.ai.AiPromptHelper;
 import org.olat.core.commons.services.ai.AiSPI;
+import org.olat.core.commons.services.ai.LangChain4jHttpClientBuilder;
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
 import org.olat.core.commons.services.ai.model.AiMCQuestionsResponse;
 import org.olat.core.gui.UserRequest;
@@ -41,6 +42,7 @@ import org.olat.core.util.StringHelper;
 
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -308,11 +310,17 @@ public class GenericAiSpiInstance implements AiSPI, AiApiKeySPI, AiMCQuestionGen
 
 	// ------ Internal ------
 
+	private HttpClientBuilder langChain4jHttpClientBuilder() {
+		return new LangChain4jHttpClientBuilder(parent.getHttpClientService());
+	}
+
 	/**
 	 * Query the /v1/models endpoint of the OpenAI-compatible server.
 	 */
 	private List<String> fetchModelsFromServer(String key) throws Exception {
-		var builder = OpenAiModelCatalog.builder().baseUrl(baseUrl);
+		var builder = OpenAiModelCatalog.builder()
+				.httpClientBuilder(langChain4jHttpClientBuilder())
+				.baseUrl(baseUrl);
 		if (StringHelper.containsNonWhitespace(key)) {
 			builder.apiKey(key);
 		} else {
@@ -356,6 +364,7 @@ public class GenericAiSpiInstance implements AiSPI, AiApiKeySPI, AiMCQuestionGen
 			return null;
 		}
 		var builder = OpenAiChatModel.builder()
+				.httpClientBuilder(langChain4jHttpClientBuilder())
 				.baseUrl(baseUrl)
 				.modelName(modelName)
 				.maxCompletionTokens(4000);

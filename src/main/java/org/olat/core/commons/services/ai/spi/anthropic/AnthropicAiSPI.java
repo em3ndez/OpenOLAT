@@ -30,6 +30,7 @@ import org.olat.core.commons.services.ai.AiImageDescriptionSPI;
 import org.olat.core.commons.services.ai.AiMCQuestionGeneratorSPI;
 import org.olat.core.commons.services.ai.AiPromptHelper;
 import org.olat.core.commons.services.ai.AiSPI;
+import org.olat.core.commons.services.ai.LangChain4jHttpClientBuilder;
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
 import org.olat.core.commons.services.ai.model.AiMCQuestionsResponse;
 import org.olat.core.commons.services.ai.ui.GenericAiApiKeyAdminController;
@@ -40,9 +41,12 @@ import org.olat.core.gui.control.WindowControl;
 import org.olat.core.logging.Tracing;
 import org.olat.core.util.StringHelper;
 import org.olat.core.util.coordinate.CoordinatorManager;
+import org.olat.core.util.httpclient.HttpClientService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import dev.langchain4j.http.client.HttpClientBuilder;
 
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -88,8 +92,15 @@ public class AnthropicAiSPI extends AbstractSpringModule implements AiSPI, AiApi
 	AiPromptHelper aiPromptHelper;
 
 	@Autowired
+	HttpClientService httpClientService;
+
+	@Autowired
 	public AnthropicAiSPI(CoordinatorManager coordinatorManager) {
 		super(coordinatorManager);
+	}
+
+	private HttpClientBuilder langChain4jHttpClientBuilder() {
+		return new LangChain4jHttpClientBuilder(httpClientService);
 	}
 
 	@Override
@@ -113,6 +124,7 @@ public class AnthropicAiSPI extends AbstractSpringModule implements AiSPI, AiApi
 	private void rebuildModel() {
 		if (StringHelper.containsNonWhitespace(apiKey) && StringHelper.containsNonWhitespace(mcGeneratorModel)) {
 			model = AnthropicChatModel.builder()
+					.httpClientBuilder(langChain4jHttpClientBuilder())
 					.apiKey(apiKey)
 					.modelName(mcGeneratorModel)
 					.temperature(0.2)
@@ -126,6 +138,7 @@ public class AnthropicAiSPI extends AbstractSpringModule implements AiSPI, AiApi
 	private void rebuildImageDescModel() {
 		if (StringHelper.containsNonWhitespace(apiKey) && StringHelper.containsNonWhitespace(imageDescriptionModelName)) {
 			imageDescModel = AnthropicChatModel.builder()
+					.httpClientBuilder(langChain4jHttpClientBuilder())
 					.apiKey(apiKey)
 					.modelName(imageDescriptionModelName)
 					.temperature(0.2)
@@ -228,6 +241,7 @@ public class AnthropicAiSPI extends AbstractSpringModule implements AiSPI, AiApi
 	 */
 	public List<String> verifyApiKey(String apiKey) throws Exception {
 		return AnthropicModelCatalog.builder()
+				.httpClientBuilder(langChain4jHttpClientBuilder())
 				.apiKey(apiKey)
 				.build()
 				.listModels()
