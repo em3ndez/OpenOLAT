@@ -44,6 +44,7 @@ import org.olat.core.gui.components.form.flexible.FormItemContainer;
 import org.olat.core.gui.components.form.flexible.elements.FlexiTableElement;
 import org.olat.core.gui.components.form.flexible.elements.FlexiTableExtendedFilter;
 import org.olat.core.gui.components.form.flexible.elements.FlexiTableFilterValue;
+import org.olat.core.gui.components.form.flexible.elements.FlexiTableSort;
 import org.olat.core.gui.components.form.flexible.elements.FlexiTableSortOptions;
 import org.olat.core.gui.components.form.flexible.elements.FormLink;
 import org.olat.core.gui.components.form.flexible.impl.FormBasicController;
@@ -51,6 +52,7 @@ import org.olat.core.gui.components.form.flexible.impl.FormEvent;
 import org.olat.core.gui.components.form.flexible.impl.FormLayoutContainer;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.DateWithDayFlexiCellRenderer;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.DefaultFlexiColumnModel;
+import org.olat.core.gui.components.form.flexible.impl.elements.table.FlexiColumnModel;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.FlexiTableColumnModel;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.FlexiTableComponent;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.FlexiTableDataModelFactory;
@@ -114,6 +116,7 @@ import org.olat.modules.curriculum.ui.CurriculumComposerTableModel.ElementCols;
 import org.olat.modules.curriculum.ui.component.CurriculumStatusCellRenderer;
 import org.olat.modules.curriculum.ui.component.MinMaxParticipantsCellRenderer;
 import org.olat.modules.curriculum.ui.component.ParticipantsAvailabilityNumRenderer;
+import org.olat.modules.curriculum.ui.component.RelevanceSortDelegate;
 import org.olat.modules.curriculum.ui.copy.CopyElement1SettingsStep;
 import org.olat.modules.curriculum.ui.copy.CopyElementCallback;
 import org.olat.modules.curriculum.ui.copy.CopyElementContext;
@@ -706,6 +709,10 @@ public class CurriculumComposerController extends FormBasicController implements
 	}
 
 	private void filterModel() {
+		FlexiFiltersTab selectedTab = tableEl.getSelectedFilterTab();
+		if(selectedTab != null) {
+			updateSortSettings(selectedTab);
+		}
 		tableModel.filter(tableEl.getQuickSearchString(), tableEl.getFilters());
 		// Don't reload the data, only reset paging and number of rows
 		tableEl.reset(true, true, false);
@@ -837,13 +844,44 @@ public class CurriculumComposerController extends FormBasicController implements
 	
 	private void activateFilterTab(UserRequest ureq, FlexiFiltersTab statusTab) {
 		tableEl.setSelectedFilterTab(ureq, statusTab);
-		if(RELEVANT_TAB_ID.equalsIgnoreCase(statusTab.getId()) && config.isFlat()) {
-			FlexiTableSortOptions sortOptions = new FlexiTableSortOptions();
-			sortOptions.setDefaultOrderBy(new SortKey(ElementCols.beginDate.name(), true));
-			sortOptions.setFromColumnModel(true);
-			tableEl.setSortSettings(sortOptions);
-		}
+		updateSortSettings(statusTab);
 		loadModel();
+	}
+
+	private void updateSortSettings(FlexiFiltersTab statusTab) {
+		boolean isRelevantFlat = RELEVANT_TAB_ID.equalsIgnoreCase(statusTab.getId()) && config.isFlat();
+		List<FlexiTableSort> sorters = new ArrayList<>();
+		if(isRelevantFlat) {
+			sorters.add(new FlexiTableSort(translate("sort.relevant"), RelevanceSortDelegate.SORT_KEY));
+			sorters.add(FlexiTableSort.SPACER);
+		}
+		addColumnSorters(sorters);
+		FlexiTableSortOptions sortOptions = new FlexiTableSortOptions(sorters);
+		sortOptions.setDefaultOrderBy(resolveOrderBy(sorters, isRelevantFlat));
+		tableEl.setSortSettings(sortOptions);
+	}
+
+	private SortKey resolveOrderBy(List<FlexiTableSort> sorters, boolean isRelevantFlat) {
+		SortKey[] currentOrderBy = tableEl.getOrderBy();
+		if(currentOrderBy != null && currentOrderBy.length > 0 && currentOrderBy[0] != null) {
+			String currentKey = currentOrderBy[0].getKey();
+			for(FlexiTableSort sorter : sorters) {
+				if(sorter.getSortKey() != null && currentKey.equals(sorter.getSortKey().getKey())) {
+					return currentOrderBy[0];
+				}
+			}
+		}
+		return new SortKey(isRelevantFlat ? RelevanceSortDelegate.SORT_KEY : ElementCols.beginDate.name(), true);
+	}
+
+	private void addColumnSorters(List<FlexiTableSort> sorters) {
+		FlexiTableColumnModel columnModel = tableModel.getTableColumnModel();
+		for(int i = 0; i < columnModel.getColumnCount(); i++) {
+			FlexiColumnModel col = columnModel.getColumnModel(i);
+			if(col.isSortable() && col.getSortKey() != null && col.getHeaderKey() != null) {
+				sorters.add(new FlexiTableSort(translate(col.getHeaderKey()), col.getSortKey()));
+			}
+		}
 	}
 	
 	private void activateElement(UserRequest ureq, List<ContextEntry> entries) {

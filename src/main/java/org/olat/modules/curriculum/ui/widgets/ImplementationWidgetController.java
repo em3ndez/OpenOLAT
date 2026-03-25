@@ -20,14 +20,13 @@
 package org.olat.modules.curriculum.ui.widgets;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.olat.core.commons.persistence.SortKey;
 import org.olat.core.commons.services.vfs.model.VFSThumbnailInfos;
 import org.olat.core.dispatcher.mapper.MapperService;
 import org.olat.core.dispatcher.mapper.manager.MapperKey;
@@ -72,6 +71,7 @@ import org.olat.modules.curriculum.ui.CurriculumElementDetailsController;
 import org.olat.modules.curriculum.ui.CurriculumElementImageMapper;
 import org.olat.modules.curriculum.ui.CurriculumStructureCalloutController;
 import org.olat.modules.curriculum.ui.component.CurriculumStatusCellRenderer;
+import org.olat.modules.curriculum.ui.component.RelevanceSortDelegate;
 import org.olat.modules.curriculum.ui.event.ActivateEvent;
 import org.olat.modules.curriculum.ui.event.SelectCurriculumElementRowEvent;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -191,7 +191,7 @@ public abstract class ImplementationWidgetController extends TableWidgetControll
 	protected String createTable(FormLayoutContainer widgetCont) {
 		FlexiTableColumnModel tableColumnModel = FlexiTableDataModelFactory.createFlexiTableColumnModel();
 
-		dataModel = new ImplementationTableModel(tableColumnModel);
+		dataModel = new ImplementationTableModel(tableColumnModel, getLocale());
 		tableEl = uifactory.addTableElement(getWindowControl(), "table", dataModel, 15, true, getTranslator(), widgetCont);
 		tableEl.setCustomizeColumns(false);
 		tableEl.setNumOfRowsEnabled(false);
@@ -242,8 +242,6 @@ public abstract class ImplementationWidgetController extends TableWidgetControll
 
 	protected void loadTableRows(List<CurriculumElement> curriculumElements) {
 		List<ImplementationRow> rows = curriculumElements.stream()
-				.sorted(Comparator.comparing(CurriculumElement::getBeginDate, Comparator.nullsLast(Date::compareTo)))
-				.limit(tableEl.getPageSize())
 				.map(this::toRow)
 				.toList();
 
@@ -251,6 +249,11 @@ public abstract class ImplementationWidgetController extends TableWidgetControll
 		rows.forEach(r -> appendThumbnail(r, thumbnails));
 
 		dataModel.setObjects(rows);
+		dataModel.sort(new SortKey(RelevanceSortDelegate.SORT_KEY, true));
+		int pageSize = tableEl.getPageSize();
+		if(dataModel.getRowCount() > pageSize) {
+			dataModel.setObjects(dataModel.getObjects().subList(0, pageSize));
+		}
 		tableEl.reset(true, true, true);
 	}
 
@@ -296,6 +299,10 @@ public abstract class ImplementationWidgetController extends TableWidgetControll
 		row.setExternalRef(curriculumElement.getIdentifier());
 		row.setResourceableId(curriculumElement.getResource().getResourceableId());
 		row.setResourceableTypeName(curriculumElement.getResource().getResourceableTypeName());
+
+		row.setElementStatus(curriculumElement.getElementStatus());
+		row.setBeginDate(curriculumElement.getBeginDate());
+		row.setEndDate(curriculumElement.getEndDate());
 
 		StringOutput statusTarget = new StringOutput();
 		CurriculumStatusCellRenderer.getStatus(statusTarget, "o_labeled_light", curriculumElement.getElementStatus(), getTranslator());
