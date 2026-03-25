@@ -20,20 +20,13 @@
 package org.olat.modules.curriculum.ui.widgets;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.control.WindowControl;
-import org.olat.core.gui.control.generic.dashboard.TableWidgetConfigPrefs;
-import org.olat.core.util.StringHelper;
-import org.olat.modules.curriculum.CurriculumElement;
-import org.olat.modules.curriculum.CurriculumElementStatus;
 import org.olat.modules.curriculum.CurriculumRef;
 import org.olat.modules.curriculum.CurriculumSecurityCallback;
-import org.olat.modules.curriculum.CurriculumService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.olat.modules.curriculum.model.CurriculumElementInfos;
+import org.olat.modules.curriculum.model.CurriculumElementInfosSearchParams;
 
 /**
  *
@@ -45,9 +38,6 @@ public class CurriculumImplementationWidgetController extends ImplementationWidg
 
 	private final CurriculumRef curriculum;
 	private final String baseBusinessPath;
-
-	@Autowired
-	private CurriculumService curriculumService;
 
 	public CurriculumImplementationWidgetController(UserRequest ureq, WindowControl wControl, CurriculumRef curriculum, CurriculumSecurityCallback secCallback) {
 		super(ureq, wControl, secCallback);
@@ -68,46 +58,13 @@ public class CurriculumImplementationWidgetController extends ImplementationWidg
 	}
 
 	@Override
-	public TableWidgetConfigPrefs getDefault() {
-		TableWidgetConfigPrefs prefs = new TableWidgetConfigPrefs();
-		prefs.setKeyFigureKey("relevant");
-		Set<String> figureKeys = Set.of(
-				CurriculumElementStatus.preparation.name(),
-				CurriculumElementStatus.provisional.name(),
-				CurriculumElementStatus.confirmed.name());
-		prefs.setFocusFigureKeys(figureKeys);
-		prefs.setNumRows(5);
-		return prefs;
-	}
-
-	@Override
 	protected void reload() {
-		List<CurriculumElement> elements = curriculumService.getCurriculumElementsByCurriculums(List.of(curriculum)).stream()
-				.filter(element -> element.getParent() == null)
-				.toList();
+		CurriculumElementInfosSearchParams searchParams = new CurriculumElementInfosSearchParams(getIdentity());
+		searchParams.setCurriculum(curriculum);
+		searchParams.setImplementationsOnly(true);
+		List<CurriculumElementInfos> elementInfos = curriculumService.getCurriculumElementsWithInfos(searchParams);
 
-		Map<CurriculumElementStatus, Long> statusToCount = elements.stream()
-				.collect(Collectors.groupingBy(CurriculumElement::getElementStatus, Collectors.counting()));
-		updateIndicators(statusToCount);
-
-		loadTableRows(filterElements(elements));
-	}
-
-	private List<CurriculumElement> filterElements(List<CurriculumElement> elements) {
-		if (StringHelper.containsNonWhitespace(keyFigureKey)) {
-			if ("relevant".equals(keyFigureKey)) {
-				return elements.stream()
-						.filter(e -> RELEVANT_STATUS.contains(e.getElementStatus()))
-						.toList();
-			}
-			if (CurriculumElementStatus.isValueOf(keyFigureKey)) {
-				CurriculumElementStatus status = CurriculumElementStatus.valueOf(keyFigureKey);
-				return elements.stream()
-						.filter(e -> status == e.getElementStatus())
-						.toList();
-			}
-		}
-		return elements;
+		loadElementInfos(elementInfos);
 	}
 
 }

@@ -20,23 +20,12 @@
 package org.olat.modules.curriculum.ui.widgets;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.olat.core.gui.UserRequest;
-import org.olat.core.gui.components.form.flexible.impl.FormLayoutContainer;
-import org.olat.core.gui.components.indicators.IndicatorsFactory;
 import org.olat.core.gui.control.WindowControl;
-import org.olat.core.gui.control.generic.dashboard.TableWidgetConfigPrefs;
-import org.olat.core.util.StringHelper;
-import org.olat.modules.curriculum.CurriculumElement;
-import org.olat.modules.curriculum.CurriculumElementStatus;
 import org.olat.modules.curriculum.CurriculumSecurityCallback;
-import org.olat.modules.curriculum.CurriculumService;
 import org.olat.modules.curriculum.model.CurriculumElementInfos;
 import org.olat.modules.curriculum.model.CurriculumElementInfosSearchParams;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  *
@@ -47,9 +36,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class RootImplementationWidgetController extends ImplementationWidgetController {
 
 	private static final String BASE_BUSINESS_PATH = "[CurriculumAdmin:0]";
-
-	@Autowired
-	private CurriculumService curriculumService;
 
 	public RootImplementationWidgetController(UserRequest ureq, WindowControl wControl, CurriculumSecurityCallback secCallback) {
 		super(ureq, wControl, secCallback);
@@ -68,69 +54,12 @@ public class RootImplementationWidgetController extends ImplementationWidgetCont
 	}
 
 	@Override
-	public TableWidgetConfigPrefs getDefault() {
-		TableWidgetConfigPrefs prefs = new TableWidgetConfigPrefs();
-		prefs.setKeyFigureKey("relevant");
-		Set<String> figureKeys = Set.of(
-				CurriculumElementStatus.preparation.name(),
-				CurriculumElementStatus.provisional.name(),
-				CurriculumElementStatus.confirmed.name(),
-				"pendingMemberships");
-		prefs.setFocusFigureKeys(figureKeys);
-		prefs.setNumRows(5);
-		return prefs;
-	}
-
-	@Override
-	protected void createAdditionalIndicators(FormLayoutContainer widgetCont) {
-		createIndicator(widgetCont, "pendingMemberships", "filter.pending.memberships", "[Implementations:0][PendingMemberships:0]");
-	}
-
-	@Override
 	protected void reload() {
 		CurriculumElementInfosSearchParams searchParams = new CurriculumElementInfosSearchParams(getIdentity());
 		searchParams.setImplementationsOnly(true);
 		List<CurriculumElementInfos> elementInfos = curriculumService.getCurriculumElementsWithInfos(searchParams);
 
-		Map<CurriculumElementStatus, Long> statusToCount = elementInfos.stream()
-				.collect(Collectors.groupingBy(e -> e.curriculumElement().getElementStatus(), Collectors.counting()));
-		updateIndicators(statusToCount);
-
-		long pendingCount = elementInfos.stream()
-				.filter(e -> e.numOfPending() > 0)
-				.count();
-		keyToIndicatorLink.get("pendingMemberships").setI18nKey(IndicatorsFactory.createLinkText(
-				translate("filter.pending.memberships"),
-				String.valueOf(pendingCount)));
-
-		loadTableRows(filterElements(elementInfos));
-	}
-
-	private List<CurriculumElement> filterElements(List<CurriculumElementInfos> elementInfos) {
-		if (StringHelper.containsNonWhitespace(keyFigureKey)) {
-			if ("relevant".equals(keyFigureKey)) {
-				return elementInfos.stream()
-						.filter(e -> RELEVANT_STATUS.contains(e.curriculumElement().getElementStatus()))
-						.map(CurriculumElementInfos::curriculumElement)
-						.toList();
-			}
-			if ("pendingMemberships".equals(keyFigureKey)) {
-				return elementInfos.stream()
-						.filter(e -> e.numOfPending() > 0)
-						.map(CurriculumElementInfos::curriculumElement)
-						.toList();
-			}
-			if (CurriculumElementStatus.isValueOf(keyFigureKey)) {
-				CurriculumElementStatus status = CurriculumElementStatus.valueOf(keyFigureKey);
-				return elementInfos.stream()
-						.filter(e -> status == e.curriculumElement().getElementStatus())
-						.map(CurriculumElementInfos::curriculumElement)
-						.toList();
-			}
-		}
-		return elementInfos.stream()
-				.map(CurriculumElementInfos::curriculumElement)
-				.toList();
+		loadElementInfos(elementInfos);
 	}
 
 }

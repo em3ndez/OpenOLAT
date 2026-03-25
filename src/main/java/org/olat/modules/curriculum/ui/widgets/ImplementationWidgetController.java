@@ -25,6 +25,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.olat.core.commons.persistence.SortKey;
 import org.olat.core.commons.services.vfs.model.VFSThumbnailInfos;
@@ -62,11 +64,14 @@ import org.olat.core.gui.render.StringOutput;
 import org.olat.core.id.context.BusinessControlFactory;
 import org.olat.core.id.context.ContextEntry;
 import org.olat.core.util.Formatter;
+import org.olat.core.util.StringHelper;
 import org.olat.core.util.Util;
 import org.olat.modules.curriculum.CurriculumElement;
 import org.olat.modules.curriculum.CurriculumElementStatus;
 import org.olat.modules.curriculum.CurriculumElementType;
 import org.olat.modules.curriculum.CurriculumSecurityCallback;
+import org.olat.modules.curriculum.CurriculumService;
+import org.olat.modules.curriculum.model.CurriculumElementInfos;
 import org.olat.modules.curriculum.ui.CurriculumElementDetailsController;
 import org.olat.modules.curriculum.ui.CurriculumElementImageMapper;
 import org.olat.modules.curriculum.ui.CurriculumStructureCalloutController;
@@ -110,6 +115,8 @@ public abstract class ImplementationWidgetController extends TableWidgetControll
 	protected String keyFigureKey;
 
 	@Autowired
+	protected CurriculumService curriculumService;
+	@Autowired
 	private MapperService mapperService;
 
 	protected ImplementationWidgetController(UserRequest ureq, WindowControl wControl, CurriculumSecurityCallback secCallback) {
@@ -133,7 +140,7 @@ public abstract class ImplementationWidgetController extends TableWidgetControll
 		figureValues = new SelectionValues();
 		createIndicator(widgetCont, "all", "all", "[Implementations:0][All:0]");
 		createIndicator(widgetCont, "relevant", "relevant", "[Implementations:0][Relevant:0]");
-		createAdditionalIndicators(widgetCont);
+		createIndicator(widgetCont, "pendingMemberships", "filter.pending.memberships", "[Implementations:0][PendingMemberships:0]");
 		createIndicator(widgetCont, CurriculumElementStatus.preparation);
 		createIndicator(widgetCont, CurriculumElementStatus.provisional);
 		createIndicator(widgetCont, CurriculumElementStatus.confirmed);
@@ -143,15 +150,28 @@ public abstract class ImplementationWidgetController extends TableWidgetControll
 		return indicatorsEl.getComponent().getComponentName();
 	}
 
-	protected void createAdditionalIndicators(@SuppressWarnings("unused") FormLayoutContainer widgetCont) {
-		//
+	protected void updatePendingIndicator(long pendingCount) {
+		keyToIndicatorLink.get("pendingMemberships").setI18nKey(IndicatorsFactory.createLinkText(
+				translate("filter.pending.memberships"),
+				String.valueOf(pendingCount)));
 	}
 
 	@Override
 	public abstract String getId();
 
 	@Override
-	public abstract TableWidgetConfigPrefs getDefault();
+	public TableWidgetConfigPrefs getDefault() {
+		TableWidgetConfigPrefs prefs = new TableWidgetConfigPrefs();
+		prefs.setKeyFigureKey("relevant");
+		Set<String> figureKeys = Set.of(
+				CurriculumElementStatus.preparation.name(),
+				CurriculumElementStatus.provisional.name(),
+				CurriculumElementStatus.confirmed.name(),
+				"pendingMemberships");
+		prefs.setFocusFigureKeys(figureKeys);
+		prefs.setNumRows(5);
+		return prefs;
+	}
 
 	@Override
 	protected String getTitle() {
@@ -255,6 +275,46 @@ public abstract class ImplementationWidgetController extends TableWidgetControll
 			dataModel.setObjects(dataModel.getObjects().subList(0, pageSize));
 		}
 		tableEl.reset(true, true, true);
+	}
+
+	protected void loadElementInfos(List<CurriculumElementInfos> elementInfos) {
+		Map<CurriculumElementStatus, Long> statusToCount = elementInfos.stream()
+				.collect(Collectors.groupingBy(e -> e.curriculumElement().getElementStatus(), Collectors.counting()));
+		updateIndicators(statusToCount);
+
+		long pendingCount = elementInfos.stream()
+				.filter(e -> e.numOfPending() > 0)
+				.count();
+		updatePendingIndicator(pendingCount);
+
+		loadTableRows(filterElements(elementInfos));
+	}
+
+	private List<CurriculumElement> filterElements(List<CurriculumElementInfos> elementInfos) {
+		if (StringHelper.containsNonWhitespace(keyFigureKey)) {
+			if ("relevant".equals(keyFigureKey)) {
+				return elementInfos.stream()
+						.filter(e -> RELEVANT_STATUS.contains(e.curriculumElement().getElementStatus()))
+						.map(CurriculumElementInfos::curriculumElement)
+						.toList();
+			}
+			if ("pendingMemberships".equals(keyFigureKey)) {
+				return elementInfos.stream()
+						.filter(e -> e.numOfPending() > 0)
+						.map(CurriculumElementInfos::curriculumElement)
+						.toList();
+			}
+			if (CurriculumElementStatus.isValueOf(keyFigureKey)) {
+				CurriculumElementStatus status = CurriculumElementStatus.valueOf(keyFigureKey);
+				return elementInfos.stream()
+						.filter(e -> status == e.curriculumElement().getElementStatus())
+						.map(CurriculumElementInfos::curriculumElement)
+						.toList();
+			}
+		}
+		return elementInfos.stream()
+				.map(CurriculumElementInfos::curriculumElement)
+				.toList();
 	}
 
 	protected void updateIndicators(Map<CurriculumElementStatus, Long> statusToCount) {
