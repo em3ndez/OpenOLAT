@@ -448,7 +448,9 @@ public class ImportCurriculumsObjectsLoader extends AbstractExcelReader {
 			if(row.getUserRow() == null) continue;
 			
 			final CurriculumRoles role = CurriculumExport.parseRole(row.getRole());
-			if(row.getUserRow().getIdentity() == null || row.getElementRow() == null) {
+			if(row.getUserRow().getIdentity() == null
+					|| row.getElementRow() == null
+					|| row.getElementRow().getCurriculumElement() == null) {
 				row.setStatus(ImportCurriculumsStatus.NEW);
 			} else if(row.getUserRow().getIdentity() != null
 					&& row.getElementRow() != null && row.getElementRow().getCurriculumElement() != null

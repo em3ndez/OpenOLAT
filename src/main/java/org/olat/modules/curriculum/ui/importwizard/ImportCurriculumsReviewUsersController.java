@@ -21,6 +21,7 @@ package org.olat.modules.curriculum.ui.importwizard;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.olat.basesecurity.BaseSecurityModule;
 import org.olat.core.gui.UserRequest;
@@ -39,8 +40,8 @@ import org.olat.core.gui.components.form.flexible.impl.elements.table.filter.Fle
 import org.olat.core.gui.components.util.SelectionValues;
 import org.olat.core.gui.control.WindowControl;
 import org.olat.core.gui.control.generic.closablewrapper.CalloutSettings;
-import org.olat.core.gui.control.generic.closablewrapper.CloseableCalloutWindowController;
 import org.olat.core.gui.control.generic.closablewrapper.CalloutSettings.CalloutOrientation;
+import org.olat.core.gui.control.generic.closablewrapper.CloseableCalloutWindowController;
 import org.olat.core.gui.control.generic.wizard.StepsEvent;
 import org.olat.core.gui.control.generic.wizard.StepsRunContext;
 import org.olat.core.id.Organisation;
@@ -179,18 +180,19 @@ public class ImportCurriculumsReviewUsersController extends AbstractImportListCo
 
 	private void loadModel() {
 		List<ImportedUserRow> rows = context.getImportedUsersRows();
+		Set<String> membershipsUsernames = context.getImportedMembershipsUsernames();
 		if(rows == null) {
 			rows = List.of();
 		} else {
 			ImportCurriculumsObjectsLoader loader = context.getLoader();
 			loader.loadUsers(rows);
-			
+
 			ImportCurriculumsValidator validator = context.getValidator();
 			for(ImportedUserRow row:rows) {
 				if(importUsersPasswords) {
 					validator.validatePassword(row);
 				}
-				validator.validate(row);
+				validator.validate(row, membershipsUsernames);
 			}
 			validator.validateUsersUniqueUsernames(rows);
 			

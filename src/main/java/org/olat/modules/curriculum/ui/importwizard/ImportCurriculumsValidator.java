@@ -243,7 +243,7 @@ public class ImportCurriculumsValidator {
 		}
 	}
 	
-	public void validate(ImportedUserRow importedRow) {
+	public void validate(ImportedUserRow importedRow, Set<String> membershipsUsernames) {
 		// User properties inclusive username
 		for(int i=0; i<userPropertyHandlers.size(); i++) {
 			UserPropertyHandler handler = userPropertyHandlers.get(i);
@@ -271,6 +271,13 @@ public class ImportCurriculumsValidator {
 							String description = validationDescriptionToString(errors);
 							importedRow.addValidationError(handler.getName(), column, null, description);
 						}
+					}
+					
+					// Not used in memberships sheet
+					if(!membershipsUsernames.contains(importedRow.getUsername())) {
+						String sheet = translate("export.members");
+						String description = translator.translate("error.not.exist.sheet", sheet);
+						importedRow.addValidationError(handler.getName(), column, null, description);
 					}
 				} else if(!handler.isValidValue(user, value, validationError, translator.getLocale())) {
 					String description = translate(validationError.getErrorKey());
