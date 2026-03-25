@@ -187,15 +187,16 @@ public class ImportCurriculumsReviewMembershipsController extends AbstractImport
 	@Override
 	protected boolean validateFormLogic(UserRequest ureq) {
 		boolean allOk = super.validateFormLogic(ureq);
-		allOk &= hasErrors(context.getImportedCurriculumsRows());
-		allOk &= hasErrors(context.getImportedElementsRows());
-		allOk &= hasErrors(context.getImportedUsersRows());
-		allOk &= hasErrors(context.getImportedMembershipsRows());
+		allOk &= validate(context.getImportedCurriculumsRows());
+		allOk &= validate(context.getImportedElementsRows());
+		allOk &= validate(context.getImportedUsersRows());
+		allOk &= validate(context.getImportedMembershipsRows());
 		return allOk;
 	}
 	
-	private boolean hasErrors(List<? extends AbstractImportRow> rows) {
-		return rows.stream().anyMatch(row -> row.hasValidationErrors());
+	private boolean validate(List<? extends AbstractImportRow> rows) {
+		boolean errors = rows.stream().anyMatch(row -> row.hasValidationErrors());
+		return !errors;
 	}
 
 	@Override

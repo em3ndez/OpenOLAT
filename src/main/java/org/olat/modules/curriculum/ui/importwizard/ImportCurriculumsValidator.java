@@ -393,7 +393,7 @@ public class ImportCurriculumsValidator {
 		
 		// Level only for element
 		if(importedRow.type() == CurriculumExportType.ELEM) {
-			validateLevel(importedRow);
+			validateMandatory(importedRow, importedRow.getLevel(), ImportCurriculumsCols.level);
 		}
 		
 		// Curriculum
@@ -529,7 +529,10 @@ public class ImportCurriculumsValidator {
 		validateCurriculumAndImplementation(importedRow);
 		
 		// Level
-		validateLevel(importedRow);
+		if(importedRow.getCurriculumElementParentRow() == null
+				|| importedRow.getCurriculumElementParentRow().type() == CurriculumExportType.ELEM) {
+			validateMandatory(importedRow, importedRow.getLevel(), ImportCurriculumsCols.level);
+		}
 
 		// Identifier
 		validateIdentifier(importedRow, 255);
@@ -822,11 +825,6 @@ public class ImportCurriculumsValidator {
 		boolean allOk = validateMandatory(importedRow, importedRow.getIdentifier(), ImportCurriculumsCols.identifier);
 		allOk &= validateLength(importedRow, importedRow.getIdentifier(), maxLength, ImportCurriculumsCols.identifier);
 		return allOk;
-	}
-	
-	private void validateLevel(ImportedRow importedRow) {
-		// Identifier / external ref.
-		validateMandatory(importedRow, importedRow.getLevel(), ImportCurriculumsCols.level);
 	}
 	
 	private boolean hasOrganisationPermission(Organisation organisation) {
