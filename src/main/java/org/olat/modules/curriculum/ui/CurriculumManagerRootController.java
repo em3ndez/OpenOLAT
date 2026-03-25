@@ -24,6 +24,9 @@ import java.util.List;
 import org.olat.core.commons.services.export.ArchiveType;
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.Component;
+import org.olat.core.gui.components.dropdown.Dropdown;
+import org.olat.core.gui.components.dropdown.DropdownOrientation;
+import org.olat.core.gui.components.dropdown.DropdownUIFactory;
 import org.olat.core.gui.components.link.Link;
 import org.olat.core.gui.components.link.LinkFactory;
 import org.olat.core.gui.components.stack.TooledStackedPanel;
@@ -122,9 +125,17 @@ public class CurriculumManagerRootController extends BasicController implements 
 		
 		mainVC = createVelocityContainer("manager_overview");
 		
-		importButton= LinkFactory.createLink("curriculum.import", "curriculum.import", getTranslator(), mainVC, this, Link.BUTTON);
+		Dropdown commandsDropdown = DropdownUIFactory.createMoreDropdown("commands", getTranslator());
+		commandsDropdown.setDomReplaceable(false);
+		commandsDropdown.setButton(true);
+		commandsDropdown.setOrientation(DropdownOrientation.right);
+		commandsDropdown.setVisible(secCallback.canImportCurriculums());
+		mainVC.put("commands", commandsDropdown);
+		
+		importButton= LinkFactory.createLink("curriculum.import", "curriculum.import", getTranslator(), mainVC, this, Link.LINK);
 		importButton.setIconLeftCSS("o_icon o_icon_import");
 		importButton.setVisible(secCallback.canImportCurriculums());
+		commandsDropdown.addComponent(importButton);
 		
 		searchFieldCtrl = new CurriculumSearchHeaderController(ureq, getWindowControl());
 		listenTo(searchFieldCtrl);
