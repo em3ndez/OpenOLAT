@@ -221,9 +221,9 @@ public class AiPromptHelper {
 				Rules:
 				- Title: short and concise, max 10 words.
 				- Description: 2-3 sentences describing the image content in detail, suitable for full-text search.
-				- Alt text: describe the essence of the image so a blind person can understand what it shows. \
-				Do NOT repeat or paraphrase the title — provide a complementary description of the visual content \
-				(e.g. what is depicted, the scene, the mood, the composition).
+				- Alt text: an accessible description for screen readers. It must be: \
+				precise and informative, only relevant details, helpful, very short and to the point, avoids redundancy. \
+				Do NOT start with "Image of" or "Picture of".
 				- Subject: the academic or professional subject area the image belongs to \
 				(e.g. "Biology", "Computer Science", "Marketing", "History", "Mathematics", "Medicine", "Art"). \
 				Use one or two words. Use the most specific subject that fits.
