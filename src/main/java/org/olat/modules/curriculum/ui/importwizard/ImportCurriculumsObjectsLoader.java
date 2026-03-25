@@ -419,10 +419,10 @@ public class ImportCurriculumsObjectsLoader extends AbstractExcelReader {
 				.filter(r -> StringHelper.containsNonWhitespace(r.getCurriculumIdentifier()))
 				.collect(Collectors.toMap(ImportedRow::getCurriculumIdentifier, r -> r, (u, v) -> u));
 		
-		Map<String, ImportedRow> elementsMaps = elements.stream()
+		Map<ElementInCurriculum, ImportedRow> elementsMaps = elements.stream()
 				.filter(r -> StringHelper.containsNonWhitespace(r.getIdentifier()))
 				.filter(r -> r.type() == CurriculumExportType.IMPL || r.type() == CurriculumExportType.ELEM)
-				.collect(Collectors.toMap(ImportedRow::getIdentifier, r -> r, (u, v) -> u));
+				.collect(Collectors.toMap(r -> new ElementInCurriculum(r.getIdentifier(), r.getCurriculumIdentifier()), r -> r, (u, v) -> u));
 		
 		Map<String, ImportedUserRow> usersMaps = users == null
 				? Map.of()
@@ -432,16 +432,21 @@ public class ImportCurriculumsObjectsLoader extends AbstractExcelReader {
 		
 		for(ImportedMembershipRow row:rows) {
 			if(StringHelper.containsNonWhitespace(row.getCurriculumIdentifier())) {
-				row.setCurriculumRow(curriculumsMaps.get(row.getCurriculumIdentifier()));
-			}
-			if(StringHelper.containsNonWhitespace(row.getImplementationIdentifier())) {
-				ImportedRow elementRow = elementsMaps.get(row.getImplementationIdentifier());
-				if(elementRow != null && elementRow.type() == CurriculumExportType.IMPL) {
-					row.setImplementationRow(elementRow);
+				String curriculumIdentifier = row.getCurriculumIdentifier();
+				row.setCurriculumRow(curriculumsMaps.get(curriculumIdentifier));
+			
+				if(StringHelper.containsNonWhitespace(row.getImplementationIdentifier())) {
+					ImportedRow elementRow = elementsMaps.get(new ElementInCurriculum(row.getImplementationIdentifier(), curriculumIdentifier));
+					if(elementRow != null && elementRow.type() == CurriculumExportType.IMPL) {
+						row.setImplementationRow(elementRow);
+					}
 				}
-			}
-			if(StringHelper.containsNonWhitespace(row.getIdentifier())) {
-				row.setElementRow(elementsMaps.get(row.getIdentifier()));
+				if(StringHelper.containsNonWhitespace(row.getIdentifier())) {
+					ImportedRow element = elementsMaps.get(new ElementInCurriculum(row.getIdentifier(), curriculumIdentifier));
+					if(element != null) {
+						row.setElementRow(element);
+					}
+				}
 			}
 			if(StringHelper.containsNonWhitespace(row.getUsername())) {
 				row.setUserRow(usersMaps.get(row.getUsername()));
@@ -527,6 +532,26 @@ public class ImportCurriculumsObjectsLoader extends AbstractExcelReader {
 	private void levelNotFoundError(AbstractImportRow importedRow, String level) {
 		String column = translator.translate(ImportCurriculumsCols.level.i18nHeaderKey());
 		importedRow.addValidationError(ImportCurriculumsCols.level, column, null, translator.translate("error.level.not.found", level));
+	}
+	
+	private record ElementInCurriculum(String elementIdentifier, String curriculumIdentifier) {
+		@Override
+		public int hashCode() {
+			return (elementIdentifier == null ? 0 : elementIdentifier.hashCode())
+					+ (curriculumIdentifier == null ? 0 : curriculumIdentifier.hashCode());
+		}
+		
+		@Override
+		public boolean equals(Object obj) {
+			if(obj == this) {
+				return true;
+			}
+			if(obj instanceof ElementInCurriculum key) {
+				return elementIdentifier != null && elementIdentifier.equals(key.elementIdentifier)
+						&& curriculumIdentifier != null && curriculumIdentifier.equals(key.curriculumIdentifier);
+			}
+			return false;
+		}
 	}
 	
 	private record LevelKey(String implementationIdentifier, String level) {

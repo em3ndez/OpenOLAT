@@ -370,6 +370,13 @@ public class ImportCurriculumsValidator {
 			//
 		}
 		
+		if(importedRow.getElementRow() == null) {
+			String sheet = translate("export.implementations");
+			String column = translate(ImportCurriculumsCols.identifier.i18nHeaderKey());
+			importedRow.addValidationError(ImportCurriculumsCols.identifier, column,
+					null, translator.translate("error.not.exist.sheet", sheet));
+		}
+		
 		if(importedRow.getStatus() == null) {
 			CurriculumImportedStatistics stats = importedRow.getValidationStatistics();
 			if(stats.changes() > 0) {
