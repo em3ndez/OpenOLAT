@@ -119,6 +119,7 @@ import org.olat.modules.catalog.filter.LifecyclePublicHandler;
 import org.olat.modules.catalog.ui.CatalogEntryDataModel.CatalogEntryCols;
 import org.olat.modules.creditpoint.CreditPointModule;
 import org.olat.modules.curriculum.CurriculumElement;
+import org.olat.modules.curriculum.CurriculumInfoHelper;
 import org.olat.modules.curriculum.CurriculumElementMembership;
 import org.olat.modules.curriculum.CurriculumService;
 import org.olat.modules.curriculum.model.CurriculumElementRefImpl;
@@ -1091,19 +1092,10 @@ public class CatalogEntryListController extends FormBasicController implements A
 			getWindow().setTitle(windowTitle);
 			// SEO: set per-entry meta data for catalog detail pages
 			SeoMetadata seo = getWindowControl().getWindowBackOffice().getWindow().getSeoMetadata();
-			String metaDesc = ResourceInfoHelper.buildMetaDescription(curriculumElement, getLocale(), getTranslator());
-			if (StringHelper.containsNonWhitespace(metaDesc)) {
-				seo.setMetaDescription(metaDesc);
-			}
-			if (searchParams.isWebPublish()) {
-				seo.setCanonicalUrl(CatalogBCFactory.get(true).getOfferUrl(curriculumElement.getResource()));
-				if (entry != null) {
-					String ogImageUrl = ResourceInfoHelper.buildOgImageUrl(entry, repositoryService);
-					if (ogImageUrl != null) {
-						seo.setOgImageUrl(ogImageUrl);
-					}
-				}
-			}
+			String canonicalUrl = searchParams.isWebPublish()
+					? CatalogBCFactory.get(true).getOfferUrl(curriculumElement.getResource()) : null;
+			CurriculumInfoHelper.populateSeoMetadata(seo, curriculumElement, entry,
+					canonicalUrl, getLocale(), getTranslator(), repositoryService);
 			getWindowControl().getWindowBackOffice().sendCommandTo(CommandFactory.createScrollTop());
 		} else {
 			tableEl.reloadData();
