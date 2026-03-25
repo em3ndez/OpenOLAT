@@ -345,6 +345,15 @@ public class ImportedRow extends AbstractImportRow {
 		templateRows.add(row);
 	}
 	
+	public void clearRepositoryEntries() {
+		if(courseRows != null) {
+			courseRows = new ArrayList<>(3);
+		}
+		if(templateRows != null) {
+			templateRows = new ArrayList<>(3);
+		}
+	}
+	
 	private void addSubElementRow(ImportedRow row) {
 		if(subCurriculumElementRows == null) {
 			subCurriculumElementRows = new ArrayList<>(3);

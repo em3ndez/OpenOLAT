@@ -131,6 +131,13 @@ public class ImportCurriculumsObjectsLoader extends AbstractExcelReader {
 				.filter(t -> StringHelper.containsNonWhitespace(t.getIdentifier()))
 				.collect(Collectors.toMap(CurriculumElementType::getIdentifier, t -> t, (u, v) -> u));
 
+		// Clear relations to courses and templates before loading or reloading them
+		for(ImportedRow importedRow:importedRows) {
+			if(importedRow.type() == CurriculumExportType.ELEM || importedRow.type() == CurriculumExportType.IMPL) {
+				importedRow.clearRepositoryEntries();
+			}
+		}
+		
 		// First load the implementations
 		Map<String,ImportedRow> implementations = new HashMap<>();
 		for(ImportedRow importedRow:importedRows) {
@@ -161,7 +168,7 @@ public class ImportCurriculumsObjectsLoader extends AbstractExcelReader {
 				}
 			}
 		}
-		
+
 		// Build the structure with key { implementation : level }
 		for(ImportedRow importedRow:importedRows) {
 			if(importedRow.type() == CurriculumExportType.ELEM) {
