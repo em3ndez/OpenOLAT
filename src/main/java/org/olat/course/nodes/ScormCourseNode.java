@@ -195,13 +195,13 @@ public class ScormCourseNode extends AbstractAccessableCourseNode {
 		RepositoryEntry re = getReferencedRepositoryEntry();
 		if (re != null && (RepositoryEntryStatusEnum.deleted == re.getEntryStatus()
 				|| RepositoryEntryStatusEnum.trash == re.getEntryStatus())) {
-			addStatusErrorDescription("error.scorm.deleted.edit", "error.scorm.deleted.edit",
+			addStatusErrorDescription("error.content.deleted", "error.content.deleted",
 					ScormEditController.PANE_TAB_CPCONFIG, sdList, StatusDescription.WARNING);
 		}
 
 		boolean hasScormReference = ScormEditController.hasScormReference(getModuleConfiguration());
 		if (!hasScormReference) {
-			addStatusErrorDescription("error.noreference.short", "error.noreference.long",
+			addStatusErrorDescription("error.no.content.selected", "error.noreference.long",
 					ScormEditController.PANE_TAB_CPCONFIG, sdList, StatusDescription.ERROR);
 		}
 		
