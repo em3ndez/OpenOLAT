@@ -19,6 +19,8 @@
  */
 package org.olat.course.assessment.ui.mode;
 
+import java.util.UUID;
+
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.form.flexible.FormItem;
 import org.olat.core.gui.components.form.flexible.FormItemContainer;
@@ -33,6 +35,7 @@ import org.olat.core.gui.components.util.SelectionValues;
 import org.olat.core.gui.control.Controller;
 import org.olat.core.gui.control.Event;
 import org.olat.core.gui.control.WindowControl;
+import org.olat.core.helpers.Settings;
 import org.olat.core.util.StringHelper;
 import org.olat.course.assessment.AssessmentModeManager;
 import org.olat.course.assessment.SafeExamBrowserTemplate;
@@ -267,13 +270,23 @@ public class SafeExamBrowserTemplateEditController extends FormBasicController {
 		sebTemplate.setActive(activeEl.isOn());
 		
 		SafeExamBrowserConfiguration config = new SafeExamBrowserConfiguration();
+		config.setStartUrl(Settings.getServerContextPathURI());
 		config.setAllowQuit(isSelected(allowToExitEl));
 		if(StringHelper.containsNonWhitespace(passwordToQuitEl.getValue())) {
 			config.setPasswordToExit(passwordToQuitEl.getValue());
 		} else {
 			config.setPasswordToExit(null);
 		}
-		config.setLinkToQuit(isSelected(linkToQuitEl) ? "true" : null);
+		if(isSelected(linkToQuitEl)) {
+			if(!StringHelper.containsNonWhitespace(config.getLinkToQuit())) {
+				String linkToQuit = Settings.getServerContextPathURI() + "/" + UUID.randomUUID().toString();
+				config.setLinkToQuit(linkToQuit);
+				linkToQuitEl.setExampleKey("noTransOnlyParam", new String[] { linkToQuit });
+			}
+		} else {
+			config.setLinkToQuit(null);
+		}
+		
 		config.setQuitURLConfirm(isSelected(askUserToConfirmQuitEl));
 		config.setBrowserWindowAllowReload(isSelected(enableReloadInExamEl));
 		config.setBrowserViewMode(Integer.parseInt(browserViewModeEl.getSelectedKey()));

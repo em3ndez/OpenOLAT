@@ -378,6 +378,10 @@ public abstract class AbstractEditSafeExamBrowserController extends FormBasicCon
 				safeExamBrowserConfigKeyEl.setValue(configPListKey != null ? configPListKey : "");
 				String templateHint = selectedTemplate.getSafeExamBrowserHint();
 				safeExamBrowserHintEl.setValue(templateHint != null ? templateHint : "");
+				
+				if(StringHelper.containsNonWhitespace(sebConfig.getLinkToQuit())) {
+					linkToQuitEl.setExampleKey("noTransOnlyParam", new String[] { sebConfig.getLinkToQuit() });
+				}
 			}
 		}
 
