@@ -370,13 +370,6 @@ public class ImportCurriculumsValidator {
 			//
 		}
 		
-		if(importedRow.getElementRow() == null) {
-			String sheet = translate("export.implementations");
-			String column = translate(ImportCurriculumsCols.identifier.i18nHeaderKey());
-			importedRow.addValidationError(ImportCurriculumsCols.identifier, column,
-					null, translator.translate("error.not.exist.sheet", sheet));
-		}
-		
 		if(importedRow.getStatus() == null) {
 			CurriculumImportedStatistics stats = importedRow.getValidationStatistics();
 			if(stats.changes() > 0) {
@@ -818,16 +811,16 @@ public class ImportCurriculumsValidator {
 			} 
 		}
 		
-		if(validateMandatory(importedRow, importedRow.getImplementationIdentifier(), ImportCurriculumsCols.identifier)) {
+		if(validateMandatory(importedRow, importedRow.getIdentifier(), ImportCurriculumsCols.identifier)) {
 			String sheet = translate("export.implementations");
 			String column = translate(ImportCurriculumsCols.identifier.i18nHeaderKey());
-			if(importedRow.getImplementationRow() == null) {
+			if(importedRow.getElementRow() == null) {
 				importedRow.addValidationError(ImportCurriculumsCols.identifier, column,
-						null, translator.translate("error.not.exist", importedRow.getImplementationIdentifier()));
-			} else if(importedRow.getImplementationRow().hasValidationErrors()) {
+						null, translator.translate("error.not.exist", importedRow.getIdentifier()));
+			} else if(importedRow.getElementRow().hasValidationErrors()) {
 				importedRow.addValidationError(ImportCurriculumsCols.identifier, column,
 						null, translator.translate("error.precent.errors", sheet));
-			} else if(importedRow.getImplementationRow().isIgnored()) {
+			} else if(importedRow.getElementRow().isIgnored()) {
 				importedRow.addValidationError(ImportCurriculumsCols.identifier, column,
 						null, translator.translate("error.ignored.in.sheet", sheet));
 			} 
