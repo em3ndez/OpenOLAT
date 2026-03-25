@@ -823,7 +823,15 @@ public class ImportCurriculumsValidator {
 			} else if(importedRow.getElementRow().isIgnored()) {
 				importedRow.addValidationError(ImportCurriculumsCols.identifier, column,
 						null, translator.translate("error.ignored.in.sheet", sheet));
-			} 
+			} else if(importedRow.getElementRow() != null && importedRow.getElementRow().type() == CurriculumExportType.ELEM
+					&& importedRow.getElementRow().getImplementationRow() != importedRow.getImplementationRow()) {
+				importedRow.addValidationError(ImportCurriculumsCols.identifier, column,
+						null, translator.translate("error.not.exist", importedRow.getIdentifier()));
+			} else if(importedRow.getElementRow() != null && importedRow.getElementRow().type() == CurriculumExportType.IMPL
+					&& importedRow.getElementRow() != importedRow.getImplementationRow()) {
+				importedRow.addValidationError(ImportCurriculumsCols.identifier, column,
+						null, translator.translate("error.not.exist", importedRow.getIdentifier()));
+			}
 		}
 	}
 	
