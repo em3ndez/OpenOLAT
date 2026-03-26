@@ -19,6 +19,8 @@
  */
 package org.olat.modules.zoom.ui;
 
+import java.util.List;
+
 import org.olat.collaboration.CollaborationToolsFactory;
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.form.flexible.FormItem;
@@ -30,6 +32,9 @@ import org.olat.core.gui.components.form.flexible.impl.FormLayoutContainer;
 import org.olat.core.gui.components.util.SelectionValues;
 import org.olat.core.gui.control.Controller;
 import org.olat.core.gui.control.WindowControl;
+import org.olat.core.gui.control.generic.dtabs.Activateable2;
+import org.olat.core.id.context.ContextEntry;
+import org.olat.core.id.context.StateEntry;
 import org.olat.modules.zoom.ZoomManager;
 import org.olat.modules.zoom.ZoomModule;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +47,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * @author cpfranger, christoph.pfranger@frentix.com, <a href="https://www.frentix.com">https://www.frentix.com</a>
  *
  */
-public class ZoomConfigurationController extends FormBasicController {
+public class ZoomConfigurationController extends FormBasicController implements Activateable2 {
 
     private final SelectionValues moduleEnabledKV = new SelectionValues();
     private final SelectionValues enableForKV = new SelectionValues();
@@ -119,6 +124,11 @@ public class ZoomConfigurationController extends FormBasicController {
             updateUI();
         }
         super.formInnerEvent(ureq, source, event);
+    }
+
+    @Override
+    public void activate(UserRequest ureq, List<ContextEntry> entries, StateEntry state) {
+        //
     }
 
     private void updateUI() {
