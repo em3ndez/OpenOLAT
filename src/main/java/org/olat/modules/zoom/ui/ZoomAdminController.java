@@ -64,7 +64,9 @@ public class ZoomAdminController extends BasicController implements Activateable
         mainVC = createVelocityContainer("zoom_admin");
         segmentView = SegmentViewFactory.createSegmentView("segments", mainVC, this);
         configurationLink = LinkFactory.createLink("zoom.configuration", mainVC, this);
+        configurationLink.setElementCssClass("o_sel_zoom_configuration_link");
         ltiProConfigurationsLink = LinkFactory.createLink("zoom.lti.pro.configurations", mainVC, this);
+        ltiProConfigurationsLink.setElementCssClass("o_sel_zoom_lti_pro_configurations_link");
 
         if (lti13Module.isEnabled()) {
             segmentView.addSegment(configurationLink, true);
