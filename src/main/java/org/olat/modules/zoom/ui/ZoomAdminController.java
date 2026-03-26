@@ -69,7 +69,7 @@ public class ZoomAdminController extends BasicController implements Activateable
         if (lti13Module.isEnabled()) {
             segmentView.addSegment(configurationLink, true);
             segmentView.addSegment(ltiProConfigurationsLink, false);
-            doOpenConfiguration(ureq);
+            doOpenConfiguration(ureq, null);
             mainVC.contextPut("isLtiAvailable", Boolean.TRUE);
         } else {
             mainVC.contextPut("isLtiAvailable", Boolean.FALSE);
@@ -78,7 +78,7 @@ public class ZoomAdminController extends BasicController implements Activateable
         putInitialPanel(mainVC);
     }
 
-    private void doOpenConfiguration(UserRequest ureq) {
+    private void doOpenConfiguration(UserRequest ureq, List<ContextEntry> entries) {
         removeAsListenerAndDispose(configController);
 
         WindowControl bwControl = addToHistory(ureq, OresHelper.createOLATResourceableInstance("Configuration", 0L), null);
@@ -86,9 +86,10 @@ public class ZoomAdminController extends BasicController implements Activateable
         listenTo(configController);
 
         mainVC.put("segmentCmp", configController.getInitialComponent());
+        configController.activate(ureq, entries, null);
     }
 
-    private void doOpenLtiProConfigurations(UserRequest ureq) {
+    private void doOpenLtiProConfigurations(UserRequest ureq, List<ContextEntry> entries) {
         removeAsListenerAndDispose(ltiProConfigurationsCtrl);
 
         WindowControl bwControl = addToHistory(ureq, OresHelper.createOLATResourceableInstance("LtiProConfigurations", 0L), null);
@@ -96,6 +97,7 @@ public class ZoomAdminController extends BasicController implements Activateable
         listenTo(ltiProConfigurationsCtrl);
 
         mainVC.put("segmentCmp", ltiProConfigurationsCtrl.getInitialComponent());
+        ltiProConfigurationsCtrl.activate(ureq, entries, null);
     }
 
     @Override
@@ -105,9 +107,9 @@ public class ZoomAdminController extends BasicController implements Activateable
             String segmentCName = sve.getComponentName();
             Component clickedLink = mainVC.getComponent(segmentCName);
             if (clickedLink == configurationLink) {
-                doOpenConfiguration(ureq);
+                doOpenConfiguration(ureq, null);
             } else if (clickedLink == ltiProConfigurationsLink) {
-                doOpenLtiProConfigurations(ureq);
+                doOpenLtiProConfigurations(ureq, null);
             }
         }
     }
@@ -117,11 +119,12 @@ public class ZoomAdminController extends BasicController implements Activateable
         if (entries == null || entries.isEmpty()) return;
 
         String type = entries.get(0).getOLATResourceable().getResourceableTypeName();
+        List<ContextEntry> subEntries = entries.subList(1, entries.size());
         if ("Configuration".equalsIgnoreCase(type)) {
-            doOpenConfiguration(ureq);
+            doOpenConfiguration(ureq, subEntries);
             segmentView.select(configurationLink);
         } else if ("LtiProConfigurations".equalsIgnoreCase(type)) {
-            doOpenLtiProConfigurations(ureq);
+            doOpenLtiProConfigurations(ureq, subEntries);
             segmentView.select(ltiProConfigurationsLink);
         }
     }
