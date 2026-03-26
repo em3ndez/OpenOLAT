@@ -50,11 +50,13 @@ public class ZoomAdminController extends BasicController implements Activateable
     private final VelocityContainer mainVC;
     private final SegmentViewComponent segmentView;
     private final Link configurationLink;
+    private final Link ltiProConfigurationsLink;
 
     @Autowired
     private LTI13Module lti13Module;
 
     private ZoomConfigurationController configController;
+    private ZoomLtiProConfigurationsController ltiProConfigurationsCtrl;
 
     public ZoomAdminController(UserRequest ureq, WindowControl wControl) {
         super(ureq, wControl);
@@ -62,8 +64,11 @@ public class ZoomAdminController extends BasicController implements Activateable
         mainVC = createVelocityContainer("zoom_admin");
         segmentView = SegmentViewFactory.createSegmentView("segments", mainVC, this);
         configurationLink = LinkFactory.createLink("zoom.configuration", mainVC, this);
+        ltiProConfigurationsLink = LinkFactory.createLink("zoom.lti.pro.configurations", mainVC, this);
 
         if (lti13Module.isEnabled()) {
+            segmentView.addSegment(configurationLink, true);
+            segmentView.addSegment(ltiProConfigurationsLink, false);
             doOpenConfiguration(ureq);
             mainVC.contextPut("isLtiAvailable", Boolean.TRUE);
         } else {
@@ -83,14 +88,26 @@ public class ZoomAdminController extends BasicController implements Activateable
         mainVC.put("segmentCmp", configController.getInitialComponent());
     }
 
+    private void doOpenLtiProConfigurations(UserRequest ureq) {
+        removeAsListenerAndDispose(ltiProConfigurationsCtrl);
+
+        WindowControl bwControl = addToHistory(ureq, OresHelper.createOLATResourceableInstance("LtiProConfigurations", 0L), null);
+        ltiProConfigurationsCtrl = new ZoomLtiProConfigurationsController(ureq, bwControl);
+        listenTo(ltiProConfigurationsCtrl);
+
+        mainVC.put("segmentCmp", ltiProConfigurationsCtrl.getInitialComponent());
+    }
+
     @Override
     protected void event(UserRequest ureq, Component source, Event event) {
         if (source == segmentView && event instanceof SegmentViewEvent) {
-            SegmentViewEvent sve = (SegmentViewEvent)event;
+            SegmentViewEvent sve = (SegmentViewEvent) event;
             String segmentCName = sve.getComponentName();
             Component clickedLink = mainVC.getComponent(segmentCName);
             if (clickedLink == configurationLink) {
                 doOpenConfiguration(ureq);
+            } else if (clickedLink == ltiProConfigurationsLink) {
+                doOpenLtiProConfigurations(ureq);
             }
         }
     }
@@ -103,6 +120,9 @@ public class ZoomAdminController extends BasicController implements Activateable
         if ("Configuration".equalsIgnoreCase(type)) {
             doOpenConfiguration(ureq);
             segmentView.select(configurationLink);
+        } else if ("LtiProConfigurations".equalsIgnoreCase(type)) {
+            doOpenLtiProConfigurations(ureq);
+            segmentView.select(ltiProConfigurationsLink);
         }
     }
 }
