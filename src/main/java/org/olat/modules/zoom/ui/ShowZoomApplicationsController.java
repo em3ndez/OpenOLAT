@@ -131,10 +131,32 @@ public class ShowZoomApplicationsController extends FormBasicController {
     private void loadModel() {
         List<ZoomApplicationRow> rows = zoomManager.getProfileApplications(zoomProfile.getKey()).stream()
                 .filter(app -> app.getApplicationType() != null)
+                .filter(this::isValid)
                 .map(this::toRow)
                 .collect(toList());
         applicationsTableModel.setObjects(rows);
         applicationsTableEl.reset(true, true, true);
+    }
+
+    private boolean isValid(ZoomProfileDAO.ZoomProfileApplication application) {
+        LTI13Context ltiContext = application.getLti13Context();
+        try {
+            switch (application.getApplicationType()) {
+                case courseElement:
+                    ICourse course = CourseFactory.loadCourse(ltiContext.getEntry());
+                    return course.getRunStructure().getNode(ltiContext.getSubIdent()) != null;
+                case courseTool:
+                    CourseFactory.loadCourse(ltiContext.getEntry());
+                    return true;
+                case groupTool:
+                    return true;
+                default:
+                    return false;
+            }
+        } catch (Exception e) {
+            log.warn("Zoom application is no longer valid: {}", e.getMessage());
+            return false;
+        }
     }
 
     private ZoomApplicationRow toRow(ZoomProfileDAO.ZoomProfileApplication application) {
