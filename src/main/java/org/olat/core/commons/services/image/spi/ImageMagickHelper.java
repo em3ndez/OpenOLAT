@@ -297,7 +297,7 @@ public class ImageMagickHelper extends AbstractImageHelper {
 				log.warn("Output: {}", output.toString());
 			}
 		} catch (InterruptedException e) {
-			//
+			log.warn("ImageMagick process interrupted for thumbnail: {}", thumbnailFile);
 		}
 		if(rv == null) {
 			log.warn("Could not generate thumbnail: {}", thumbnailFile);
