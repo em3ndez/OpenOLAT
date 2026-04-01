@@ -77,7 +77,8 @@
 		<org.slf4j>2.0.17</org.slf4j>
 		<org.bouncycastle>1.83</org.bouncycastle>
 		<io.jsonwebtoken>0.13.0</io.jsonwebtoken>
-		<io.undertow>2.3.24.Final</io.undertow>
+		<io.undertow>2.4.0.RC4</io.undertow>
+		<io.undertow.ee>2.0.0.RC1</io.undertow.ee>
 		<jackson.version>2.21.2</jackson.version>
 		<jackson.annotations.version>2.21</jackson.annotations.version>
 		<swagger.ui.version>5.32.1</swagger.ui.version>
@@ -1954,7 +1955,7 @@
 		<dependency>
 			<groupId>jakarta.servlet</groupId>
 			<artifactId>jakarta.servlet-api</artifactId>
-			<version>6.0.0</version>
+			<version>6.1.0</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -2419,9 +2420,9 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-		    <groupId>io.undertow</groupId>
+		    <groupId>io.undertow.ee</groupId>
 		    <artifactId>undertow-servlet</artifactId>
-		    <version>${io.undertow}</version>
+		    <version>${io.undertow.ee}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
