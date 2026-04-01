@@ -95,6 +95,7 @@ import org.olat.core.id.context.BusinessControlFactory;
 import org.olat.core.id.context.ContextEntry;
 import org.olat.core.id.context.StateEntry;
 import org.olat.core.util.StringHelper;
+import org.olat.core.util.Util;
 import org.olat.core.util.resource.OresHelper;
 import org.olat.modules.curriculum.Curriculum;
 import org.olat.modules.curriculum.CurriculumElement;
@@ -131,8 +132,12 @@ import org.olat.modules.quality.QualityModule;
 import org.olat.modules.quality.generator.ui.CurriculumElementPreviewListController;
 import org.olat.modules.taxonomy.TaxonomyLevel;
 import org.olat.modules.taxonomy.TaxonomyModule;
+import org.olat.modules.taxonomy.TaxonomyRef;
+import org.olat.modules.taxonomy.TaxonomyService;
+import org.olat.modules.taxonomy.ui.TaxonomyUIFactory;
 import org.olat.repository.RepositoryEntry;
 import org.olat.repository.RepositoryEntryRef;
+import org.olat.repository.ui.RepositoyUIFactory;
 import org.olat.repository.ui.author.TaxonomyLevelRenderer;
 import org.olat.repository.ui.author.TaxonomyPathsRenderer;
 import org.olat.resource.accesscontrol.ACService;
@@ -158,6 +163,7 @@ public class CurriculumComposerController extends FormBasicController implements
 	static final String FILTER_OFFER = "Offer";
 	static final String FILTER_STATUS = "Status";
 	static final String FILTER_PERIOD = "Period";
+	static final String FILTER_TAXONOMY = "Taxonomy";
 	static final String FILTER_CURRICULUM = "Curriculum";
 	static final String FILTER_OCCUPANCY_STATUS = "Occupancy";
 	static final String FILTER_OCCUPANCY_STATUS_NOT_SPECIFIED = "NotSpecified";
@@ -218,6 +224,8 @@ public class CurriculumComposerController extends FormBasicController implements
 	@Autowired
 	private TaxonomyModule taxonomyModule;
 	@Autowired
+	private TaxonomyService taxonomyService;
+	@Autowired
 	private CurriculumModule curriculumModule;
 	@Autowired
 	private CurriculumService curriculumService;
@@ -238,6 +246,8 @@ public class CurriculumComposerController extends FormBasicController implements
 			Curriculum curriculum, CurriculumElement rootElement, CurriculumComposerConfig config,
 			CurriculumSecurityCallback secCallback, LecturesSecurityCallback lecturesSecCallback) {
 		super(ureq, wControl, "manage_curriculum_structure");
+		setTranslator(Util.createPackageTranslator(TaxonomyUIFactory.class, getLocale(), getTranslator()));
+		
 		businessPath =  BusinessControlFactory.getInstance().getAsString(getWindowControl().getBusinessControl());
 		this.toolbarPanel = toolbarPanel;
 		this.config = config;
@@ -508,6 +518,16 @@ public class CurriculumComposerController extends FormBasicController implements
 		FlexiTableDateRangeFilter periodFilter = new FlexiTableDateRangeFilter(translate("filter.date.range"),
 				FILTER_PERIOD, true, false, getLocale());
 		filters.add(periodFilter);
+		
+		if(taxonomyEnabled) {
+			List<TaxonomyRef> taxonomies = curriculumModule.getTaxonomyRefs();
+			if(taxonomies != null && !taxonomies.isEmpty()) {
+				List<TaxonomyLevel> allTaxonomyLevels = taxonomyService.getTaxonomyLevels(taxonomies);
+				SelectionValues taxonomyValues = RepositoyUIFactory.createTaxonomyLevelKV(getTranslator(), allTaxonomyLevels);
+				filters.add(new FlexiTableMultiSelectionFilter(translate("table.header.taxonomy.paths"),
+						FILTER_TAXONOMY, taxonomyValues, false));
+			}
+		}
 		
 		if(config.isImplementationsOnly()) {
 			SelectionValues pendingValues = new SelectionValues();
