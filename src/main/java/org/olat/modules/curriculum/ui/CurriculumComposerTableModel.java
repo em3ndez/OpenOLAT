@@ -352,6 +352,7 @@ implements FlexiBusinessPathModel, SortableFlexiTableDataModel<CurriculumElement
 			case learningProgress -> element.getLearningProgressLink();
 			case minMaxParticipants -> element.getMinMaxParticipants();
 			case availability -> element.getParticipantsAvailabilityNum();
+			case taxonomyLevels, taxonomyPaths -> element.getTaxonomyLevels();
 			default -> "ERROR";
 		};
 	}
@@ -394,7 +395,9 @@ implements FlexiBusinessPathModel, SortableFlexiTableDataModel<CurriculumElement
 		offers("table.header.offers"),
 		tools("table.header.tools"),
 		minMaxParticipants("table.header.minmax.participants"),
-		availability("table.header.availability");
+		availability("table.header.availability"),
+		taxonomyLevels("table.header.taxonomy.levels"),
+		taxonomyPaths("table.header.taxonomy.paths");
 		
 		private final String i18nKey;
 		
