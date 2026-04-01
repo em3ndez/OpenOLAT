@@ -408,6 +408,7 @@ public class CurriculumComposerController extends FormBasicController implements
 		}
 		tableEl.setExportEnabled(true);
 		tableEl.setSearchEnabled(true);
+		tableEl.setSortEnabled(config.isFlat());
 		
 		initFilters(ureq);
 		initFiltersPresets();
@@ -849,6 +850,8 @@ public class CurriculumComposerController extends FormBasicController implements
 	}
 
 	private void updateSortSettings(FlexiFiltersTab statusTab) {
+		if(!config.isFlat()) return;
+		
 		boolean isRelevantFlat = RELEVANT_TAB_ID.equalsIgnoreCase(statusTab.getId()) && config.isFlat();
 		List<FlexiTableSort> sorters = new ArrayList<>();
 		if(isRelevantFlat) {
