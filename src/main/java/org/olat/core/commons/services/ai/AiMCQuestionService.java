@@ -17,28 +17,26 @@
  * frentix GmbH, https://www.frentix.com
  * <p>
  */
-package org.olat.core.commons.services.ai.model;
+package org.olat.core.commons.services.ai;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.olat.core.commons.services.ai.model.AiMCQuestionsResponse;
 
 /**
- * 
- * AI response container for an MC questions generation request
- * 
- * Initial date: 22.05.2024<br>
- * 
- * @author gnaegi@frentix.com, https://www.frentix.com
+ * Spring service for multiple choice question generation via AI.
+ *
+ * Initial date: 31.03.2026<br>
+ *
+ * @author uhensler, https://www.frentix.com
  *
  */
-public class AiMCQuestionsResponse extends AiResponse {
-	private List<MCQuestionData> questions = new ArrayList<>();
+public interface AiMCQuestionService {
 
-	public void addQuestion(MCQuestionData question) {
-		questions.add(question);
-	}
+	String FEATURE_ID = "mc-question-generator";
 
-	public List<MCQuestionData> getQuestions() {
-		return questions;
-	}
+	boolean isEnabled();
+
+	AiMCQuestionsResponse generateMCQuestionsResponse(String input, int number);
+
+	AiMCQuestionsResponse generateMCQuestionsResponse(String input, int number, String spiId, String modelName);
+
 }

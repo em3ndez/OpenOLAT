@@ -63,11 +63,10 @@ import org.commonmark.renderer.html.DefaultUrlSanitizer;
 import org.commonmark.renderer.html.HtmlRenderer;
 import org.olat.basesecurity.MediaServerModule;
 import org.olat.core.CoreSpringFactory;
-import org.olat.core.commons.services.ai.AiImageDescriptionSPI;
+import org.olat.core.commons.services.ai.AiImageDescriptionService;
 import org.olat.core.commons.services.ai.AiImageHelper;
-import org.olat.core.commons.services.ai.AiModule;
-import org.olat.core.commons.services.ai.model.AiImageDescriptionData;
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
+import org.olat.core.commons.services.ai.model.ImageDescriptionData;
 import org.olat.core.commons.services.license.LicenseModule;
 import org.olat.core.commons.services.license.LicenseService;
 import org.olat.core.gui.translator.Translator;
@@ -555,8 +554,8 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 
 	private void doAutoGenerateAiMetadata(Media media, File imageFile, String filename, MediaService mediaService) {
 		try {
-			AiModule aiModule = CoreSpringFactory.getImpl(AiModule.class);
-			if (!aiModule.isImageDescriptionGeneratorEnabled()) return;
+			AiImageDescriptionService imageDescriptionService = CoreSpringFactory.getImpl(AiImageDescriptionService.class);
+			if (!imageDescriptionService.isEnabled()) return;
 
 			AiImageHelper aiImageHelper = CoreSpringFactory.getImpl(AiImageHelper.class);
 			String suffix = getSuffix(filename);
@@ -567,14 +566,11 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 			String base64 = aiImageHelper.prepareImageBase64(imageFile, suffix);
 			if (base64 == null) return;
 
-			AiImageDescriptionSPI generator = aiModule.getImageDescriptionGenerator();
-			if (generator == null) return;
-
 			Locale locale = translator != null ? translator.getLocale() : Locale.ENGLISH;
-			AiImageDescriptionResponse response = generator.generateImageDescription(base64, mimeType, locale);
+			AiImageDescriptionResponse response = imageDescriptionService.generateImageDescription(base64, mimeType, locale);
 			if (!response.isSuccess() || response.getDescription() == null) return;
 
-			AiImageDescriptionData data = response.getDescription();
+			ImageDescriptionData data = response.getDescription();
 
 			// Update title if current title looks like a filename
 			if (StringHelper.containsNonWhitespace(data.getTitle())) {

@@ -26,11 +26,10 @@ import java.util.List;
 import java.util.Set;
 
 import org.olat.core.commons.modules.bc.meta.MetaInfoController;
-import org.olat.core.commons.services.ai.AiImageDescriptionSPI;
+import org.olat.core.commons.services.ai.AiImageDescriptionService;
 import org.olat.core.commons.services.ai.AiImageHelper;
-import org.olat.core.commons.services.ai.AiModule;
-import org.olat.core.commons.services.ai.model.AiImageDescriptionData;
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
+import org.olat.core.commons.services.ai.model.ImageDescriptionData;
 import org.olat.core.commons.services.tag.TagInfo;
 import org.olat.core.commons.services.tag.ui.component.TagSelection;
 import org.olat.core.gui.UserRequest;
@@ -105,7 +104,7 @@ public class CollectImageMediaController extends AbstractCollectMediaController 
 	private MediaRelationsController relationsCtrl;
 	
 	@Autowired
-	private AiModule aiModule;
+	private AiImageDescriptionService imageDescriptionService;
 	@Autowired
 	private AiImageHelper aiImageHelper;
 	@Autowired
@@ -185,7 +184,7 @@ public class CollectImageMediaController extends AbstractCollectMediaController 
 		}
 		uifactory.addFormSubmitButton("save", "save", buttonsCont);
 		uifactory.addFormCancelButton("cancel", buttonsCont, ureq, getWindowControl());
-		if (aiModule.isImageDescriptionGeneratorEnabled()) {
+		if (imageDescriptionService.isEnabled()) {
 			generateAiLink = uifactory.addFormLink("ai.generate.metadata", buttonsCont, Link.BUTTON);
 			generateAiLink.setIconLeftCSS("o_icon o_icon-fw o_icon_ai");
 			generateAiLink.setElementCssClass("o_button_ghost");
@@ -349,21 +348,13 @@ public class CollectImageMediaController extends AbstractCollectMediaController 
 			return;
 		}
 
-		// Get the generator
-		AiImageDescriptionSPI generator = aiModule.getImageDescriptionGenerator();
-		if (generator == null) {
-			showWarning("ai.generate.not.configured");
-			return;
-		}
-
-		// Call the AI
-		AiImageDescriptionResponse response = generator.generateImageDescription(base64, mimeType, getLocale());
+		AiImageDescriptionResponse response = imageDescriptionService.generateImageDescription(base64, mimeType, getLocale());
 		if (!response.isSuccess()) {
 			showWarning("ai.generate.failed", new String[] { StringHelper.escapeHtml(response.getError()) });
 			return;
 		}
 
-		AiImageDescriptionData data = response.getDescription();
+		ImageDescriptionData data = response.getDescription();
 		if (data == null) {
 			showWarning("ai.generate.error");
 			return;

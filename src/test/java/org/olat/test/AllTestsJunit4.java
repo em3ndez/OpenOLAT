@@ -112,7 +112,6 @@ import org.junit.runners.Suite;
 	org.olat.core.commons.modules.glossary.GlossaryItemManagerTest.class,
 	org.olat.core.commons.services.ai.AiImageHelperTest.class,
 	org.olat.core.commons.services.ai.AiModuleTest.class,
-	org.olat.core.commons.services.ai.AiPromptHelperTest.class,
 	org.olat.core.commons.services.ai.model.AiModelTest.class,
 	org.olat.core.commons.services.csp.CSPDispatcherTest.class,
 	org.olat.core.commons.services.csp.manager.CSPManagerTest.class,

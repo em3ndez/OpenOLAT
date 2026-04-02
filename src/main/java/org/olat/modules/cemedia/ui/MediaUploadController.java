@@ -29,11 +29,10 @@ import java.util.Set;
 
 import org.olat.core.commons.modules.bc.meta.MetaInfoController;
 import org.olat.core.commons.persistence.DB;
-import org.olat.core.commons.services.ai.AiImageDescriptionSPI;
+import org.olat.core.commons.services.ai.AiImageDescriptionService;
 import org.olat.core.commons.services.ai.AiImageHelper;
-import org.olat.core.commons.services.ai.AiModule;
-import org.olat.core.commons.services.ai.model.AiImageDescriptionData;
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
+import org.olat.core.commons.services.ai.model.ImageDescriptionData;
 import org.olat.core.commons.services.tag.ui.component.TagSelection;
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.form.flexible.FormItem;
@@ -100,7 +99,7 @@ public class MediaUploadController extends AbstractCollectMediaController implem
 	@Autowired
 	private DB dbInstance;
 	@Autowired
-	private AiModule aiModule;
+	private AiImageDescriptionService imageDescriptionService;
 	@Autowired
 	private AiImageHelper aiImageHelper;
 	@Autowired
@@ -349,7 +348,7 @@ public class MediaUploadController extends AbstractCollectMediaController implem
 
 	private void doAutoGenerateAiMetadata(File imageFile, String filename) {
 		if (imageFile == null || filename == null) return;
-		if (!aiModule.isImageDescriptionGeneratorEnabled()) return;
+		if (!imageDescriptionService.isEnabled()) return;
 
 		// Only for supported raster images
 		String suffix = getSuffix(filename);
@@ -360,13 +359,10 @@ public class MediaUploadController extends AbstractCollectMediaController implem
 		String base64 = aiImageHelper.prepareImageBase64(imageFile, suffix);
 		if (base64 == null) return;
 
-		AiImageDescriptionSPI generator = aiModule.getImageDescriptionGenerator();
-		if (generator == null) return;
-
-		AiImageDescriptionResponse response = generator.generateImageDescription(base64, mimeType, getLocale());
+		AiImageDescriptionResponse response = imageDescriptionService.generateImageDescription(base64, mimeType, getLocale());
 		if (!response.isSuccess() || response.getDescription() == null) return;
 
-		AiImageDescriptionData data = response.getDescription();
+		ImageDescriptionData data = response.getDescription();
 
 		// Populate title if empty or filename-style
 		if (data.getTitle() != null) {
