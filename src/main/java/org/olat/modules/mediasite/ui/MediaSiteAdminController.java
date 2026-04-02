@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.form.flexible.FormItem;
@@ -30,6 +31,7 @@ import org.olat.core.gui.components.form.flexible.FormItemContainer;
 import org.olat.core.gui.components.form.flexible.elements.MultipleSelectionElement;
 import org.olat.core.gui.components.form.flexible.elements.SingleSelection;
 import org.olat.core.gui.components.form.flexible.elements.SpacerElement;
+import org.olat.core.gui.components.form.flexible.elements.StaticTextElement;
 import org.olat.core.gui.components.form.flexible.elements.TextElement;
 import org.olat.core.gui.components.form.flexible.impl.Form;
 import org.olat.core.gui.components.form.flexible.impl.FormBasicController;
@@ -67,8 +69,8 @@ public class MediaSiteAdminController extends FormBasicController {
 	private TextElement enterpriseSecretEl;
 	private TextElement usernamePropertyKeyEl;
 	
-	private TextElement lti13ClientIdEl;
-	private TextElement lti13DeploymentIdEl;
+	private StaticTextElement lti13ClientIdEl;
+	private StaticTextElement lti13DeploymentIdEl;
 	private TextElement lti13InitiateLoginUrlEl;
 	private TextElement lti13RedirectUrlEl;
 	private TextElement lti13JwksUrlEl;
@@ -148,10 +150,8 @@ public class MediaSiteAdminController extends FormBasicController {
 				usernamePropertyKeyEl);
 
 		SpacerElement lti13Spacer = uifactory.addSpacerElement("lti13.spacer", formLayout, false);
-		lti13ClientIdEl = uifactory.addTextElement("lti13.client.id", -1, null, formLayout);
-		lti13ClientIdEl.setMandatory(true);
-		lti13DeploymentIdEl = uifactory.addTextElement("lti13.deployment.id", -1, null, formLayout);
-		lti13DeploymentIdEl.setMandatory(true);
+		lti13ClientIdEl = uifactory.addStaticTextElement("lti13.client.id", "lti13.client.id", "", formLayout);
+		lti13DeploymentIdEl = uifactory.addStaticTextElement("lti13.deployment.id", "lti13.deployment.id", "", formLayout);
 		lti13InitiateLoginUrlEl = uifactory.addTextElement("lti13.initiate.login.url", -1, null, formLayout);
 		lti13InitiateLoginUrlEl.setMandatory(true);
 		lti13RedirectUrlEl = uifactory.addTextElement("lti13.redirect.url", -1, null, formLayout);
@@ -199,11 +199,9 @@ public class MediaSiteAdminController extends FormBasicController {
 
 	private boolean validateLti13Elemens() {
 		boolean allOk = true;
-		for (FormItem formItem : lti13FormItems) {
-			if (formItem instanceof TextElement textElement) {
-				allOk &= checkMandatoryElement(textElement);
-			}
-		}
+		allOk &= checkMandatoryElement(lti13InitiateLoginUrlEl);
+		allOk &= checkMandatoryElement(lti13RedirectUrlEl);
+		allOk &= checkMandatoryElement(lti13JwksUrlEl);
 		return allOk;
 	}
 
@@ -227,8 +225,16 @@ public class MediaSiteAdminController extends FormBasicController {
 						mediaSiteModule.setUsernameProperty(usernamePropertyKeyEl.getValue());
 					}
 					case lti_1_3 -> {
-						mediaSiteModule.setLti13ClientId(lti13ClientIdEl.getValue());
-						mediaSiteModule.setLti13DeploymentId(lti13DeploymentIdEl.getValue());
+						if (!StringHelper.containsNonWhitespace(mediaSiteModule.getLti13ClientId())) {
+							String clientId = UUID.randomUUID().toString();
+							mediaSiteModule.setLti13ClientId(clientId);
+							lti13ClientIdEl.setValue(clientId);
+						}
+						if (!StringHelper.containsNonWhitespace(mediaSiteModule.getLti13DeploymentId())) {
+							String deploymentId = UUID.randomUUID().toString();
+							mediaSiteModule.setLti13DeploymentId(deploymentId);
+							lti13DeploymentIdEl.setValue(deploymentId);
+						}
 						mediaSiteModule.setLti13InitiateLoginUrl(lti13InitiateLoginUrlEl.getValue());
 						mediaSiteModule.setLti13RedirectUrl(lti13RedirectUrlEl.getValue());
 						mediaSiteModule.setLti13JwksUrl(lti13JwksUrlEl.getValue());
@@ -274,8 +280,8 @@ public class MediaSiteAdminController extends FormBasicController {
 		administrationUrlEl.setValue(mediaSiteModule.getAdministrationURL());
 		usernamePropertyKeyEl.setValue(mediaSiteModule.getUsernameProperty());
 
-		lti13ClientIdEl.setValue(mediaSiteModule.getLti13ClientId());
-		lti13DeploymentIdEl.setValue(mediaSiteModule.getLti13DeploymentId());
+		lti13ClientIdEl.setValue(StringHelper.blankIfNull(mediaSiteModule.getLti13ClientId()));
+		lti13DeploymentIdEl.setValue(StringHelper.blankIfNull(mediaSiteModule.getLti13DeploymentId()));
 		lti13InitiateLoginUrlEl.setValue(mediaSiteModule.getLti13InitiateLoginUrl());
 		lti13RedirectUrlEl.setValue(mediaSiteModule.getLti13RedirectUrl());
 		lti13JwksUrlEl.setValue(mediaSiteModule.getLti13JwksUrl());
@@ -292,13 +298,15 @@ public class MediaSiteAdminController extends FormBasicController {
 		administrationUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_ADMINISTRATION_URL));
 		usernamePropertyKeyEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_USER_NAME_KEY, mediaSiteModule.getUsernameProperty()));
 
-		lti13ClientIdEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_CLIENT_ID));
-		lti13DeploymentIdEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_DEPLOYMENT_ID));
+		lti13ClientIdEl.setValue(StringHelper.blankIfNull(mediaSiteModule.getLti13ClientId()));
+		lti13DeploymentIdEl.setValue(StringHelper.blankIfNull(mediaSiteModule.getLti13DeploymentId()));
 		lti13InitiateLoginUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_INITIATE_LOGIN_URL));
 		lti13RedirectUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_REDIRECT_URL));
 		lti13JwksUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_JWKS_URL));
 
 		supressDataTransmissionEl.select("on", config.getBooleanSafe(MediaSiteCourseNode.CONFIG_SUPRESS_AGREEMENT, mediaSiteModule.isSupressDataTransmissionAgreement()));
+	
+		updateUi();
 	}
 	
 	public boolean saveToModuleConfiguration(UserRequest ureq, ModuleConfiguration config) {
@@ -316,11 +324,11 @@ public class MediaSiteAdminController extends FormBasicController {
 					config.setStringValue(MediaSiteCourseNode.CONFIG_ADMINISTRATION_URL, administrationUrlEl.getValue());
 				}
 				case lti_1_3 -> {
-					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_CLIENT_ID, lti13ClientIdEl.getValue());					
-					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_DEPLOYMENT_ID, lti13DeploymentIdEl.getValue());					
-					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_INITIATE_LOGIN_URL, lti13InitiateLoginUrlEl.getValue());					
-					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_REDIRECT_URL, lti13RedirectUrlEl.getValue());					
-					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_JWKS_URL, lti13JwksUrlEl.getValue());					
+					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_CLIENT_ID, mediaSiteModule.getLti13ClientId());
+					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_DEPLOYMENT_ID, mediaSiteModule.getLti13DeploymentId());
+					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_INITIATE_LOGIN_URL, lti13InitiateLoginUrlEl.getValue());
+					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_REDIRECT_URL, lti13RedirectUrlEl.getValue());
+					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_JWKS_URL, lti13JwksUrlEl.getValue());
 				}
 			}
 
