@@ -19,10 +19,13 @@
  */
 package org.olat.modules.mediasite;
 
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.olat.core.commons.services.csp.CSPDirectiveProvider;
+import org.olat.core.util.StringHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -67,7 +70,15 @@ public class MediaSiteDirectiveProvider implements CSPDirectiveProvider {
 	}
 	
 	public Collection<String> getUrls() {
-		return mediaSiteModule.isEnabled() ? Arrays.asList(mediaSiteModule.getBaseURL(), mediaSiteModule.getAdministrationURL()) : null;
+		if (!mediaSiteModule.isEnabled()) {
+			return null;
+		}
+		List<String> urls = Stream.of(mediaSiteModule.getBaseURL(), mediaSiteModule.getAdministrationURL(), 
+						mediaSiteModule.getLti13InitiateLoginUrl(), mediaSiteModule.getLti13RedirectUrl(),
+						mediaSiteModule.getLti13JwksUrl())
+				.filter(StringHelper::containsNonWhitespace)
+				.collect(Collectors.toList());
+		return urls.isEmpty() ? null : urls;
 	}
 
 }

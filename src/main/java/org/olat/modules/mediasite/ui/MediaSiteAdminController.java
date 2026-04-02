@@ -19,23 +19,29 @@
  */
 package org.olat.modules.mediasite.ui;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.form.flexible.FormItem;
 import org.olat.core.gui.components.form.flexible.FormItemContainer;
 import org.olat.core.gui.components.form.flexible.elements.MultipleSelectionElement;
+import org.olat.core.gui.components.form.flexible.elements.SingleSelection;
+import org.olat.core.gui.components.form.flexible.elements.SpacerElement;
 import org.olat.core.gui.components.form.flexible.elements.TextElement;
 import org.olat.core.gui.components.form.flexible.impl.Form;
 import org.olat.core.gui.components.form.flexible.impl.FormBasicController;
 import org.olat.core.gui.components.form.flexible.impl.FormEvent;
+import org.olat.core.gui.components.util.SelectionValues;
 import org.olat.core.gui.control.Controller;
 import org.olat.core.gui.control.WindowControl;
 import org.olat.core.gui.translator.TranslatorHelper;
 import org.olat.core.util.StringHelper;
 import org.olat.course.nodes.MediaSiteCourseNode;
 import org.olat.modules.ModuleConfiguration;
+import org.olat.modules.mediasite.LtiVersion;
 import org.olat.modules.mediasite.MediaSiteModule;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -51,16 +57,28 @@ public class MediaSiteAdminController extends FormBasicController {
 	
 	private MultipleSelectionElement enabledEl;
 	private MultipleSelectionElement globalServerEnabledEl;
-	private TextElement enterpriseKeyEl;
-	private TextElement enterpriseSecretEl;
+	private SpacerElement serverSpacer;
 	private TextElement serverNameEl;
+	private SingleSelection ltiVersionEl;
+	
 	private TextElement baseUrlEl;
 	private TextElement administrationUrlEl;
+	private TextElement enterpriseKeyEl;
+	private TextElement enterpriseSecretEl;
 	private TextElement usernamePropertyKeyEl;
+	
+	private TextElement lti13ClientIdEl;
+	private TextElement lti13DeploymentIdEl;
+	private TextElement lti13InitiateLoginUrlEl;
+	private TextElement lti13RedirectUrlEl;
+	private TextElement lti13JwksUrlEl;
+
+	private List<FormItem> ltiCommonFormItems;
+	private List<FormItem> lti11FormItems;
+	private List<FormItem> lti13FormItems;
+		
 	private MultipleSelectionElement supressDataTransmissionEl;
 	
-	private List<FormItem> formItems;
-		
 	@Autowired
 	private MediaSiteModule mediaSiteModule;
 
@@ -86,6 +104,7 @@ public class MediaSiteAdminController extends FormBasicController {
 
 	@Override
 	protected void initForm(FormItemContainer formLayout, Controller listener, UserRequest ureq) {
+		ltiCommonFormItems = new ArrayList<>();
 		if (usedInAdministration) {
 			setFormTitle("admin.title");
 			setFormDescription("admin.description");
@@ -97,10 +116,23 @@ public class MediaSiteAdminController extends FormBasicController {
 			globalServerEnabledEl = uifactory.addCheckboxesHorizontal("global.login", formLayout, enabledKeys, TranslatorHelper.translateAll(getTranslator(), enabledKeys));
 			globalServerEnabledEl.addActionListener(FormEvent.ONCHANGE);
 			
+			serverSpacer = uifactory.addSpacerElement("server.spacer", formLayout, false);
+
 			serverNameEl = uifactory.addTextElement("server.name", -1, null, formLayout);
 			serverNameEl.setMandatory(true);
+			
+			ltiCommonFormItems.add(serverSpacer);
+			ltiCommonFormItems.add(serverNameEl);
 		}
+
+		SelectionValues ltiVersionKV = new SelectionValues();
+		ltiVersionKV.add(SelectionValues.entry(LtiVersion.lti_1_1.name(), "1.1"));
+		ltiVersionKV.add(SelectionValues.entry(LtiVersion.lti_1_3.name(), "1.3"));
+		ltiVersionEl = uifactory.addRadiosHorizontal("lti.version", formLayout, ltiVersionKV.keys(), ltiVersionKV.values());
+		ltiVersionEl.addActionListener(FormEvent.ONCHANGE);
+		ltiCommonFormItems.add(ltiVersionEl);
 		
+		SpacerElement lti11Spacer = uifactory.addSpacerElement("lti11.spacer", formLayout, false);
 		baseUrlEl = uifactory.addTextElement("base.url", -1, null, formLayout);
 		baseUrlEl.setMandatory(true);
 		administrationUrlEl = uifactory.addTextElement("administration.url", -1, null, formLayout);
@@ -111,9 +143,27 @@ public class MediaSiteAdminController extends FormBasicController {
 		enterpriseSecretEl.setMandatory(true);
 		usernamePropertyKeyEl = uifactory.addTextElement("username.property.key", -1, null, formLayout);
 		usernamePropertyKeyEl.setMandatory(true);
-		supressDataTransmissionEl = uifactory.addCheckboxesHorizontal("supress.data.transmission", formLayout, enabledKeys, TranslatorHelper.translateAll(getTranslator(), enabledKeys));
 		
-		formItems = Arrays.asList(enterpriseKeyEl, enterpriseSecretEl, serverNameEl, baseUrlEl, administrationUrlEl, usernamePropertyKeyEl, supressDataTransmissionEl);
+		lti11FormItems = Arrays.asList(lti11Spacer, enterpriseKeyEl, enterpriseSecretEl, baseUrlEl, administrationUrlEl, 
+				usernamePropertyKeyEl);
+
+		SpacerElement lti13Spacer = uifactory.addSpacerElement("lti13.spacer", formLayout, false);
+		lti13ClientIdEl = uifactory.addTextElement("lti13.client.id", -1, null, formLayout);
+		lti13ClientIdEl.setMandatory(true);
+		lti13DeploymentIdEl = uifactory.addTextElement("lti13.deployment.id", -1, null, formLayout);
+		lti13DeploymentIdEl.setMandatory(true);
+		lti13InitiateLoginUrlEl = uifactory.addTextElement("lti13.initiate.login.url", -1, null, formLayout);
+		lti13InitiateLoginUrlEl.setMandatory(true);
+		lti13RedirectUrlEl = uifactory.addTextElement("lti13.redirect.url", -1, null, formLayout);
+		lti13RedirectUrlEl.setMandatory(true);
+		lti13JwksUrlEl = uifactory.addTextElement("lti13.jwks.url", -1, null, formLayout);
+		lti13JwksUrlEl.setMandatory(true);
+
+		lti13FormItems = Arrays.asList(lti13Spacer, lti13ClientIdEl, lti13DeploymentIdEl, lti13InitiateLoginUrlEl, 
+				lti13RedirectUrlEl, lti13JwksUrlEl);
+
+		SpacerElement suppressSpacer = uifactory.addSpacerElement("suppress.spacer", formLayout, false);
+		supressDataTransmissionEl = uifactory.addCheckboxesHorizontal("supress.data.transmission", formLayout, enabledKeys, TranslatorHelper.translateAll(getTranslator(), enabledKeys));
 		
 		if (usedInAdministration) {
 			uifactory.addFormSubmitButton("save", formLayout);
@@ -123,31 +173,70 @@ public class MediaSiteAdminController extends FormBasicController {
 	@Override
 	protected boolean validateFormLogic(UserRequest ureq) {
 		boolean allOk = super.validateFormLogic(ureq);
-		
-		allOk &= checkMandatoryElement(enterpriseKeyEl);
-		allOk &= checkMandatoryElement(enterpriseSecretEl);
+
 		allOk &= checkMandatoryElement(serverNameEl);
-		allOk &= checkMandatoryElement(baseUrlEl);
-		allOk &= checkMandatoryElement(administrationUrlEl);
-		allOk &= checkMandatoryElement(usernamePropertyKeyEl);
+
+		if (ltiVersionEl != null && ltiVersionEl.isVisible()) {
+			if (LtiVersion.lti_1_1.name().equals(ltiVersionEl.getSelectedKey())) {
+				allOk &= validateLti11Elements();
+			} else if (LtiVersion.lti_1_3.name().equals(ltiVersionEl.getSelectedKey())) {
+				allOk &= validateLti13Elemens();
+			}
+		}
 		
 		return allOk;
 	}
-	
+
+	private boolean validateLti11Elements() {
+		boolean allOk = true;
+		for (FormItem formItem : lti11FormItems) {
+			if (formItem instanceof TextElement textElement) {
+				allOk &= checkMandatoryElement(textElement);
+			}
+		}
+		return allOk;
+	}
+
+	private boolean validateLti13Elemens() {
+		boolean allOk = true;
+		for (FormItem formItem : lti13FormItems) {
+			if (formItem instanceof TextElement textElement) {
+				allOk &= checkMandatoryElement(textElement);
+			}
+		}
+		return allOk;
+	}
+
 	@Override
 	protected void formOK(UserRequest ureq) {
 		if (usedInAdministration) {
-			mediaSiteModule.setEnabled(enabledEl.isAtLeastSelected(1));
-			mediaSiteModule.setGlobalLoginEnabled(globalServerEnabledEl.isAtLeastSelected(1));
-			mediaSiteModule.setEnterpriseKey(enterpriseKeyEl.getValue());
-			mediaSiteModule.setEnterpriseSecret(enterpriseSecretEl.getValue());
-			mediaSiteModule.setServerName(serverNameEl.getValue());
-			mediaSiteModule.setBaseURL(baseUrlEl.getValue());
-			mediaSiteModule.setAdministrationURL(administrationUrlEl.getValue());
-			mediaSiteModule.setUsernameProperty(usernamePropertyKeyEl.getValue());
+			boolean moduleEnabled = enabledEl.isAtLeastSelected(1);
+			mediaSiteModule.setEnabled(moduleEnabled);
+			if (moduleEnabled) {
+				boolean globalServerEnabled = globalServerEnabledEl.isAtLeastSelected(1);
+				mediaSiteModule.setGlobalLoginEnabled(globalServerEnabled);
+				mediaSiteModule.setServerName(serverNameEl.getValue());
+				LtiVersion ltiVersion = LtiVersion.valueOf(ltiVersionEl.getSelectedKey());
+				mediaSiteModule.setLtiVersion(ltiVersion);
+				switch (ltiVersion) {
+					case lti_1_1 -> {
+						mediaSiteModule.setEnterpriseKey(enterpriseKeyEl.getValue());
+						mediaSiteModule.setEnterpriseSecret(enterpriseSecretEl.getValue());
+						mediaSiteModule.setBaseURL(baseUrlEl.getValue());
+						mediaSiteModule.setAdministrationURL(administrationUrlEl.getValue());
+						mediaSiteModule.setUsernameProperty(usernamePropertyKeyEl.getValue());
+					}
+					case lti_1_3 -> {
+						mediaSiteModule.setLti13ClientId(lti13ClientIdEl.getValue());
+						mediaSiteModule.setLti13DeploymentId(lti13DeploymentIdEl.getValue());
+						mediaSiteModule.setLti13InitiateLoginUrl(lti13InitiateLoginUrlEl.getValue());
+						mediaSiteModule.setLti13RedirectUrl(lti13RedirectUrlEl.getValue());
+						mediaSiteModule.setLti13JwksUrl(lti13JwksUrlEl.getValue());
+					}
+				}
+			}
 			mediaSiteModule.setSupressDataTransmissionAgreement(supressDataTransmissionEl.isAtLeastSelected(1));
 		}
-		
 	}
 	
 	@Override
@@ -155,7 +244,9 @@ public class MediaSiteAdminController extends FormBasicController {
 		if (source == enabledEl) {
 			globalServerEnabledEl.setVisible(enabledEl.isAtLeastSelected(1));
 			updateUi();
-		} if (source == globalServerEnabledEl) {
+		} else if (source == globalServerEnabledEl) {
+			updateUi();
+		} else if (source == ltiVersionEl) {
 			updateUi();
 		}
 	}
@@ -173,32 +264,67 @@ public class MediaSiteAdminController extends FormBasicController {
 			serverNameEl.setValue(mediaSiteModule.getServerName());
 		}
 		
+		if (ltiVersionEl != null) {
+			ltiVersionEl.select(mediaSiteModule.getLtiVersion().name(), true);
+		}
+		
 		enterpriseKeyEl.setValue(mediaSiteModule.getEnterpriseKey());
 		enterpriseSecretEl.setValue(mediaSiteModule.getEnterpriseSecret());
 		baseUrlEl.setValue(mediaSiteModule.getBaseURL());
 		administrationUrlEl.setValue(mediaSiteModule.getAdministrationURL());
 		usernamePropertyKeyEl.setValue(mediaSiteModule.getUsernameProperty());
+
+		lti13ClientIdEl.setValue(mediaSiteModule.getLti13ClientId());
+		lti13DeploymentIdEl.setValue(mediaSiteModule.getLti13DeploymentId());
+		lti13InitiateLoginUrlEl.setValue(mediaSiteModule.getLti13InitiateLoginUrl());
+		lti13RedirectUrlEl.setValue(mediaSiteModule.getLti13RedirectUrl());
+		lti13JwksUrlEl.setValue(mediaSiteModule.getLti13JwksUrl());
+
 		supressDataTransmissionEl.select("on", mediaSiteModule.isSupressDataTransmissionAgreement());
 	}
 	
 	public void loadFromCourseNodeConfig(ModuleConfiguration config) {
+		ltiVersionEl.select(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_VERSION, LtiVersion.lti_1_1.name()), true);
+		
 		enterpriseKeyEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_PRIVATE_KEY));
 		enterpriseSecretEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_PRIVATE_SECRET));
 		baseUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_SERVER_URL));
 		administrationUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_ADMINISTRATION_URL));
 		usernamePropertyKeyEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_USER_NAME_KEY, mediaSiteModule.getUsernameProperty()));
+
+		lti13ClientIdEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_CLIENT_ID));
+		lti13DeploymentIdEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_DEPLOYMENT_ID));
+		lti13InitiateLoginUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_INITIATE_LOGIN_URL));
+		lti13RedirectUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_REDIRECT_URL));
+		lti13JwksUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_JWKS_URL));
+
 		supressDataTransmissionEl.select("on", config.getBooleanSafe(MediaSiteCourseNode.CONFIG_SUPRESS_AGREEMENT, mediaSiteModule.isSupressDataTransmissionAgreement()));
 	}
 	
-	public boolean safeToModulConfiguration(UserRequest ureq, ModuleConfiguration config) {
+	public boolean saveToModuleConfiguration(UserRequest ureq, ModuleConfiguration config) {
 		if (validateFormLogic(ureq)) {
 			config.setBooleanEntry(MediaSiteCourseNode.CONFIG_ENABLE_PRIVATE_LOGIN, true);
-			config.setStringValue(MediaSiteCourseNode.CONFIG_PRIVATE_KEY, enterpriseKeyEl.getValue());
-			config.setStringValue(MediaSiteCourseNode.CONFIG_PRIVATE_SECRET, enterpriseSecretEl.getValue());
-			config.setStringValue(MediaSiteCourseNode.CONFIG_USER_NAME_KEY, usernamePropertyKeyEl.getValue());
-			config.setStringValue(MediaSiteCourseNode.CONFIG_SERVER_URL, baseUrlEl.getValue());
+			config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_VERSION, ltiVersionEl.getSelectedKey());
+
+			LtiVersion ltiVersion = LtiVersion.valueOf(ltiVersionEl.getSelectedKey());
+			switch (ltiVersion) {
+				case lti_1_1 -> {
+					config.setStringValue(MediaSiteCourseNode.CONFIG_PRIVATE_KEY, enterpriseKeyEl.getValue());
+					config.setStringValue(MediaSiteCourseNode.CONFIG_PRIVATE_SECRET, enterpriseSecretEl.getValue());
+					config.setStringValue(MediaSiteCourseNode.CONFIG_USER_NAME_KEY, usernamePropertyKeyEl.getValue());
+					config.setStringValue(MediaSiteCourseNode.CONFIG_SERVER_URL, baseUrlEl.getValue());
+					config.setStringValue(MediaSiteCourseNode.CONFIG_ADMINISTRATION_URL, administrationUrlEl.getValue());
+				}
+				case lti_1_3 -> {
+					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_CLIENT_ID, lti13ClientIdEl.getValue());					
+					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_DEPLOYMENT_ID, lti13DeploymentIdEl.getValue());					
+					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_INITIATE_LOGIN_URL, lti13InitiateLoginUrlEl.getValue());					
+					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_REDIRECT_URL, lti13RedirectUrlEl.getValue());					
+					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_JWKS_URL, lti13JwksUrlEl.getValue());					
+				}
+			}
+
 			config.setBooleanEntry(MediaSiteCourseNode.CONFIG_SUPRESS_AGREEMENT, supressDataTransmissionEl.isAtLeastSelected(1));
-			config.setStringValue(MediaSiteCourseNode.CONFIG_ADMINISTRATION_URL, administrationUrlEl.getValue());
 			
 			return true;
 		}
@@ -209,13 +335,43 @@ public class MediaSiteAdminController extends FormBasicController {
 	}
 	
 	private void updateUi() {
-		boolean visible = !usedInAdministration || (globalServerEnabledEl.isAtLeastSelected(1) && enabledEl.isAtLeastSelected(1));
-		
-		formItems.stream().filter(item -> item != null).forEach(test -> test.setVisible(visible));
+		if (usedInAdministration) {
+			updateUiInAdministration();
+		} else {
+			updateUiInCourse();
+		}
 	}
-	
+
+	private void updateUiInAdministration() {
+		boolean moduleEnabled = enabledEl.isAtLeastSelected(1);
+		globalServerEnabledEl.setVisible(moduleEnabled);
+		boolean ltiVisible = moduleEnabled && globalServerEnabledEl.isAtLeastSelected(1);
+
+		ltiCommonFormItems.stream().filter(Objects::nonNull).forEach(item -> item.setVisible(ltiVisible));
+
+		final LtiVersion ltiVersion = LtiVersion.valueOf(ltiVersionEl.getSelectedKey());
+
+		lti11FormItems.stream().filter(Objects::nonNull)
+				.forEach(item -> item.setVisible(ltiVisible && LtiVersion.lti_1_1.name().equals(ltiVersionEl.getSelectedKey())));
+		lti13FormItems.stream().filter(Objects::nonNull)
+				.forEach(item -> item.setVisible(ltiVisible && LtiVersion.lti_1_3.name().equals(ltiVersionEl.getSelectedKey())));
+
+		supressDataTransmissionEl.setVisible(ltiVisible);
+	}
+
+	private void updateUiInCourse() {
+		lti11FormItems.stream().filter(Objects::nonNull)
+				.forEach(item -> item.setVisible(LtiVersion.lti_1_1.name().equals(ltiVersionEl.getSelectedKey())));
+		lti13FormItems.stream().filter(Objects::nonNull)
+				.forEach(item -> item.setVisible(LtiVersion.lti_1_3.name().equals(ltiVersionEl.getSelectedKey())));
+	}
+
 	private boolean checkMandatoryElement(TextElement textElement) {
 		if (textElement == null) {
+			return true;
+		}
+		
+		if (!textElement.isVisible()) {
 			return true;
 		}
 		
