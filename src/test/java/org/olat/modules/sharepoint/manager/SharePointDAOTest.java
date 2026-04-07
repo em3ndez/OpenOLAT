@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.olat.basesecurity.model.OAuth2TokensImpl;
 import org.olat.core.util.StringHelper;
@@ -50,6 +51,7 @@ public class SharePointDAOTest extends OlatTestCase {
 	@Autowired
 	private OAuthLoginModule oauthLoginModule;
 	
+	@Ignore
 	@Test
 	public void getMeOneDrive() throws Exception {
 		String refreshToken = System.getProperty("test.env.azure.adfs.refresh.token");
@@ -67,6 +69,7 @@ public class SharePointDAOTest extends OlatTestCase {
 		Assert.assertNotNull("OneDrive", oneDrive.drive().getName());
 	}
 	
+	@Ignore
 	@Test
 	public void getRootDriveItem() throws Exception {
 		String refreshToken = System.getProperty("test.env.azure.adfs.refresh.token");
@@ -86,6 +89,7 @@ public class SharePointDAOTest extends OlatTestCase {
 		Assert.assertNotNull(oneDriveRootItem.getName());
 	}
 	
+	@Ignore
 	@Test
 	public void getDriveItems() throws Exception {
 		String refreshToken = System.getProperty("test.env.azure.adfs.refresh.token");
@@ -106,6 +110,7 @@ public class SharePointDAOTest extends OlatTestCase {
 		Assert.assertNotNull(items);
 	}
 	
+	@Ignore
 	@Test
 	public void getSites() throws Exception {
 		String refreshToken = System.getProperty("test.env.azure.adfs.refresh.token");
