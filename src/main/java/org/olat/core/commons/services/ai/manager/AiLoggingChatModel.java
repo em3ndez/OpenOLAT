@@ -22,8 +22,10 @@ package org.olat.core.commons.services.ai.manager;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.logging.log4j.Logger;
 import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.model.AiUsageLogImpl;
+import org.olat.core.logging.Tracing;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -52,6 +54,7 @@ import dev.langchain4j.service.AiServices;
  *
  */
 public class AiLoggingChatModel implements ChatModel {
+	private static final Logger log = Tracing.createLoggerFor(AiLoggingChatModel.class);
 	private static final String STATUS_SUCCESS = "SUCCESS";
 	private static final String STATUS_FAILED = "FAILED";
 
@@ -99,17 +102,23 @@ public class AiLoggingChatModel implements ChatModel {
 
 	@Override
 	public ChatResponse chat(ChatRequest request) {
+		if (log.isDebugEnabled()) {
+			log.debug("AI request [spi={}, feature={}]: {}", spiId, aiFeature, request.messages());
+		}
 		long startTime = System.currentTimeMillis();
 		try {
 			ChatResponse response = delegate.chat(request);
-			AiUsageLogImpl log = buildLog(request, response, null, startTime);
-			usageLogDao.create(log);
-			logKeyRef.set(log.getKey());
+			if (log.isDebugEnabled()) {
+				log.debug("AI response [spi={}, feature={}]: {}", spiId, aiFeature, response.aiMessage());
+			}
+			AiUsageLogImpl usageLog = buildLog(request, response, null, startTime);
+			usageLogDao.create(usageLog);
+			logKeyRef.set(usageLog.getKey());
 			return response;
 		} catch (Exception e) {
-			AiUsageLogImpl log = buildLog(request, null, e, startTime);
-			usageLogDao.create(log);
-			logKeyRef.set(log.getKey());
+			AiUsageLogImpl usageLog = buildLog(request, null, e, startTime);
+			usageLogDao.create(usageLog);
+			logKeyRef.set(usageLog.getKey());
 			throw e;
 		}
 	}

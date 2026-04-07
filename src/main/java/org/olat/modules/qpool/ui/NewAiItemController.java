@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Logger;
 import org.olat.core.CoreSpringFactory;
 import org.olat.core.commons.services.ai.AiMCQuestionService;
 import org.olat.core.commons.services.ai.AiModule;
@@ -46,6 +47,7 @@ import org.olat.core.gui.components.form.flexible.impl.FormLayoutContainer;
 import org.olat.core.gui.control.Controller;
 import org.olat.core.gui.control.Event;
 import org.olat.core.gui.control.WindowControl;
+import org.olat.core.logging.Tracing;
 import org.olat.core.util.StringHelper;
 import org.olat.core.util.Util;
 import org.olat.ims.qti21.QTI21Service;
@@ -82,6 +84,8 @@ import uk.ac.ed.ph.jqtiplus.node.item.interaction.choice.SimpleChoice;
  *
  */
 public class NewAiItemController extends FormBasicController {
+	
+	private static final Logger log = Tracing.createLoggerFor(NewAiItemController.class);
 
 	private TextElement contentEl;
 
@@ -187,7 +191,8 @@ public class NewAiItemController extends FormBasicController {
 		String title = itemData.getTitle();
 		String question = itemData.getQuestion();
 		if (title == null || question == null) {
-			return null;			
+			log.info("The response from the AI did not contain a title or questions.");
+			return null;
 		}
 		// question and scoring settings
 		MultipleChoiceAssessmentItemBuilder mcItemBuilder = new MultipleChoiceAssessmentItemBuilder(StringHelper.xssScan(title), "New answer", qtiService.qtiSerializer());
