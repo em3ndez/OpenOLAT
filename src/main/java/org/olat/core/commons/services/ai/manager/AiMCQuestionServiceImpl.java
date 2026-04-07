@@ -21,7 +21,6 @@ package org.olat.core.commons.services.ai.manager;
 
 import java.util.Locale;
 
-import org.apache.logging.log4j.Logger;
 import org.olat.core.commons.services.ai.AiMCQuestionService;
 import org.olat.core.commons.services.ai.AiModule;
 import org.olat.core.commons.services.ai.AiSPI;
@@ -29,7 +28,6 @@ import org.olat.core.commons.services.ai.model.AiMCQuestionsResponse;
 import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.service.MCQuestionAiService;
 import org.olat.core.commons.services.text.TextService;
-import org.olat.core.logging.Tracing;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -48,7 +46,6 @@ import dev.langchain4j.service.AiServices;
 @Service
 public class AiMCQuestionServiceImpl implements AiMCQuestionService {
 	
-	private static final Logger log = Tracing.createLoggerFor(AiMCQuestionServiceImpl.class);
 	private static final int MAX_TOKENS = 4000;
 
 	@Autowired
@@ -78,6 +75,7 @@ public class AiMCQuestionServiceImpl implements AiMCQuestionService {
 			response.setError("AI provider is not configured or not available.");
 			return response;
 		}
+		long startTime = System.currentTimeMillis();
 		try {
 			Locale locale = textService.detectLocale(input);
 			if (locale == null) {
@@ -97,8 +95,12 @@ public class AiMCQuestionServiceImpl implements AiMCQuestionService {
 					.forEach(response::addQuestion);
 
 		} catch (Exception e) {
-			log.warn("Error while creating MC questions via AI service [{}]", spiId, e);
-			response.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
+			Exception cause = e instanceof AiUsageLoggedException ? (Exception) e.getCause() : e;
+			response.setError(cause.getMessage() != null ? cause.getMessage() : cause.getClass().getName());
+			if (!(e instanceof AiUsageLoggedException)) {
+				aiUsageLogDAO.createErrorLog(spiId, modelName, "question-generator-mc", usageContext,
+						System.currentTimeMillis() - startTime, cause);
+			}
 		}
 		return response;
 	}

@@ -21,14 +21,12 @@ package org.olat.core.commons.services.ai.manager;
 
 import java.util.Locale;
 
-import org.apache.logging.log4j.Logger;
 import org.olat.core.commons.services.ai.AiImageDescriptionService;
 import org.olat.core.commons.services.ai.AiModule;
 import org.olat.core.commons.services.ai.AiSPI;
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
 import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.service.ImageDescriptionAiService;
-import org.olat.core.logging.Tracing;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -46,7 +44,6 @@ import dev.langchain4j.service.AiServices;
  */
 @Service
 public class AiImageDescriptionServiceImpl implements AiImageDescriptionService {
-	private static final Logger log = Tracing.createLoggerFor(AiImageDescriptionServiceImpl.class);
 	private static final int MAX_TOKENS = 2000;
 
 	@Autowired
@@ -74,6 +71,7 @@ public class AiImageDescriptionServiceImpl implements AiImageDescriptionService 
 			response.setError("AI provider is not configured or not available.");
 			return response;
 		}
+		long startTime = System.currentTimeMillis();
 		try {
 			cachedAiService = CachedChatModel.getOrRefresh(cachedAiService, spi, spiId, modelName, MAX_TOKENS);
 			ChatModel chatModel = cachedAiService.chatModel();
@@ -86,8 +84,12 @@ public class AiImageDescriptionServiceImpl implements AiImageDescriptionService 
 			response.setDescription(service.describeImage(userMessage));
 
 		} catch (Exception e) {
-			log.warn("Error while creating image description via AI service [{}]", spiId, e);
-			response.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
+			Exception cause = e instanceof AiUsageLoggedException ? (Exception) e.getCause() : e;
+			response.setError(cause.getMessage() != null ? cause.getMessage() : cause.getClass().getName());
+			if (!(e instanceof AiUsageLoggedException)) {
+				aiUsageLogDAO.createErrorLog(spiId, modelName, "image-description", usageContext,
+						System.currentTimeMillis() - startTime, cause);
+			}
 		}
 		return response;
 	}

@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.logging.log4j.Logger;
+import org.olat.core.commons.services.ai.AiUsageLog;
 import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.model.AiUsageLogImpl;
 import org.olat.core.logging.Tracing;
@@ -55,8 +56,6 @@ import dev.langchain4j.service.AiServices;
  */
 public class AiLoggingChatModel implements ChatModel {
 	private static final Logger log = Tracing.createLoggerFor(AiLoggingChatModel.class);
-	private static final String STATUS_SUCCESS = "SUCCESS";
-	private static final String STATUS_FAILED = "FAILED";
 
 	private final ChatModel delegate;
 	private final String spiId;
@@ -119,7 +118,7 @@ public class AiLoggingChatModel implements ChatModel {
 			AiUsageLogImpl usageLog = buildLog(request, null, e, startTime);
 			usageLogDao.create(usageLog);
 			logKeyRef.set(usageLog.getKey());
-			throw e;
+			throw new AiUsageLoggedException(e);
 		}
 	}
 
@@ -171,11 +170,11 @@ public class AiLoggingChatModel implements ChatModel {
 		log.setRequestTextLength(Long.valueOf(textLength));
 
 		if (error != null) {
-			log.setStatus(STATUS_FAILED);
+			log.setStatus(AiUsageLog.STATUS_FAILED);
 			log.setErrorCode(error.getClass().getSimpleName());
 			log.setErrorMessage(error.getMessage());
 		} else if (response != null) {
-			log.setStatus(STATUS_SUCCESS);
+			log.setStatus(AiUsageLog.STATUS_SUCCESS);
 			ChatResponseMetadata metadata = response.metadata();
 			log.setResponseId(metadata.id());
 			log.setResponseModel(metadata.modelName());

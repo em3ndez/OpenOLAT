@@ -29,6 +29,9 @@ import org.olat.core.id.Identity;
  *
  */
 public interface AiUsageLog extends CreateInfo {
+	
+	public static final String STATUS_SUCCESS = "SUCCESS";
+	public static final String STATUS_FAILED = "FAILED";
 
 	public Long getKey();
 

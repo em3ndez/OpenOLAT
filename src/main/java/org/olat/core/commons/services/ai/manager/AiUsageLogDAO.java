@@ -22,6 +22,8 @@ package org.olat.core.commons.services.ai.manager;
 import java.util.Date;
 
 import org.olat.core.commons.persistence.DB;
+import org.olat.core.commons.services.ai.AiUsageLog;
+import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.model.AiUsageLogImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -45,6 +47,30 @@ public class AiUsageLogDAO {
 		log.setCreationDate(new Date());
 		dbInstance.getCurrentEntityManager().persist(log);
 		return log;
+	}
+
+	public void createErrorLog(String spiId, String modelName, String aiFeature, AiUsageContext context,
+			long durationMillis, Exception error) {
+		AiUsageLogImpl log = new AiUsageLogImpl();
+		log.setModelProvider(spiId);
+		log.setRequestModel(modelName);
+		log.setAiFeature(aiFeature);
+		log.setDurationMillis(durationMillis);
+		log.setStatus(AiUsageLog.STATUS_FAILED);
+		log.setErrorCode(error.getClass().getSimpleName());
+		log.setErrorMessage(error.getMessage());
+		if (context != null) {
+			log.setUsageContextType(context.usageContextType());
+			log.setUsageContextId(context.usageContextId());
+			log.setIdentity(context.identity());
+			log.setResourceType(context.resourceType());
+			log.setResourceId(context.resourceId());
+			log.setResourceSubId(context.resourceSubId());
+			if (context.locale() != null) {
+				log.setLocale(context.locale().toString());
+			}
+		}
+		create(log);
 	}
 
 	public void updateInvocationFields(Long key, String invocationId, String serviceInterface, String serviceMethod) {
