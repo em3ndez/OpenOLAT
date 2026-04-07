@@ -34,7 +34,7 @@ import dev.langchain4j.service.SystemMessage;
  *
  * Initial date: 27.03.2026<br>
  *
- * @author uhensler, https://www.frentix.com
+ * @author uhensler, urs.hensler@frentix.com, https://www.frentix.com
  *
  */
 public interface ImageDescriptionAiService {

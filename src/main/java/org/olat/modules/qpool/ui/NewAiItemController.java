@@ -34,6 +34,7 @@ import org.olat.core.commons.services.ai.AiModule;
 import org.olat.core.commons.services.ai.event.AiQuestionItemsCreatedEvent;
 import org.olat.core.commons.services.ai.event.AiServiceFailedEvent;
 import org.olat.core.commons.services.ai.model.AiMCQuestionsResponse;
+import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.model.MCQuestionData;
 import org.olat.core.commons.services.license.LicenseModule;
 import org.olat.core.commons.services.license.LicenseService;
@@ -142,9 +143,16 @@ public class NewAiItemController extends FormBasicController {
 
 	@Override
 	protected void formOK(UserRequest ureq) {
+		AiUsageContext usageContext = AiUsageContext.builder()
+				.usageContextType("qti-mc-create-questions")
+				.identity(getIdentity())
+				.locale(getLocale())
+				.resourceType("QPool")
+				.resourceId(0L)
+				.build();
 		String input = contentEl.getValue();
 		int numberQuestions = Math.max(1, Math.round(input.length() / 500));
-		AiMCQuestionsResponse response = mcQuestionService.generateMCQuestionsResponse(input, numberQuestions);
+		AiMCQuestionsResponse response = mcQuestionService.generateMCQuestionsResponse(usageContext, input, numberQuestions);
 
 		if (response.isSuccess()) {
 			// create all items in the document and fire event with item list to parent

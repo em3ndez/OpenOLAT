@@ -29,6 +29,7 @@ import org.olat.core.commons.modules.bc.meta.MetaInfoController;
 import org.olat.core.commons.services.ai.AiImageDescriptionService;
 import org.olat.core.commons.services.ai.AiImageHelper;
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
+import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.model.ImageDescriptionData;
 import org.olat.core.commons.services.tag.TagInfo;
 import org.olat.core.commons.services.tag.ui.component.TagSelection;
@@ -348,7 +349,14 @@ public class CollectImageMediaController extends AbstractCollectMediaController 
 			return;
 		}
 
-		AiImageDescriptionResponse response = imageDescriptionService.generateImageDescription(base64, mimeType, getLocale());
+		AiUsageContext usageContext = AiUsageContext.builder()
+				.usageContextType("mc-collect-image")
+				.identity(getIdentity())
+				.locale(getLocale())
+				.resourceType("MediaCenter")
+				.resourceId(0L)
+				.build();
+		AiImageDescriptionResponse response = imageDescriptionService.generateImageDescription(usageContext, base64, mimeType, getLocale());
 		if (!response.isSuccess()) {
 			showWarning("ai.generate.failed", new String[] { StringHelper.escapeHtml(response.getError()) });
 			return;

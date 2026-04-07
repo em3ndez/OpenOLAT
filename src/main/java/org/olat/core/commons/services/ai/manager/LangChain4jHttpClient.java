@@ -17,7 +17,7 @@
  * frentix GmbH, https://www.frentix.com
  * <p>
  */
-package org.olat.core.commons.services.ai;
+package org.olat.core.commons.services.ai.manager;
 
 import java.io.IOException;
 import java.io.InputStream;

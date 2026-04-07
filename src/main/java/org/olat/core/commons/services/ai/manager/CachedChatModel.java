@@ -22,31 +22,30 @@ package org.olat.core.commons.services.ai.manager;
 import org.olat.core.commons.services.ai.AiSPI;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.service.AiServices;
 
 /**
- * Immutable holder for a cached LangChain4j AiServices instance, keyed by
- * (spiId, modelName). Used as a volatile field to allow safe, lock-free
- * cache invalidation when the AI configuration changes.
+ * Immutable holder for a cached ChatModel, keyed by (spiId, modelName).
+ * Used as a volatile field to allow safe, lock-free cache invalidation
+ * when the AI configuration changes. The AiServices proxy is built per-call
+ * in the service implementations using AiLoggingChatModel wrapper.
  *
  * Initial date: 31.03.2026<br>
  *
- * @author uhensler, https://www.frentix.com
+ * @author uhensler, urs.hensler@frentix.com, https://www.frentix.com
  *
  */
-record CachedAiService<T>(String spiId, String modelName, T service) {
+record CachedChatModel(String spiId, String modelName, ChatModel chatModel) {
 
 	boolean matches(String spiId, String modelName) {
 		return this.spiId.equals(spiId) && this.modelName.equals(modelName);
 	}
 
-	static <T> CachedAiService<T> getOrCreate(Class<T> serviceType, CachedAiService<T> cached,
+	static CachedChatModel getOrRefresh(CachedChatModel cached,
 			AiSPI spi, String spiId, String modelName, int maxTokens) {
 		if (cached != null && cached.matches(spiId, modelName)) {
 			return cached;
 		}
-		ChatModel chatModel = spi.buildChatModel(modelName, maxTokens);
-		T service = AiServices.builder(serviceType).chatModel(chatModel).build();
-		return new CachedAiService<>(spiId, modelName, service);
+		return new CachedChatModel(spiId, modelName, spi.buildChatModel(modelName, maxTokens));
 	}
+	
 }

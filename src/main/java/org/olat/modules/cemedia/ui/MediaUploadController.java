@@ -32,6 +32,7 @@ import org.olat.core.commons.persistence.DB;
 import org.olat.core.commons.services.ai.AiImageDescriptionService;
 import org.olat.core.commons.services.ai.AiImageHelper;
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
+import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.model.ImageDescriptionData;
 import org.olat.core.commons.services.tag.ui.component.TagSelection;
 import org.olat.core.gui.UserRequest;
@@ -359,7 +360,14 @@ public class MediaUploadController extends AbstractCollectMediaController implem
 		String base64 = aiImageHelper.prepareImageBase64(imageFile, suffix);
 		if (base64 == null) return;
 
-		AiImageDescriptionResponse response = imageDescriptionService.generateImageDescription(base64, mimeType, getLocale());
+		AiUsageContext usageContext = AiUsageContext.builder()
+				.usageContextType("mc-upload-image")
+				.identity(getIdentity())
+				.locale(getLocale())
+				.resourceType("MediaCenter")
+				.resourceId(0L)
+				.build();
+		AiImageDescriptionResponse response = imageDescriptionService.generateImageDescription(usageContext, base64, mimeType, getLocale());
 		if (!response.isSuccess() || response.getDescription() == null) return;
 
 		ImageDescriptionData data = response.getDescription();

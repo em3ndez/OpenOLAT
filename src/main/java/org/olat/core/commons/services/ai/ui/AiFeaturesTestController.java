@@ -292,7 +292,7 @@ public class AiFeaturesTestController extends BasicController {
 		vc.contextPut("testType", "mc");
 		vc.contextPut("inputText", MC_TEST_INPUT);
 
-		AiMCQuestionsResponse response = mcQuestionService.generateMCQuestionsResponse(MC_TEST_INPUT, 1, spiId, modelName);
+		AiMCQuestionsResponse response = mcQuestionService.generateMCQuestionsResponse(null, MC_TEST_INPUT, 1, spiId, modelName);
 		if (response.isSuccess() && !response.getQuestions().isEmpty()) {
 			MCQuestionData q = response.getQuestions().get(0);
 			vc.contextPut("mcData", q);
@@ -310,7 +310,7 @@ public class AiFeaturesTestController extends BasicController {
 		vc.contextPut("inputImageBase64", IMG_TEST_BASE64);
 
 		AiImageDescriptionResponse response = imageDescriptionService.generateImageDescription(
-				IMG_TEST_BASE64, IMG_TEST_MIME_TYPE, Locale.ENGLISH, spiId, modelName);
+				null, IMG_TEST_BASE64, IMG_TEST_MIME_TYPE, Locale.ENGLISH, spiId, modelName);
 		if (response.isSuccess() && response.getDescription() != null) {
 			ImageDescriptionData data = response.getDescription();
 			vc.contextPut("imgData", data);

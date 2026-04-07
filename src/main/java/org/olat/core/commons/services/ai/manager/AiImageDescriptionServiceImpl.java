@@ -26,19 +26,22 @@ import org.olat.core.commons.services.ai.AiImageDescriptionService;
 import org.olat.core.commons.services.ai.AiModule;
 import org.olat.core.commons.services.ai.AiSPI;
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
+import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.service.ImageDescriptionAiService;
 import org.olat.core.logging.Tracing;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.AiServices;
 
 /**
  * Spring service implementation for image description generation via AI.
  *
  * Initial date: 31.03.2026<br>
  *
- * @author uhensler, https://www.frentix.com
+ * @author uhensler, urs.hensler@frentix.com, https://www.frentix.com
  *
  */
 @Service
@@ -48,8 +51,10 @@ public class AiImageDescriptionServiceImpl implements AiImageDescriptionService 
 
 	@Autowired
 	private AiModule aiModule;
+	@Autowired
+	private AiUsageLogDAO aiUsageLogDAO;
 
-	private volatile CachedAiService<ImageDescriptionAiService> cachedAiService;
+	private volatile CachedChatModel cachedAiService;
 
 	@Override
 	public boolean isEnabled() {
@@ -57,12 +62,12 @@ public class AiImageDescriptionServiceImpl implements AiImageDescriptionService 
 	}
 
 	@Override
-	public AiImageDescriptionResponse generateImageDescription(String imageBase64, String mimeType, Locale locale) {
-		return generateImageDescription(imageBase64, mimeType, locale, aiModule.getImgDescSpiId(), aiModule.getImgDescModel());
+	public AiImageDescriptionResponse generateImageDescription(AiUsageContext usageContext, String imageBase64, String mimeType, Locale locale) {
+		return generateImageDescription(usageContext, imageBase64, mimeType, locale, aiModule.getImgDescSpiId(), aiModule.getImgDescModel());
 	}
 
 	@Override
-	public AiImageDescriptionResponse generateImageDescription(String imageBase64, String mimeType, Locale locale, String spiId, String modelName) {
+	public AiImageDescriptionResponse generateImageDescription(AiUsageContext usageContext, String imageBase64, String mimeType, Locale locale, String spiId, String modelName) {
 		AiImageDescriptionResponse response = new AiImageDescriptionResponse();
 		AiSPI spi = aiModule.resolveProvider(spiId);
 		if (spi == null) {
@@ -70,9 +75,15 @@ public class AiImageDescriptionServiceImpl implements AiImageDescriptionService 
 			return response;
 		}
 		try {
-			cachedAiService = CachedAiService.getOrCreate(ImageDescriptionAiService.class, cachedAiService, spi, spiId, modelName, MAX_TOKENS);
+			cachedAiService = CachedChatModel.getOrRefresh(cachedAiService, spi, spiId, modelName, MAX_TOKENS);
+			ChatModel chatModel = cachedAiService.chatModel();
+
 			UserMessage userMessage = ImageDescriptionAiService.buildUserMessage(locale, imageBase64, mimeType);
-			response.setDescription(cachedAiService.service().describeImage(userMessage));
+			AiServices<ImageDescriptionAiService> builder = AiServices.builder(ImageDescriptionAiService.class);
+			AiLoggingChatModel.configureBuilder(builder, chatModel, aiUsageLogDAO, spiId, "image-description", usageContext);
+			ImageDescriptionAiService service = builder.build();
+
+			response.setDescription(service.describeImage(userMessage));
 
 		} catch (Exception e) {
 			log.warn("Error while creating image description via AI service [{}]", spiId, e);

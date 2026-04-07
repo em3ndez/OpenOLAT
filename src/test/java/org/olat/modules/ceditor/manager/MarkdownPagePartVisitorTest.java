@@ -75,7 +75,7 @@ public class MarkdownPagePartVisitorTest {
 
 	private VisitorResult convertWithWarnings(String markdown, Map<String, String> mathBlocks) {
 		Node document = parser.parse(markdown);
-		MarkdownPagePartVisitor visitor = new MarkdownPagePartVisitor(null, null, null, null, null, mathBlocks, null);
+		MarkdownPagePartVisitor visitor = new MarkdownPagePartVisitor(null, null, null, null, null, null, null, mathBlocks, null);
 		document.accept(visitor);
 		return new VisitorResult(visitor.getParts(), visitor.getWarnings());
 	}

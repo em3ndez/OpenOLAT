@@ -17,7 +17,7 @@ Key features:
 - Generic providers for self-hosted servers (vLLM, Ollama, LiteLLM, etc.) — added dynamically, multiple instances
 - Image preprocessing (scaling, base64 encoding) via `AiImageHelper`
 - LangChain4j for chat model abstraction, structured output extraction, and model catalog APIs
-- Singleton LangChain4j AiServices instances via `CachedAiService<T>`, rebuilt automatically when provider config changes
+- Singleton LangChain4j AiServices instances via `CachedChatModel`, rebuilt automatically when provider config changes
 
 ## 1. Class Overview
 
@@ -31,12 +31,12 @@ Key features:
 | `GenericAiSpiInstance` | Single generic provider instance. Uses `OpenAiChatModel` with custom `baseUrl`. Created by `GenericAiSPI`. |
 | `AiModule` | Central module. Merges Spring providers + generic instances. Stores per-feature provider/model config. Provides `resolveProvider()` for service implementations. |
 | `AiMCQuestionService` | Spring service interface for MC question generation. |
-| `AiMCQuestionServiceImpl` | Implementation using `MCQuestionAiService` (LangChain4j) via `CachedAiService`. |
+| `AiMCQuestionServiceImpl` | Implementation using `MCQuestionAiService` (LangChain4j) via `CachedChatModel`. |
 | `AiImageDescriptionService` | Spring service interface for image description generation. |
-| `AiImageDescriptionServiceImpl` | Implementation using `ImageDescriptionAiService` (LangChain4j) via `CachedAiService`. |
+| `AiImageDescriptionServiceImpl` | Implementation using `ImageDescriptionAiService` (LangChain4j) via `CachedChatModel`. |
 | `MCQuestionAiService` | LangChain4j `AiServices` interface. Defines the MC question prompt via `@SystemMessage`/`@UserMessage`. Returns `List<MCQuestionData>`. |
 | `ImageDescriptionAiService` | LangChain4j `AiServices` interface. Defines the image description prompt via `@SystemMessage`. Returns `ImageDescriptionData`. |
-| `CachedAiService<T>` | Immutable record caching a LangChain4j `AiServices` proxy keyed by (spiId, modelName). Rebuilt on config change. |
+| `CachedChatModel` | Immutable record caching a LangChain4j `AiServices` proxy keyed by (spiId, modelName). Rebuilt on config change. |
 | `MCQuestionData` | Structured output model for one MC question. LangChain4j `@Description` annotations guide the AI response extraction. |
 | `ImageDescriptionData` | Structured output model for image metadata. Same pattern as `MCQuestionData`. |
 | `AiMCQuestionsResponse` | Response wrapper for MC question generation results. Extends `AiResponse`. |
@@ -165,7 +165,7 @@ public class MyAiSPI extends AbstractSpringModule implements AiSPI, AiApiKeySPI 
 2. Define a structured output model in `model/` with LangChain4j `@Description` annotations
 3. Define a response wrapper in `model/` extending `AiResponse`
 4. Define a Spring service interface in the root package (follow `AiMCQuestionService` as a template)
-5. Implement the service in `manager/` using `CachedAiService<T>` for singleton LangChain4j proxy management
+5. Implement the service in `manager/` using `CachedChatModel` for singleton LangChain4j proxy management
 6. Add feature config properties and methods to `AiModule` (follow the MC generator pattern)
 7. Add feature UI section to `AiFeaturesAdminController`
 

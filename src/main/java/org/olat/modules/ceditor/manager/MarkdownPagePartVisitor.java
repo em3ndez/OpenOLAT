@@ -33,7 +33,6 @@ import java.util.Map;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
-
 import org.apache.logging.log4j.Logger;
 import org.commonmark.ext.gfm.tables.TableBlock;
 import org.commonmark.ext.gfm.tables.TableBody;
@@ -66,11 +65,13 @@ import org.olat.core.CoreSpringFactory;
 import org.olat.core.commons.services.ai.AiImageDescriptionService;
 import org.olat.core.commons.services.ai.AiImageHelper;
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
+import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.model.ImageDescriptionData;
 import org.olat.core.commons.services.license.LicenseModule;
 import org.olat.core.commons.services.license.LicenseService;
 import org.olat.core.gui.translator.Translator;
 import org.olat.core.id.Identity;
+import org.olat.core.id.OLATResourceable;
 import org.olat.core.logging.Tracing;
 import org.olat.core.util.FileUtils;
 import org.olat.core.util.StringHelper;
@@ -127,6 +128,8 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 	private static final long MAX_DOWNLOAD_BYTES = MarkdownImportController.MAX_UPLOAD_SIZE_KB * 1024L;
 
 	private final Identity author;
+	private final OLATResourceable aiOres;
+	private final String subIdent;
 	private final File basePath;
 	private final ImageHandler imageHandler;
 	private final MediaServerModule mediaServerModule;
@@ -136,11 +139,12 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 	private final HtmlRenderer inlineRenderer;
 	private final HttpClientService httpClientService;
 
-	public MarkdownPagePartVisitor(Identity author, File basePath,
-			ImageHandler imageHandler, MediaServerModule mediaServerModule,
-			HttpClientService httpClientService,
+	public MarkdownPagePartVisitor(Identity author, OLATResourceable aiOres, String subIdent, File basePath,
+			ImageHandler imageHandler, MediaServerModule mediaServerModule, HttpClientService httpClientService,
 			Map<String, String> mathBlocks, Translator translator) {
 		this.author = author;
+		this.aiOres = aiOres;
+		this.subIdent = subIdent;
 		this.basePath = basePath;
 		this.imageHandler = imageHandler;
 		this.mediaServerModule = mediaServerModule;
@@ -451,7 +455,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 			}
 			// check for duplicate media file, reuse same image that has already been uploaded
 			Media media = null;
-			MediaService mediaService = (MediaService) CoreSpringFactory.getImpl(MediaService.class); 
+			MediaService mediaService = CoreSpringFactory.getImpl(MediaService.class); 
 			if (mediaService.isInMediaCenter(author, imageFile)) {
 				SearchMediaParameters params = new SearchMediaParameters();
 				String checksum = FileUtils.checksumSha256(imageFile);
@@ -567,7 +571,14 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 			if (base64 == null) return;
 
 			Locale locale = translator != null ? translator.getLocale() : Locale.ENGLISH;
-			AiImageDescriptionResponse response = imageDescriptionService.generateImageDescription(base64, mimeType, locale);
+			AiUsageContext usageContext = AiUsageContext.builder()
+					.usageContextType("page-markdown-import")
+					.identity(author)
+					.locale(locale)
+					.resource(aiOres)
+					.resourceSubId(subIdent)
+					.build();
+			AiImageDescriptionResponse response = imageDescriptionService.generateImageDescription(usageContext, base64, mimeType, locale);
 			if (!response.isSuccess() || response.getDescription() == null) return;
 
 			ImageDescriptionData data = response.getDescription();

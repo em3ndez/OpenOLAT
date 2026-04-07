@@ -45,7 +45,7 @@ model via the admin UI.
   <li>Generic providers for self-hosted servers (vLLM, Ollama, LiteLLM, etc.) &mdash; added dynamically, multiple instances</li>
   <li>Image preprocessing (scaling, base64 encoding) via <code>AiImageHelper</code></li>
   <li>LangChain4j for chat model abstraction, structured output extraction, and model catalog APIs</li>
-  <li>Singleton LangChain4j AiServices instances via <code>CachedAiService&lt;T&gt;</code>, rebuilt automatically when provider config changes</li>
+  <li>Singleton LangChain4j AiServices instances via <code>CachedChatModel</code>, rebuilt automatically when provider config changes</li>
 </ul>
 
 <h2>1. Class Overview</h2>
@@ -61,12 +61,12 @@ model via the admin UI.
     <tr><td><code>GenericAiSpiInstance</code></td><td>Single generic provider instance. Uses <code>OpenAiChatModel</code> with custom <code>baseUrl</code>. Created by <code>GenericAiSPI</code>.</td></tr>
     <tr><td><code>AiModule</code></td><td>Central module. Merges Spring providers + generic instances. Stores per-feature provider/model config. Provides <code>resolveProvider()</code> for service implementations.</td></tr>
     <tr><td><code>AiMCQuestionService</code></td><td>Spring service interface for MC question generation.</td></tr>
-    <tr><td><code>AiMCQuestionServiceImpl</code></td><td>Implementation using <code>MCQuestionAiService</code> (LangChain4j) via <code>CachedAiService</code>.</td></tr>
+    <tr><td><code>AiMCQuestionServiceImpl</code></td><td>Implementation using <code>MCQuestionAiService</code> (LangChain4j) via <code>CachedChatModel</code>.</td></tr>
     <tr><td><code>AiImageDescriptionService</code></td><td>Spring service interface for image description generation.</td></tr>
-    <tr><td><code>AiImageDescriptionServiceImpl</code></td><td>Implementation using <code>ImageDescriptionAiService</code> (LangChain4j) via <code>CachedAiService</code>.</td></tr>
+    <tr><td><code>AiImageDescriptionServiceImpl</code></td><td>Implementation using <code>ImageDescriptionAiService</code> (LangChain4j) via <code>CachedChatModel</code>.</td></tr>
     <tr><td><code>MCQuestionAiService</code></td><td>LangChain4j <code>AiServices</code> interface. Defines the MC question prompt via <code>@SystemMessage</code>/<code>@UserMessage</code>. Returns <code>List&lt;MCQuestionData&gt;</code>.</td></tr>
     <tr><td><code>ImageDescriptionAiService</code></td><td>LangChain4j <code>AiServices</code> interface. Defines the image description prompt via <code>@SystemMessage</code>. Returns <code>ImageDescriptionData</code>.</td></tr>
-    <tr><td><code>CachedAiService&lt;T&gt;</code></td><td>Immutable record caching a LangChain4j <code>AiServices</code> proxy keyed by (spiId, modelName). Rebuilt on config change.</td></tr>
+    <tr><td><code>CachedChatModel</code></td><td>Immutable record caching a LangChain4j <code>AiServices</code> proxy keyed by (spiId, modelName). Rebuilt on config change.</td></tr>
     <tr><td><code>MCQuestionData</code></td><td>Structured output model for one MC question. LangChain4j <code>@Description</code> annotations guide the AI response extraction.</td></tr>
     <tr><td><code>ImageDescriptionData</code></td><td>Structured output model for image metadata. Same pattern as <code>MCQuestionData</code>.</td></tr>
     <tr><td><code>AiMCQuestionsResponse</code></td><td>Response wrapper for MC question generation results. Extends <code>AiResponse</code>.</td></tr>
@@ -189,7 +189,7 @@ public class MyAiSPI extends AbstractSpringModule implements AiSPI, AiApiKeySPI 
   <li>Define a structured output model in <code>model/</code> with LangChain4j <code>@Description</code> annotations</li>
   <li>Define a response wrapper in <code>model/</code> extending <code>AiResponse</code></li>
   <li>Define a Spring service interface in the root package (follow <code>AiMCQuestionService</code> as a template)</li>
-  <li>Implement the service in <code>manager/</code> using <code>CachedAiService&lt;T&gt;</code> for singleton LangChain4j proxy management</li>
+  <li>Implement the service in <code>manager/</code> using <code>CachedChatModel</code> for singleton LangChain4j proxy management</li>
   <li>Add feature config properties and methods to <code>AiModule</code> (follow the MC generator pattern)</li>
   <li>Add feature UI section to <code>AiFeaturesAdminController</code></li>
 </ol>

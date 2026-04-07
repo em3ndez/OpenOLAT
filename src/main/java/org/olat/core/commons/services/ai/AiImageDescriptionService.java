@@ -22,23 +22,22 @@ package org.olat.core.commons.services.ai;
 import java.util.Locale;
 
 import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
+import org.olat.core.commons.services.ai.model.AiUsageContext;
 
 /**
  * Spring service for image description generation via AI.
  *
  * Initial date: 31.03.2026<br>
  *
- * @author uhensler, https://www.frentix.com
+ * @author uhensler, urs.hensler@frentix.com, https://www.frentix.com
  *
  */
 public interface AiImageDescriptionService {
 
-	String FEATURE_ID = "image-description-generator";
-
 	boolean isEnabled();
 
-	AiImageDescriptionResponse generateImageDescription(String imageBase64, String mimeType, Locale locale);
+	AiImageDescriptionResponse generateImageDescription(AiUsageContext usageContext, String imageBase64, String mimeType, Locale locale);
 
-	AiImageDescriptionResponse generateImageDescription(String imageBase64, String mimeType, Locale locale, String spiId, String modelName);
+	AiImageDescriptionResponse generateImageDescription(AiUsageContext usageContext, String imageBase64, String mimeType, Locale locale, String spiId, String modelName);
 
 }

@@ -58,6 +58,7 @@ import org.olat.core.gui.control.generic.dtabs.Activateable2;
 import org.olat.core.gui.control.generic.modal.DialogBoxController;
 import org.olat.core.gui.control.generic.modal.DialogBoxUIFactory;
 import org.olat.core.gui.media.MediaResource;
+import org.olat.core.gui.translator.Translator;
 import org.olat.core.gui.util.SyntheticUserRequest;
 import org.olat.core.helpers.Settings;
 import org.olat.core.id.OLATResourceable;
@@ -65,9 +66,8 @@ import org.olat.core.id.context.ContextEntry;
 import org.olat.core.id.context.StateEntry;
 import org.olat.core.util.Formatter;
 import org.olat.core.util.StringHelper;
-import org.olat.core.gui.translator.Translator;
-import org.olat.core.util.Util;
 import org.olat.core.util.UserSession;
+import org.olat.core.util.Util;
 import org.olat.core.util.coordinate.CoordinatorManager;
 import org.olat.core.util.coordinate.LockResult;
 import org.olat.core.util.event.GenericEventListener;
@@ -107,10 +107,10 @@ import org.olat.modules.ceditor.model.ContainerLayout;
 import org.olat.modules.ceditor.model.ExtendedMediaRenderingHints;
 import org.olat.modules.ceditor.model.StandardMediaRenderingHints;
 import org.olat.modules.ceditor.ui.FullEditorSecurityCallback;
+import org.olat.modules.ceditor.ui.MarkdownImportController;
 import org.olat.modules.ceditor.ui.PageController;
 import org.olat.modules.ceditor.ui.PageEditorV2Controller;
 import org.olat.modules.ceditor.ui.ValidationMessage;
-import org.olat.modules.ceditor.ui.MarkdownImportController;
 import org.olat.modules.ceditor.ui.event.ImportEvent;
 import org.olat.modules.ceditor.ui.event.ImportMarkdownEvent;
 import org.olat.modules.ceditor.ui.event.MarkdownImportDoneEvent;
@@ -861,7 +861,7 @@ public class PageRunController extends BasicController implements TooledControll
 
 	private void openMarkdownImport(UserRequest ureq) {
 		removeAsListenerAndDispose(markdownImportCtrl);
-		markdownImportCtrl = new MarkdownImportController(ureq, getWindowControl(), page);
+		markdownImportCtrl = new MarkdownImportController(ureq, getWindowControl(), page, settings.getAiOres(), settings.getSubIdent());
 		listenTo(markdownImportCtrl);
 
 		Translator mdTranslator = Util.createPackageTranslator(MarkdownImportController.class, getLocale());

@@ -26,11 +26,15 @@ import org.olat.core.commons.services.ai.AiMCQuestionService;
 import org.olat.core.commons.services.ai.AiModule;
 import org.olat.core.commons.services.ai.AiSPI;
 import org.olat.core.commons.services.ai.model.AiMCQuestionsResponse;
+import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.service.MCQuestionAiService;
 import org.olat.core.commons.services.text.TextService;
 import org.olat.core.logging.Tracing;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.AiServices;
 
 
 /**
@@ -38,7 +42,7 @@ import org.springframework.stereotype.Service;
  *
  * Initial date: 31.03.2026<br>
  *
- * @author uhensler, https://www.frentix.com
+ * @author uhensler, urs.hensler@frentix.com, https://www.frentix.com
  *
  */
 @Service
@@ -51,8 +55,10 @@ public class AiMCQuestionServiceImpl implements AiMCQuestionService {
 	private AiModule aiModule;
 	@Autowired
 	private TextService textService;
+	@Autowired
+	private AiUsageLogDAO aiUsageLogDAO;
 
-	private volatile CachedAiService<MCQuestionAiService> cachedAiService;
+	private volatile CachedChatModel cachedAiService;
 
 	@Override
 	public boolean isEnabled() {
@@ -60,12 +66,12 @@ public class AiMCQuestionServiceImpl implements AiMCQuestionService {
 	}
 
 	@Override
-	public AiMCQuestionsResponse generateMCQuestionsResponse(String input, int number) {
-		return generateMCQuestionsResponse(input, number, aiModule.getMCGeneratorSpiId(), aiModule.getMCGeneratorModel());
+	public AiMCQuestionsResponse generateMCQuestionsResponse(AiUsageContext usageContext, String input, int number) {
+		return generateMCQuestionsResponse(usageContext, input, number, aiModule.getMCGeneratorSpiId(), aiModule.getMCGeneratorModel());
 	}
 
 	@Override
-	public AiMCQuestionsResponse generateMCQuestionsResponse(String input, int number, String spiId, String modelName) {
+	public AiMCQuestionsResponse generateMCQuestionsResponse(AiUsageContext usageContext, String input, int number, String spiId, String modelName) {
 		AiMCQuestionsResponse response = new AiMCQuestionsResponse();
 		AiSPI spi = aiModule.resolveProvider(spiId);
 		if (spi == null) {
@@ -79,9 +85,15 @@ public class AiMCQuestionServiceImpl implements AiMCQuestionService {
 				return response;
 			}
 
-			cachedAiService = CachedAiService.getOrCreate(MCQuestionAiService.class, cachedAiService, spi, spiId, modelName, MAX_TOKENS);
+			cachedAiService = CachedChatModel.getOrRefresh(cachedAiService, spi, spiId, modelName, MAX_TOKENS);
+			ChatModel chatModel = cachedAiService.chatModel();
+
 			String language = locale.getDisplayLanguage(Locale.ENGLISH);
-			cachedAiService.service().generateQuestions(number, 2, 3, language, input)
+			AiServices<MCQuestionAiService> builder = AiServices.builder(MCQuestionAiService.class);
+			AiLoggingChatModel.configureBuilder(builder, chatModel, aiUsageLogDAO, spiId, "question-generator-mc", usageContext);
+			MCQuestionAiService service = builder.build();
+
+			service.generateQuestions(number, 2, 3, language, input)
 					.forEach(response::addQuestion);
 
 		} catch (Exception e) {

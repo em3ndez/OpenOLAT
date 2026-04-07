@@ -35,7 +35,9 @@ import org.commonmark.parser.Parser;
 import org.olat.basesecurity.MediaServerModule;
 import org.olat.core.gui.translator.Translator;
 import org.olat.core.id.Identity;
+import org.olat.core.id.OLATResourceable;
 import org.olat.core.util.Util;
+import org.olat.core.util.httpclient.HttpClientService;
 import org.olat.modules.ceditor.ContentEditorXStream;
 import org.olat.modules.ceditor.Page;
 import org.olat.modules.ceditor.PagePart;
@@ -44,7 +46,6 @@ import org.olat.modules.ceditor.model.ContainerLayout;
 import org.olat.modules.ceditor.model.ContainerSettings;
 import org.olat.modules.ceditor.model.jpa.ContainerPart;
 import org.olat.modules.ceditor.ui.PageEditorV2Controller;
-import org.olat.core.util.httpclient.HttpClientService;
 import org.olat.modules.cemedia.handler.ImageHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -91,12 +92,14 @@ public class MarkdownImportService {
 	 * @param markdown  The CommonMark markdown text
 	 * @param page      The target page to append parts to
 	 * @param author    The identity performing the import
+	 * @param aiOres    The ores for the AI usage context
+	 * @param subIdent  The ores subIdent the AI usage context
 	 * @param basePath  Optional base directory for resolving relative image paths
 	 * @param locale    The user's locale for translating admonition titles
 	 * @return MarkdownImportResult with any warnings
 	 */
-	public MarkdownImportResult convertAndPersist(String markdown, Page page,
-			Identity author, File basePath, Locale locale) {
+	public MarkdownImportResult convertAndPersist(String markdown, Page page, Identity author, OLATResourceable aiOres,
+			String subIdent, File basePath, Locale locale) {
 		if (markdown == null || markdown.isBlank()) {
 			return new MarkdownImportResult(List.of());
 		}
@@ -113,8 +116,8 @@ public class MarkdownImportService {
 
 		// 3. Visit AST
 		Translator translator = Util.createPackageTranslator(PageEditorV2Controller.class, locale);
-		MarkdownPagePartVisitor visitor = new MarkdownPagePartVisitor(
-			author, basePath, imageHandler, mediaServerModule, httpClientService, preprocessed.mathBlocks(), translator);
+		MarkdownPagePartVisitor visitor = new MarkdownPagePartVisitor(author, aiOres, subIdent, basePath, imageHandler,
+				mediaServerModule, httpClientService, preprocessed.mathBlocks(), translator);
 		document.accept(visitor);
 
 		// 4. Persist parts in container

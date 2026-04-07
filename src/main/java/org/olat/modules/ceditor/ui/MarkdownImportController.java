@@ -43,6 +43,7 @@ import org.olat.core.gui.components.form.flexible.impl.FormLayoutContainer;
 import org.olat.core.gui.control.Controller;
 import org.olat.core.gui.control.Event;
 import org.olat.core.gui.control.WindowControl;
+import org.olat.core.id.OLATResourceable;
 import org.olat.core.util.FileUtils;
 import org.olat.core.util.StringHelper;
 import org.olat.core.util.ZipUtil;
@@ -74,6 +75,8 @@ public class MarkdownImportController extends FormBasicController {
 	private static final String MODE_TEXT = "text";
 
 	private final Page page;
+	private final OLATResourceable aiOres;
+	private final String subIdent;
 
 	private SingleSelection modeEl;
 	private FileElement fileUploadEl;
@@ -84,9 +87,12 @@ public class MarkdownImportController extends FormBasicController {
 	@Autowired
 	private MarkdownImportService markdownImportService;
 
-	public MarkdownImportController(UserRequest ureq, WindowControl wControl, Page page) {
+
+	public MarkdownImportController(UserRequest ureq, WindowControl wControl, Page page, OLATResourceable aiOres, String subIdent) {
 		super(ureq, wControl);
 		this.page = page;
+		this.aiOres = aiOres;
+		this.subIdent = subIdent;
 		initForm(ureq);
 	}
 
@@ -176,7 +182,8 @@ public class MarkdownImportController extends FormBasicController {
 			markdown = markdownTextEl.getValue();
 		}
 
-		MarkdownImportResult result = markdownImportService.convertAndPersist(markdown, page, getIdentity(), basePath, getLocale());
+		MarkdownImportResult result = markdownImportService.convertAndPersist(markdown, page, getIdentity(), aiOres,
+				subIdent, basePath, getLocale());
 		fireEvent(ureq, new MarkdownImportDoneEvent(result.warnings()));
 	}
 

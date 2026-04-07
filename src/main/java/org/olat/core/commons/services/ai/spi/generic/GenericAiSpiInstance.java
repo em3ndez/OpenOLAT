@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 import org.apache.logging.log4j.Logger;
 import org.olat.core.commons.services.ai.AiApiKeySPI;
 import org.olat.core.commons.services.ai.AiSPI;
-import org.olat.core.commons.services.ai.LangChain4jHttpClientBuilder;
+import org.olat.core.commons.services.ai.manager.LangChain4jHttpClientBuilder;
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.control.Controller;
 import org.olat.core.gui.control.WindowControl;

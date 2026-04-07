@@ -36,7 +36,7 @@ import dev.langchain4j.model.output.structured.Description;
  *
  */
 public class MCQuestionData {
-	@Description("Short title for the question, max 10 words")
+	@Description("Short title for the question, max 10 words, required")
 	private String title;
 	@Description("The specific topic within the subject area")
 	private String topic;

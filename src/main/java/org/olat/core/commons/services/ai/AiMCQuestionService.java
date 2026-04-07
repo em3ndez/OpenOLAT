@@ -20,23 +20,22 @@
 package org.olat.core.commons.services.ai;
 
 import org.olat.core.commons.services.ai.model.AiMCQuestionsResponse;
+import org.olat.core.commons.services.ai.model.AiUsageContext;
 
 /**
  * Spring service for multiple choice question generation via AI.
  *
  * Initial date: 31.03.2026<br>
  *
- * @author uhensler, https://www.frentix.com
+ * @author uhensler, urs.hensler@frentix.com, https://www.frentix.com
  *
  */
 public interface AiMCQuestionService {
 
-	String FEATURE_ID = "mc-question-generator";
-
 	boolean isEnabled();
 
-	AiMCQuestionsResponse generateMCQuestionsResponse(String input, int number);
+	AiMCQuestionsResponse generateMCQuestionsResponse(AiUsageContext usageContext, String input, int number);
 
-	AiMCQuestionsResponse generateMCQuestionsResponse(String input, int number, String spiId, String modelName);
+	AiMCQuestionsResponse generateMCQuestionsResponse(AiUsageContext usageContext, String input, int number, String spiId, String modelName);
 
 }
