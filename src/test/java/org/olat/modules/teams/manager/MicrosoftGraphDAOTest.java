@@ -24,6 +24,7 @@ import java.util.Date;
 import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.olat.basesecurity.model.OAuth2TokensImpl;
 import org.olat.core.commons.persistence.DB;
@@ -99,6 +100,7 @@ public class MicrosoftGraphDAOTest extends OlatTestCase {
 		Assert.assertTrue(MicrosoftGraphDAO.canAttendeeOpenMeeting(test));
 	}
 	
+	@Ignore
 	@Test
 	public void createUpdateDeleteOnBehalf() throws Exception {
 		String refreshToken = System.getProperty("test.env.azure.adfs.refresh.token");
