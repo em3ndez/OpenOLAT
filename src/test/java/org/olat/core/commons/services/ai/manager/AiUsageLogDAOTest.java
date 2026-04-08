@@ -32,6 +32,7 @@ import org.olat.core.commons.services.ai.AiUsageLog;
 import org.olat.core.commons.services.ai.AiUsageLogSearchParams;
 import org.olat.core.commons.services.ai.AiUsageLogStatus;
 import org.olat.core.commons.services.ai.model.AiUsageLogImpl;
+import org.olat.core.commons.services.ai.model.AiUsageLogStats;
 import org.olat.core.id.Identity;
 import org.olat.core.util.DateUtils;
 import org.olat.test.JunitTestHelper;
@@ -281,6 +282,29 @@ public class AiUsageLogDAOTest extends OlatTestCase {
 		results = aiUsageLogDAO.getUsageLogs(params, 0, 1000);
 		Assertions.assertThat(results).anyMatch(r -> r.getKey().equals(createdFailed.getKey()));
 		Assertions.assertThat(results).noneMatch(r -> r.getKey().equals(createdSuccess.getKey()));
+	}
+
+	@Test
+	public void getStats_totalTokens() {
+		String uniqueFeature = UUID.randomUUID().toString();
+		AiUsageLogImpl log1 = createMinimalLog();
+		log1.setAiFeature(uniqueFeature);
+		log1.setTotalTokens(100L);
+		aiUsageLogDAO.create(log1);
+		AiUsageLogImpl log2 = createMinimalLog();
+		log2.setAiFeature(uniqueFeature);
+		log2.setTotalTokens(250L);
+		aiUsageLogDAO.create(log2);
+		AiUsageLogImpl log3 = createMinimalLog();
+		log3.setAiFeature(uniqueFeature);
+		aiUsageLogDAO.create(log3);
+		dbInstance.commitAndCloseSession();
+
+		AiUsageLogSearchParams params = new AiUsageLogSearchParams();
+		params.setAiFeatures(List.of(uniqueFeature));
+		AiUsageLogStats stats = aiUsageLogDAO.getStats(params);
+
+		Assertions.assertThat(stats.getTotalTokens()).isEqualTo(350L);
 	}
 
 	@Test

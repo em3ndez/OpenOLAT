@@ -30,6 +30,7 @@ import org.olat.core.commons.services.ai.AiFeature;
 import org.olat.core.commons.services.ai.AiUsageLogSearchParams;
 import org.olat.core.commons.services.ai.AiUsageLogStatus;
 import org.olat.core.commons.services.ai.manager.AiUsageLogDAO;
+import org.olat.core.commons.services.ai.model.AiUsageLogStats;
 import org.olat.core.commons.services.ai.ui.AiUsageLogTableModel.AiUsageLogCols;
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.form.flexible.FormItem;
@@ -48,6 +49,9 @@ import org.olat.core.gui.components.scope.DateScope;
 import org.olat.core.gui.components.scope.FormDateScopeSelection;
 import org.olat.core.gui.components.scope.ScopeFactory;
 import org.olat.core.gui.components.util.SelectionValues;
+import org.olat.core.gui.components.widget.FigureWidget;
+import org.olat.core.gui.components.widget.WidgetFactory;
+import org.olat.core.gui.components.widget.WidgetGroup;
 import org.olat.core.gui.control.Controller;
 import org.olat.core.gui.control.Event;
 import org.olat.core.gui.control.WindowControl;
@@ -72,6 +76,8 @@ public class AiUsageLogAdminController extends FormBasicController {
 	private static final String SCOPE_LAST_YEAR = "lastYear";
 
 	private FormDateScopeSelection scopeEl;
+	private WidgetGroup widgetGroup;
+	private FigureWidget totalTokensWidget;
 	private FlexiTableElement tableEl;
 	private AiUsageLogTableModel tableModel;
 	private AiUsageLogSearchParams searchParams;
@@ -92,6 +98,12 @@ public class AiUsageLogAdminController extends FormBasicController {
 		scopeEl = uifactory.addDateScopeSelection(getWindowControl(), "scope", null, formLayout,
 				createDateScopes(), getLocale());
 		scopeEl.setSelectedKey(SCOPE_THIS_MONTH);
+
+		widgetGroup = WidgetFactory.createWidgetGroup("widgets", flc.getFormItemComponent());
+		totalTokensWidget = WidgetFactory.createFigureWidget("totalTokensWidget", flc.getFormItemComponent(),
+				translate("usagelog.col.totalTokens"), "o_icon_ai");
+		totalTokensWidget.setDesc(translate("usagelog.widget.total.tokens.desc"));
+		widgetGroup.add(totalTokensWidget);
 
 		FlexiTableColumnModel columnsModel = FlexiTableDataModelFactory.createFlexiTableColumnModel();
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(AiUsageLogCols.creationDate));
@@ -139,7 +151,7 @@ public class AiUsageLogAdminController extends FormBasicController {
 		sortOptions.setDefaultOrderBy(new SortKey(AiUsageLogCols.creationDate.sortKey(), false));
 		tableEl.setSortSettings(sortOptions);
 
-		tableEl.setAndLoadPersistedPreferences(ureq, "ai-usage-log-v2");
+		tableEl.setAndLoadPersistedPreferences(ureq, "ai-usage-log-v1");
 		loadModel();
 	}
 
@@ -198,8 +210,16 @@ public class AiUsageLogAdminController extends FormBasicController {
 			searchParams.setCreatedAfter(null);
 			searchParams.setCreatedBefore(null);
 		}
+		dataSource.applyFilters(tableEl.getFilters());
+		updateWidget();
 		dataSource.reset();
 		tableEl.reset(true, true, true);
+	}
+
+	private void updateWidget() {
+		AiUsageLogStats stats = dataSource.loadStats();
+		totalTokensWidget.setValue(String.valueOf(stats.getTotalTokens()));
+		widgetGroup.setDirty(true);
 	}
 
 	@Override
@@ -207,7 +227,7 @@ public class AiUsageLogAdminController extends FormBasicController {
 		if (source == scopeEl) {
 			loadModel();
 		} else if (source == tableEl && event instanceof FlexiTableSearchEvent) {
-			loadModel();
+			updateWidget();
 		}
 		super.formInnerEvent(ureq, source, event);
 	}

@@ -34,6 +34,7 @@ import org.olat.core.commons.services.ai.AiUsageLogSearchParams;
 import org.olat.core.commons.services.ai.AiUsageLogSearchParams.OrderBy;
 import org.olat.core.commons.services.ai.AiUsageLogStatus;
 import org.olat.core.commons.services.ai.manager.AiUsageLogDAO;
+import org.olat.core.commons.services.ai.model.AiUsageLogStats;
 import org.olat.core.gui.components.form.flexible.elements.FlexiTableFilter;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.FlexiTableDataSourceDelegate;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.filter.FlexiTableMultiSelectionFilter;
@@ -63,6 +64,28 @@ public class AiUsageLogDataSource implements FlexiTableDataSourceDelegate<AiUsag
 
 	public void reset() {
 		count = null;
+	}
+
+	public void applyFilters(List<FlexiTableFilter> filters) {
+		if (filters != null) {
+			for (FlexiTableFilter filter : filters) {
+				if (FILTER_AI_FEATURE.equals(filter.getFilter()) && filter instanceof FlexiTableMultiSelectionFilter multiFilter) {
+					List<String> values = multiFilter.getValues();
+					searchParams.setAiFeatures(values != null && !values.isEmpty() ? values : null);
+				} else if (FILTER_STATUS.equals(filter.getFilter()) && filter instanceof FlexiTableMultiSelectionFilter multiFilter) {
+					List<String> values = multiFilter.getValues();
+					if (values != null && !values.isEmpty()) {
+						searchParams.setStatuses(values.stream().map(AiUsageLogStatus::valueOf).toList());
+					} else {
+						searchParams.setStatuses(null);
+					}
+				}
+			}
+		}
+	}
+
+	public AiUsageLogStats loadStats() {
+		return usageLogDAO.getStats(searchParams);
 	}
 
 	@Override
@@ -107,25 +130,10 @@ public class AiUsageLogDataSource implements FlexiTableDataSourceDelegate<AiUsag
 			searchParams.setOrder(null);
 		}
 
-		if (filters != null) {
-			for (FlexiTableFilter filter : filters) {
-				if (FILTER_AI_FEATURE.equals(filter.getFilter()) && filter instanceof FlexiTableMultiSelectionFilter multiFilter) {
-					List<String> values = multiFilter.getValues();
-					searchParams.setAiFeatures(values != null && !values.isEmpty() ? values : null);
-				} else if (FILTER_STATUS.equals(filter.getFilter()) && filter instanceof FlexiTableMultiSelectionFilter multiFilter) {
-					List<String> values = multiFilter.getValues();
-					if (values != null && !values.isEmpty()) {
-						searchParams.setStatuses(values.stream().map(AiUsageLogStatus::valueOf).toList());
-					} else {
-						searchParams.setStatuses(null);
-					}
-				}
-			}
-		}
+		applyFilters(filters);
 
 		List<AiUsageLog> rows = usageLogDAO.getUsageLogs(searchParams, firstResult, maxResults);
 		return new DefaultResultInfos<>(firstResult + rows.size(), -1, rows);
 	}
 	
-	//private static record 
 }

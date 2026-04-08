@@ -28,6 +28,7 @@ import org.olat.core.commons.persistence.DB;
 import org.olat.core.commons.persistence.QueryBuilder;
 import org.olat.core.commons.services.ai.AiUsageLog;
 import org.olat.core.commons.services.ai.AiUsageLogSearchParams;
+import org.olat.core.commons.services.ai.model.AiUsageLogStats;
 import org.olat.core.commons.services.ai.AiUsageLogSearchParams.OrderBy;
 import org.olat.core.commons.services.ai.AiUsageLogStatus;
 import org.olat.core.commons.services.ai.model.AiUsageContext;
@@ -90,6 +91,17 @@ public class AiUsageLogDAO {
 			log.setServiceInterface(serviceInterface);
 			log.setServiceMethod(serviceMethod);
 		}
+	}
+
+	public AiUsageLogStats getStats(AiUsageLogSearchParams params) {
+		QueryBuilder query = new QueryBuilder();
+		query.append("select coalesce(sum(log.totalTokens), 0) from aiusagelog log");
+		appendFilters(query, params);
+		TypedQuery<Long> dbQuery = dbInstance.getCurrentEntityManager()
+				.createQuery(query.toString(), Long.class);
+		applyParameters(dbQuery, params);
+		long totalTokens = dbQuery.getSingleResult();
+		return new AiUsageLogStats(totalTokens);
 	}
 
 	public int getCount(AiUsageLogSearchParams params) {
