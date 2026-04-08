@@ -31,7 +31,7 @@ import org.olat.core.commons.services.ai.model.AiUsageContext;
  *
  */
 public interface AiMCQuestionService {
-
+	
 	boolean isEnabled();
 
 	AiMCQuestionsResponse generateMCQuestionsResponse(AiUsageContext usageContext, String input, int number);

@@ -21,6 +21,7 @@ package org.olat.core.commons.services.ai.ui;
 
 import java.util.List;
 
+import org.olat.core.commons.services.ai.AiFeature;
 import org.olat.core.commons.services.ai.AiImageDescriptionService;
 import org.olat.core.commons.services.ai.AiMCQuestionService;
 import org.olat.core.commons.services.ai.AiModule;
@@ -100,7 +101,7 @@ public class AiFeaturesAdminController extends FormBasicController {
 		// ---- MC Question Generator section ----
 		uifactory.addSpacerElement("mcSpacer", formLayout, false);
 		uifactory.addStaticTextElement("mcTitle", null,
-				"<h4>" + translate("ai.feature.mc-question-generator") + "</h4>", formLayout);
+				"<h4>" + translate(AiFeature.MCQuestionGenerator.getI18nKey()) + "</h4>", formLayout);
 
 		boolean mcEnabled = aiModule.isMCQuestionGeneratorEnabled();
 		mcEnabledEl = uifactory.addToggleButton("mc.enabled", "ai.feature.enabled",
@@ -113,7 +114,7 @@ public class AiFeaturesAdminController extends FormBasicController {
 		// ---- Image Description Generator section ----
 		imgDescSpacer = uifactory.addSpacerElement("imgDescSpacer", formLayout, false);
 		imgDescTitle = uifactory.addStaticTextElement("imgDescTitle", null,
-				"<h4>" + translate("ai.feature.image-description-generator") + "</h4>", formLayout);
+				"<h4>" + translate(AiFeature.ImageDescriptionGenerator.getI18nKey()) + "</h4>", formLayout);
 
 		boolean imgDescEnabled = aiModule.isImageDescriptionGeneratorEnabled();
 		imgDescEnabledEl = uifactory.addToggleButton("imgDesc.enabled", "ai.feature.enabled",

@@ -23,6 +23,8 @@ import java.util.Date;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -35,6 +37,7 @@ import jakarta.persistence.TemporalType;
 
 import org.olat.basesecurity.IdentityImpl;
 import org.olat.core.commons.services.ai.AiUsageLog;
+import org.olat.core.commons.services.ai.AiUsageLogStatus;
 import org.olat.core.id.Identity;
 import org.olat.core.id.Persistable;
 
@@ -78,7 +81,8 @@ public class AiUsageLogImpl implements AiUsageLog, Persistable {
 	@Column(name = "a_duration_millis", nullable = true, insertable = true, updatable = false)
 	private Long durationMillis;
 	@Column(name = "a_status", nullable = false, insertable = true, updatable = false)
-	private String status;
+	@Enumerated(EnumType.STRING)
+	private AiUsageLogStatus status;
 	@Column(name = "a_error_code", nullable = true, insertable = true, updatable = false)
 	private String errorCode;
 	@Column(name = "a_error_message", nullable = true, insertable = true, updatable = false)
@@ -255,12 +259,12 @@ public class AiUsageLogImpl implements AiUsageLog, Persistable {
 	}
 
 	@Override
-	public String getStatus() {
+	public AiUsageLogStatus getStatus() {
 		return status;
 	}
 
 	@Override
-	public void setStatus(String status) {
+	public void setStatus(AiUsageLogStatus status) {
 		this.status = status;
 	}
 

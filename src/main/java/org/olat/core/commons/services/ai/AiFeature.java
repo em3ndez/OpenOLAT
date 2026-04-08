@@ -1,6 +1,6 @@
 /**
  * <a href="https://www.openolat.org">
- * OpenOlat - Online Learning and Training</a><br>
+ * OpenOLAT - Online Learning and Training</a><br>
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License"); <br>
  * you may not use this file except in compliance with the License.<br>
@@ -19,25 +19,44 @@
  */
 package org.olat.core.commons.services.ai;
 
-import java.util.Locale;
-
-import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
-import org.olat.core.commons.services.ai.model.AiUsageContext;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
- * Spring service for image description generation via AI.
- *
- * Initial date: 31.03.2026<br>
- *
+ * 
+ * Initial date: Apr 8, 2026<br>
  * @author uhensler, urs.hensler@frentix.com, https://www.frentix.com
  *
  */
-public interface AiImageDescriptionService {
+public enum AiFeature {
 	
-	boolean isEnabled();
+	MCQuestionGenerator("mc-question-generator"),
+	ImageDescriptionGenerator("image-description-generator")
+	;
+	
+	public static List<AiFeature> VALUES = List.of(values());
+	
+	private final String type;
+	
+	private AiFeature(String type) {
+		this.type = type;
+	}
 
-	AiImageDescriptionResponse generateImageDescription(AiUsageContext usageContext, String imageBase64, String mimeType, Locale locale);
+	public String getType() {
+		return type;
+	}
+	
+	public String getI18nKey() {
+		return "ai.feature." + type;
+	}
+	
+	private final static Map<String, AiFeature> secureValues = List.of(values()).stream()
+			.collect(Collectors.toMap(AiFeature::name, Function.identity()));
 
-	AiImageDescriptionResponse generateImageDescription(AiUsageContext usageContext, String imageBase64, String mimeType, Locale locale, String spiId, String modelName);
+	public static final AiFeature secureValueOf(String val) {
+		return secureValues.getOrDefault(val, null);
+	}
 
 }

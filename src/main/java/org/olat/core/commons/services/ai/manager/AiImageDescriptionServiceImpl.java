@@ -21,6 +21,7 @@ package org.olat.core.commons.services.ai.manager;
 
 import java.util.Locale;
 
+import org.olat.core.commons.services.ai.AiFeature;
 import org.olat.core.commons.services.ai.AiImageDescriptionService;
 import org.olat.core.commons.services.ai.AiModule;
 import org.olat.core.commons.services.ai.AiSPI;
@@ -44,6 +45,7 @@ import dev.langchain4j.service.AiServices;
  */
 @Service
 public class AiImageDescriptionServiceImpl implements AiImageDescriptionService {
+
 	private static final int MAX_TOKENS = 2000;
 
 	@Autowired
@@ -78,7 +80,7 @@ public class AiImageDescriptionServiceImpl implements AiImageDescriptionService 
 
 			UserMessage userMessage = ImageDescriptionAiService.buildUserMessage(locale, imageBase64, mimeType);
 			AiServices<ImageDescriptionAiService> builder = AiServices.builder(ImageDescriptionAiService.class);
-			AiLoggingChatModel.configureBuilder(builder, chatModel, aiUsageLogDAO, spiId, "image-description", usageContext);
+			AiLoggingChatModel.configureBuilder(builder, chatModel, aiUsageLogDAO, spiId, AiFeature.ImageDescriptionGenerator.getType(), usageContext);
 			ImageDescriptionAiService service = builder.build();
 
 			response.setDescription(service.describeImage(userMessage));
@@ -87,7 +89,7 @@ public class AiImageDescriptionServiceImpl implements AiImageDescriptionService 
 			Exception cause = e instanceof AiUsageLoggedException ? (Exception) e.getCause() : e;
 			response.setError(cause.getMessage() != null ? cause.getMessage() : cause.getClass().getName());
 			if (!(e instanceof AiUsageLoggedException)) {
-				aiUsageLogDAO.createErrorLog(spiId, modelName, "image-description", usageContext,
+				aiUsageLogDAO.createErrorLog(spiId, modelName, AiFeature.ImageDescriptionGenerator.getType(), usageContext,
 						System.currentTimeMillis() - startTime, cause);
 			}
 		}

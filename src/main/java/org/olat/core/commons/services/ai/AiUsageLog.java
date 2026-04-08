@@ -29,9 +29,6 @@ import org.olat.core.id.Identity;
  *
  */
 public interface AiUsageLog extends CreateInfo {
-	
-	public static final String STATUS_SUCCESS = "SUCCESS";
-	public static final String STATUS_FAILED = "FAILED";
 
 	public Long getKey();
 
@@ -73,9 +70,9 @@ public interface AiUsageLog extends CreateInfo {
 
 	public void setDurationMillis(Long durationMillis);
 
-	public String getStatus();
+	public AiUsageLogStatus getStatus();
 
-	public void setStatus(String status);
+	public void setStatus(AiUsageLogStatus status);
 
 	public String getErrorCode();
 

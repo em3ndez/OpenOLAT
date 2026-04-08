@@ -1,6 +1,6 @@
 /**
  * <a href="https://www.openolat.org">
- * OpenOlat - Online Learning and Training</a><br>
+ * OpenOLAT - Online Learning and Training</a><br>
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License"); <br>
  * you may not use this file except in compliance with the License.<br>
@@ -19,25 +19,30 @@
  */
 package org.olat.core.commons.services.ai;
 
-import java.util.Locale;
-
-import org.olat.core.commons.services.ai.model.AiImageDescriptionResponse;
-import org.olat.core.commons.services.ai.model.AiUsageContext;
+import java.util.List;
 
 /**
- * Spring service for image description generation via AI.
- *
- * Initial date: 31.03.2026<br>
- *
+ * 
+ * Initial date: Apr 8, 2026<br>
  * @author uhensler, urs.hensler@frentix.com, https://www.frentix.com
  *
  */
-public interface AiImageDescriptionService {
+public enum AiUsageLogStatus {
 	
-	boolean isEnabled();
+	SUCCESS("usagelog.status.success"),
+	FAILED("usagelog.status.failed")
+	;
+	
+	public static List<AiUsageLogStatus> VALUES = List.of(values());
+	
+	private final String i18nKey;
 
-	AiImageDescriptionResponse generateImageDescription(AiUsageContext usageContext, String imageBase64, String mimeType, Locale locale);
+	private AiUsageLogStatus(String i18nKey) {
+		this.i18nKey = i18nKey;
+	}
 
-	AiImageDescriptionResponse generateImageDescription(AiUsageContext usageContext, String imageBase64, String mimeType, Locale locale, String spiId, String modelName);
-
+	public String getI18nKey() {
+		return i18nKey;
+	}
+	
 }

@@ -23,7 +23,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.logging.log4j.Logger;
-import org.olat.core.commons.services.ai.AiUsageLog;
+import org.olat.core.commons.services.ai.AiUsageLogStatus;
 import org.olat.core.commons.services.ai.model.AiUsageContext;
 import org.olat.core.commons.services.ai.model.AiUsageLogImpl;
 import org.olat.core.logging.Tracing;
@@ -170,11 +170,11 @@ public class AiLoggingChatModel implements ChatModel {
 		log.setRequestTextLength(Long.valueOf(textLength));
 
 		if (error != null) {
-			log.setStatus(AiUsageLog.STATUS_FAILED);
+			log.setStatus(AiUsageLogStatus.FAILED);
 			log.setErrorCode(error.getClass().getSimpleName());
 			log.setErrorMessage(error.getMessage());
 		} else if (response != null) {
-			log.setStatus(AiUsageLog.STATUS_SUCCESS);
+			log.setStatus(AiUsageLogStatus.SUCCESS);
 			ChatResponseMetadata metadata = response.metadata();
 			log.setResponseId(metadata.id());
 			log.setResponseModel(metadata.modelName());

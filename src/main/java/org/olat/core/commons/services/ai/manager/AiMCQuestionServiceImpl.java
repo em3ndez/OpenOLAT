@@ -21,6 +21,7 @@ package org.olat.core.commons.services.ai.manager;
 
 import java.util.Locale;
 
+import org.olat.core.commons.services.ai.AiFeature;
 import org.olat.core.commons.services.ai.AiMCQuestionService;
 import org.olat.core.commons.services.ai.AiModule;
 import org.olat.core.commons.services.ai.AiSPI;
@@ -88,7 +89,7 @@ public class AiMCQuestionServiceImpl implements AiMCQuestionService {
 
 			String language = locale.getDisplayLanguage(Locale.ENGLISH);
 			AiServices<MCQuestionAiService> builder = AiServices.builder(MCQuestionAiService.class);
-			AiLoggingChatModel.configureBuilder(builder, chatModel, aiUsageLogDAO, spiId, "question-generator-mc", usageContext);
+			AiLoggingChatModel.configureBuilder(builder, chatModel, aiUsageLogDAO, spiId, AiFeature.MCQuestionGenerator.getType(), usageContext);
 			MCQuestionAiService service = builder.build();
 
 			service.generateQuestions(number, 2, 3, language, input)
@@ -98,7 +99,7 @@ public class AiMCQuestionServiceImpl implements AiMCQuestionService {
 			Exception cause = e instanceof AiUsageLoggedException ? (Exception) e.getCause() : e;
 			response.setError(cause.getMessage() != null ? cause.getMessage() : cause.getClass().getName());
 			if (!(e instanceof AiUsageLoggedException)) {
-				aiUsageLogDAO.createErrorLog(spiId, modelName, "question-generator-mc", usageContext,
+				aiUsageLogDAO.createErrorLog(spiId, modelName, AiFeature.MCQuestionGenerator.getType(), usageContext,
 						System.currentTimeMillis() - startTime, cause);
 			}
 		}
