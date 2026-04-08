@@ -278,6 +278,7 @@ VFSManager.copyContent(inputStream, file, identity);
 ## Code Style Rules
 
 - **No pure whitespace changes:** Never change invisible characters (spaces, tabs) on lines where the only modification is the whitespace itself. Whitespace may be changed on lines where actual code is also being modified. This keeps diffs clean and avoids unnecessary merge conflicts.
+- **No inline fully-qualified class names:** Always import classes and use the simple name. Never write `java.io.File`, `java.util.HashMap<>()`, `org.olat.core.util.vfs.VFSLeaf` etc. inline in method bodies. Add the import statement and use the class name only. The only exception is when two classes from different packages have the same name — in that case, use the FQN for the less-frequently-used one.
 
 ## HTTP Client Service
 
