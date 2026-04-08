@@ -21,16 +21,23 @@ package org.olat.modules.ceditor.manager;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.commonmark.Extension;
 import org.commonmark.ext.autolink.AutolinkExtension;
 import org.commonmark.ext.footnotes.FootnotesExtension;
+import org.commonmark.ext.front.matter.YamlFrontMatterExtension;
 import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
+import org.commonmark.ext.image.attributes.ImageAttributes;
+import org.commonmark.ext.image.attributes.ImageAttributesExtension;
 import org.commonmark.ext.task.list.items.TaskListItemsExtension;
+import org.commonmark.node.Image;
 import org.commonmark.node.Node;
+import org.commonmark.node.Paragraph;
 import org.commonmark.parser.Parser;
 import org.olat.basesecurity.MediaServerModule;
 import org.olat.core.gui.translator.Translator;
@@ -64,13 +71,16 @@ public class MarkdownImportService {
 	 * Shared CommonMark extension list used by both the Parser and HtmlRenderer.
 	 */
 	static List<Extension> markdownExtensions() {
-		return List.of(
+		List<Extension> extensions = new java.util.ArrayList<>(List.of(
 			TablesExtension.create(),
 			StrikethroughExtension.create(),
 			TaskListItemsExtension.create(),
 			AutolinkExtension.create(),
-			FootnotesExtension.create()
-		);
+			FootnotesExtension.create(),
+			ImageAttributesExtension.create(),
+			YamlFrontMatterExtension.create()
+		));
+		return extensions;
 	}
 
 	@Autowired
@@ -114,10 +124,15 @@ public class MarkdownImportService {
 			.build();
 		Node document = parser.parse(preprocessed.text());
 
+		// Extract image dimensions from ImageAttributes nodes BEFORE the visitor
+		// processes the tree (the HtmlRenderer strips ImageAttributes during rendering)
+		Map<String, int[]> imageDimensions = extractImageDimensions(document);
+
 		// 3. Visit AST
 		Translator translator = Util.createPackageTranslator(PageEditorV2Controller.class, locale);
 		MarkdownPagePartVisitor visitor = new MarkdownPagePartVisitor(author, aiOres, subIdent, basePath, imageHandler,
 				mediaServerModule, httpClientService, preprocessed.mathBlocks(), translator);
+		visitor.setImageDimensions(imageDimensions);
 		document.accept(visitor);
 
 		// 4. Persist parts in container
@@ -161,5 +176,40 @@ public class MarkdownImportService {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Walk the parsed AST and extract image dimensions from ImageAttributes nodes.
+	 * Must be called BEFORE the visitor processes the tree, because the HtmlRenderer
+	 * used during visiting strips ImageAttributes nodes.
+	 *
+	 * @return map of image destination → [width, height] in pixels
+	 */
+	private Map<String, int[]> extractImageDimensions(Node document) {
+		Map<String, int[]> dimensions = new HashMap<>();
+		Node child = document.getFirstChild();
+		while (child != null) {
+			if (child instanceof Paragraph para) {
+				Node pc = para.getFirstChild();
+				while (pc != null) {
+					if (pc instanceof Image image) {
+						Node lc = image.getLastChild();
+						if (lc instanceof ImageAttributes imgAttrs) {
+							int w = 0, h = 0;
+							String ws = imgAttrs.getAttributes().get("width");
+							String hs = imgAttrs.getAttributes().get("height");
+							if (ws != null) try { w = Integer.parseInt(ws.replace("px", "").trim()); } catch (NumberFormatException e) { /* */ }
+							if (hs != null) try { h = Integer.parseInt(hs.replace("px", "").trim()); } catch (NumberFormatException e) { /* */ }
+							if (w > 0) {
+								dimensions.put(image.getDestination(), new int[]{w, h});
+							}
+						}
+					}
+					pc = pc.getNext();
+				}
+			}
+			child = child.getNext();
+		}
+		return dimensions;
 	}
 }

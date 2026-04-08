@@ -29,6 +29,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -83,6 +84,8 @@ import org.olat.modules.ceditor.model.AlertBoxType;
 import org.olat.modules.ceditor.model.BlockLayoutSettings;
 import org.olat.modules.ceditor.model.CodeLanguage;
 import org.olat.modules.ceditor.model.CodeSettings;
+import org.olat.modules.ceditor.model.ImageSettings;
+import org.olat.modules.ceditor.model.ImageSize;
 import org.olat.modules.ceditor.model.TableContent;
 import org.olat.modules.ceditor.model.TableSettings;
 import org.olat.modules.ceditor.model.TextSettings;
@@ -135,6 +138,8 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 	private final MediaServerModule mediaServerModule;
 	private final Map<String, String> mathBlocks;
 	private final Translator translator;
+	/** Image dimensions extracted before visiting (destination → [width, height]) */
+	private Map<String, int[]> imageDimensions = Map.of();
 
 	private final HtmlRenderer inlineRenderer;
 	private final HttpClientService httpClientService;
@@ -160,6 +165,9 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 	}
 
 	public List<PagePart> getParts() { return parts; }
+	public void setImageDimensions(Map<String, int[]> imageDimensions) {
+		this.imageDimensions = imageDimensions != null ? imageDimensions : Map.of();
+	}
 	public List<String> getWarnings() { return warnings; }
 	public int getImageCount() { return imageCount; }
 
@@ -308,7 +316,6 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 	private void handleTable(TableBlock tableBlock) {
 		int numCols = 0;
 		int numRows = 0;
-		boolean hasHeader = false;
 
 		TableHead head = null;
 		TableBody body = null;
@@ -316,7 +323,6 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 		while (child != null) {
 			if (child instanceof TableHead th) {
 				head = th;
-				hasHeader = true;
 			} else if (child instanceof TableBody tb) {
 				body = tb;
 			}
@@ -366,16 +372,125 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 			}
 		}
 
+		// Detect row header: first row is a real header if all non-empty cells are bold
+		boolean rowHeader = false;
+		if (head != null) {
+			Node headerRow = head.getFirstChild();
+			if (headerRow instanceof TableRow) {
+				rowHeader = isRowAllBold(headerRow);
+			}
+		}
+
+		// Detect column header: first column is a header if all non-empty cells are bold
+		boolean colHeader = detectFirstColumnBold(head, body);
+
 		TablePart tablePart = new TablePart();
 		tablePart.setContent(ContentEditorXStream.toXml(tc));
 
 		TableSettings ts = new TableSettings();
-		ts.setColumnHeaders(hasHeader);
+		ts.setRowHeaders(rowHeader);
+		ts.setColumnHeaders(colHeader);
 		ts.setBordered(true);
 		ts.setLayoutSettings(BlockLayoutSettings.getPredefined());
 		tablePart.setLayoutOptions(ContentEditorXStream.toXml(ts));
 
 		parts.add(tablePart);
+	}
+
+	/** Check if all non-empty cells in a row have bold (StrongEmphasis) content. */
+	private boolean isRowAllBold(Node tableRow) {
+		boolean hasNonEmpty = false;
+		Node cell = tableRow.getFirstChild();
+		while (cell != null) {
+			if (cell instanceof TableCell) {
+				String text = renderChildrenToPlainText(cell).strip();
+				if (!text.isEmpty()) {
+					hasNonEmpty = true;
+					if (!isCellContentBold(cell)) {
+						return false;
+					}
+				}
+			}
+			cell = cell.getNext();
+		}
+		return hasNonEmpty;
+	}
+
+	/** Check if the first column of the table has all bold cells. */
+	private boolean detectFirstColumnBold(TableHead head, TableBody body) {
+		boolean hasNonEmpty = false;
+
+		// Check first cell of header row
+		if (head != null) {
+			Node headerRow = head.getFirstChild();
+			if (headerRow instanceof TableRow) {
+				Node firstCell = headerRow.getFirstChild();
+				if (firstCell instanceof TableCell) {
+					String text = renderChildrenToPlainText(firstCell).strip();
+					if (!text.isEmpty()) {
+						hasNonEmpty = true;
+						if (!isCellContentBold(firstCell)) return false;
+					}
+				}
+			}
+		}
+
+		// Check first cell of each body row
+		if (body != null) {
+			Node row = body.getFirstChild();
+			while (row != null) {
+				if (row instanceof TableRow) {
+					Node firstCell = row.getFirstChild();
+					if (firstCell instanceof TableCell) {
+						String text = renderChildrenToPlainText(firstCell).strip();
+						if (!text.isEmpty()) {
+							hasNonEmpty = true;
+							if (!isCellContentBold(firstCell)) return false;
+						}
+					}
+				}
+				row = row.getNext();
+			}
+		}
+
+		return hasNonEmpty;
+	}
+
+	/**
+	 * Check if a table cell's content is wrapped in StrongEmphasis (bold).
+	 * Returns true if the cell's text content is entirely inside bold nodes.
+	 */
+	private boolean isCellContentBold(Node cell) {
+		// Check if all text-bearing children are inside StrongEmphasis
+		Node child = cell.getFirstChild();
+		while (child != null) {
+			if (child instanceof Paragraph para) {
+				// Check paragraph children
+				Node paraChild = para.getFirstChild();
+				while (paraChild != null) {
+					if (paraChild instanceof org.commonmark.node.StrongEmphasis) {
+						// Bold — good
+					} else if (paraChild instanceof Text text) {
+						if (!text.getLiteral().isBlank()) return false;
+					} else if (paraChild instanceof HtmlInline) {
+						// Inline HTML like <mark>, <sup> — ignore for bold detection
+					} else if (paraChild instanceof SoftLineBreak || paraChild instanceof HardLineBreak) {
+						// Line breaks — ignore
+					} else {
+						// Any other non-bold content
+						String text = renderChildrenToPlainText(paraChild).strip();
+						if (!text.isEmpty()) return false;
+					}
+					paraChild = paraChild.getNext();
+				}
+			} else if (child instanceof org.commonmark.node.StrongEmphasis) {
+				// Direct bold child — good
+			} else if (child instanceof Text text) {
+				if (!text.getLiteral().isBlank()) return false;
+			}
+			child = child.getNext();
+		}
+		return true;
 	}
 
 	private void fillTableRow(TableContent tc, Node tableRow, int rowIdx) {
@@ -438,6 +553,10 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 		String altText = renderChildrenToPlainText(imageNode);
 		String title = imageNode.getTitle();
 
+		// Read width from pre-extracted dimensions map
+		int[] dims = imageDimensions.get(destination);
+		int widthPx = dims != null ? dims[0] : 0;
+
 		File imageFile = resolveImageFile(destination);
 		if (imageFile == null || !imageFile.exists()) {
 			warnings.add("import.markdown.warn.image.not.found\t" + StringHelper.escapeHtml(destination));
@@ -455,7 +574,7 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 			}
 			// check for duplicate media file, reuse same image that has already been uploaded
 			Media media = null;
-			MediaService mediaService = CoreSpringFactory.getImpl(MediaService.class); 
+			MediaService mediaService = (MediaService) CoreSpringFactory.getImpl(MediaService.class); 
 			if (mediaService.isInMediaCenter(author, imageFile)) {
 				SearchMediaParameters params = new SearchMediaParameters();
 				String checksum = FileUtils.checksumSha256(imageFile);
@@ -484,6 +603,16 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 			}
 
 			MediaPart mediaPart = MediaPart.valueOf(author, media);
+
+			// Map width from image attributes to ImageSize
+			ImageSize imageSize = mapWidthToImageSize(widthPx);
+			if (imageSize != null) {
+				ImageSettings imgSettings = new ImageSettings();
+				imgSettings.setSize(imageSize);
+				imgSettings.setLayoutSettings(BlockLayoutSettings.getPredefined());
+				mediaPart.setLayoutOptions(ContentEditorXStream.toXml(imgSettings));
+			}
+
 			parts.add(mediaPart);
 			imageCount++;
 		} catch (Exception e) {
@@ -814,7 +943,10 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 	private String renderNodeToHtml(Node node) {
 		Document tempDoc = new Document();
 		tempDoc.appendChild(node);
-		return inlineRenderer.render(tempDoc).strip();
+		String html = inlineRenderer.render(tempDoc).strip();
+		// Post-process: unescape whitelisted inline HTML tags that were escaped
+		// by the renderer's escapeHtml(true) setting
+		return unescapeSafeInlineHtml(html);
 	}
 
 	private String renderChildrenToHtml(Node node) {
@@ -822,7 +954,16 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 		Node child = node.getFirstChild();
 		while (child != null) {
 			Node next = child.getNext();
-			sb.append(renderNodeToHtml(child));
+			if (child instanceof HtmlInline htmlInline) {
+				// Pass through whitelisted safe inline HTML tags
+				String tag = htmlInline.getLiteral();
+				if (isSafeInlineHtml(tag)) {
+					sb.append(tag);
+				}
+				// else: silently drop unsafe inline HTML
+			} else {
+				sb.append(renderNodeToHtml(child));
+			}
 			child = next;
 		}
 		return sb.toString().strip();
@@ -840,13 +981,95 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 				sb.append(' ');
 			} else if (child instanceof HardLineBreak) {
 				sb.append(' ');
-			} else if (child instanceof HtmlInline) {
-				// Skip inline HTML entirely for security
+			} else if (child instanceof HtmlInline htmlInline) {
+				String tag = htmlInline.getLiteral();
+				if (isSafeInlineHtml(tag)) {
+					sb.append(tag);
+				}
 			} else {
 				sb.append(renderChildrenToPlainText(child));
 			}
 			child = child.getNext();
 		}
 		return sb.toString();
+	}
+
+	// --- Image size mapping ---
+
+	/**
+	 * Map pixel width and height to the closest ImageSize class.
+	 * <p>
+	 * The width comes from the Word document layout (wp:extent), representing
+	 * the display size in the document — NOT the native image resolution.
+	 * A standard Word page content area is ~605px wide at 96 DPI (~16cm).
+	 * We compute the image's proportion of the page width and map to the
+	 * closest size class. Note: wp:extent always gives the display (scaled)
+	 * size — we cannot distinguish between a natively small image and a
+	 * scaled-down large one, so {@code none} is not used.
+	 * <ul>
+	 *   <li>{@code small} (25%) — image takes up to 35% of page width</li>
+	 *   <li>{@code medium} (40%) — image takes 35–55% of page width</li>
+	 *   <li>{@code large} (60%) — image takes 55–80% of page width</li>
+	 *   <li>{@code fill} (100%) — image takes more than 80% of page width</li>
+	 * </ul>
+	 */
+	private static final int WORD_PAGE_WIDTH_PX = 605; // ~16cm at 96 DPI
+
+	private static ImageSize mapWidthToImageSize(int widthPx) {
+		if (widthPx <= 0) return null;
+		double ratio = (double) widthPx / WORD_PAGE_WIDTH_PX;
+		if (ratio <= 0.35) return ImageSize.small;
+		if (ratio <= 0.55) return ImageSize.medium;
+		if (ratio <= 0.80) return ImageSize.large;
+		return ImageSize.fill;
+	}
+
+	// --- Inline HTML whitelist ---
+
+	/**
+	 * Whitelist of safe inline HTML tags allowed to pass through.
+	 * Only specific tags and patterns are accepted — no event handlers,
+	 * no script, no arbitrary attributes.
+	 */
+	private static final Set<String> SAFE_INLINE_TAGS = Set.of(
+		"<sup>", "</sup>",
+		"<sub>", "</sub>",
+		"<u>", "</u>",
+		"<mark>", "</mark>",
+		"</span>"
+	);
+
+	private static boolean isSafeInlineHtml(String tag) {
+		if (tag == null) return false;
+		String lower = tag.toLowerCase().strip();
+		if (SAFE_INLINE_TAGS.contains(lower)) {
+			return true;
+		}
+		// Allow <span style="text-decoration:underline"> specifically
+		if (lower.startsWith("<span ") && lower.endsWith(">")) {
+			String inner = lower.substring(5, lower.length() - 1).strip();
+			return inner.equals("style=\"text-decoration:underline\"");
+		}
+		return false;
+	}
+
+	/**
+	 * Post-processes HTML rendered with escapeHtml(true) to restore whitelisted
+	 * inline HTML tags that were escaped to &lt;tag&gt; entities.
+	 */
+	private static String unescapeSafeInlineHtml(String html) {
+		if (html == null || !html.contains("&lt;")) {
+			return html;
+		}
+		// Unescape simple whitelisted tags: &lt;sup&gt; → <sup>, &lt;/sup&gt; → </sup>, etc.
+		for (String tag : SAFE_INLINE_TAGS) {
+			String escaped = tag.replace("<", "&lt;").replace(">", "&gt;");
+			html = html.replace(escaped, tag);
+		}
+		// Unescape <span style="text-decoration:underline">
+		html = html.replace(
+			"&lt;span style=&quot;text-decoration:underline&quot;&gt;",
+			"<span style=\"text-decoration:underline\">");
+		return html;
 	}
 }
