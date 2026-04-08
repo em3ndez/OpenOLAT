@@ -47,23 +47,33 @@ public interface MCQuestionAiService {
 			Create {{number}} different multiple choice questions with {{correct}} correct \
 			and {{wrong}} wrong answers each.
 
+			For each question, you MUST provide ALL of the following fields:
+			- title: Short descriptive title for the question topic, max 10 words
+			- topic: The specific topic within the subject area
+			- subject: The broad subject area the question belongs to
+			- keywords: Comma-separated keywords related to the question
+			- question: The multiple choice question text, self-contained, no reference to 'the text' or 'the passage'
+			- correctAnswers: List of correct answer strings, each verifiably true based on the input
+			- wrongAnswers: List of wrong answer strings, each plausible but unambiguously incorrect
+
 			Rules for answer quality:
-			- CORRECT answers: Must be verifiable true based on the text. Double-check each one.
+			- CORRECT answers: Must be verifiably true based on the provided input. Double-check each one.
 			- WRONG answers: Must be clearly incorrect but plausible. Use these strategies:
 			  * Take a correct fact and introduce a subtle but meaningful change (e.g. wrong number, swapped name, changed date)
 			  * Invent a plausible-sounding but fictitious detail
 			  * Use a true statement from a different context that does not answer this specific question
 			- Each wrong answer must be unambiguously wrong — a knowledgeable person must be able to reject it.
-			- Each correct answer must be unambiguously correct — it must be fully supported by the text.
+			- Each correct answer must be unambiguously correct — it must be fully supported by the provided input.
 
 			Language and terminology rules:
 			- Generate all questions, answers, and metadata in {{language}}.
-			- Use the exact terminology and wording from the input text — do NOT translate or rephrase the source material.
+			- Use the exact terminology and wording from the input — do NOT translate or rephrase the source material.
 			- Questions must be self-contained. Do NOT refer to "the text", "the passage", "the article", or similar.
 
-			Use this text as the knowledge domain:
+			Use the following as the knowledge domain:
 			-----
 			{{input}}
+			-----
 			""")
 	List<MCQuestionData> generateQuestions(
 			@V("number") int number,

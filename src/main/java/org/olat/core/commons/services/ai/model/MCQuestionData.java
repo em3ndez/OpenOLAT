@@ -36,11 +36,11 @@ import dev.langchain4j.model.output.structured.Description;
  *
  */
 public class MCQuestionData {
-	@Description("Short title for the question, max 10 words, required")
+	@Description("Short descriptive title for the question topic, max 10 words")
 	private String title;
 	@Description("The specific topic within the subject area")
 	private String topic;
-	@Description("Academic or professional subject area (e.g. Biology, History, Mathematics)")
+	@Description("The broad subject area the question belongs to")
 	private String subject;
 	@Description("Comma-separated keywords related to the question")
 	private String keywords;
