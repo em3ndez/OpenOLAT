@@ -825,39 +825,69 @@ Key directories:
 - Subdirectories per media, poster images, assignments, etc.
 - Maximum 32,000 subdirectories per parent directory (then rolls over to a new parent).
 
-### Markdown Import
+### Content Import (Markdown and Word)
 
-The markdown import feature allows users to create page content from CommonMark markdown text or files. It is implemented in the `manager/` package with the following classes:
+The content import feature allows users to create page content from CommonMark markdown text/files or Word documents (.docx). The import dialog offers two modes: file upload (Markdown/ZIP/DOCX) or text paste (Markdown).
+
+**Supported Markdown features:**
+
+| Markdown construct | PagePart |
+|---|---|
+| `# Heading` (H1–H6) | `TitlePart` |
+| Paragraphs | `ParagraphPart` (consecutive merged) |
+| `**bold**`, `*italic*`, `~~strike~~` | Inline HTML in paragraph content |
+| `<sup>`, `<sub>`, `<u>`, `<mark>`, `<span style="text-decoration:underline">` | Whitelisted safe inline HTML |
+| `` ```code``` `` | `CodePart` with syntax highlighting |
+| `$$math$$` | `MathPart` via display math preprocessor |
+| GFM tables | `TablePart` with row/column header detection |
+| `> blockquote` / `> [!NOTE]` | `ParagraphPart` with `AlertBoxSettings` |
+| `---` | `SpacerPart` |
+| `![alt](url){width=N height=N}` | `MediaPart` with `ImageSize` from dimensions |
+| `[^1]` footnotes | Rendered as footnote definitions |
+| `[x]` task lists | Task list checkboxes |
+| YAML front matter (`---`) | Parsed and stripped (via `YamlFrontMatterExtension`) |
+
+**Word/DOCX import:**
+
+Word documents are converted to Markdown via the `DocxToMarkdownService` from `org.olat.core.util.docxToMarkdown` before being fed into the standard Markdown import pipeline. This supports headings, formatting, tables, images, shapes (as SVG), SmartArt, footnotes, math, and more. See the `docxToMarkdown` package documentation for full details. Word import is marked as beta with a user-visible warning.
 
 **Service and conversion pipeline:**
 
 | Class | Role |
 |-------|------|
-| `MarkdownImportService` | Spring `@Service` — orchestrates parsing and persistence. Calls `convertAndPersist(markdown, page, author, basePath)` which pre-processes math, parses via CommonMark, visits the AST, persists parts, and wraps them in a `ContainerPart` (reusing an existing empty container or creating a new `block_1col`). |
-| `MarkdownPagePartVisitor` | `AbstractVisitor` that walks the CommonMark AST and produces `PagePart` instances. Maps headings → `TitlePart`, paragraphs → `ParagraphPart` (merging consecutive ones), code blocks → `CodePart`, tables → `TablePart`, blockquotes → `ParagraphPart` with `AlertBoxSettings`, thematic breaks → `SpacerPart`, images → `MediaPart`, math placeholders → `MathPart`. Inline HTML is entity-escaped; HTML blocks are skipped entirely. |
-| `MarkdownMathPreprocessor` | Replaces `$$...$$` display math blocks with unique placeholders before CommonMark parsing, so LaTeX content is not mangled. |
-| `MarkdownCodeLanguageMapping` | Maps fenced code block info strings (e.g. `java`, `py`, `ts`) to the `CodeLanguage` enum for syntax highlighting. |
+| `MarkdownImportService` | Spring `@Service` — orchestrates parsing and persistence. Pre-processes math, extracts image dimensions from AST, parses via CommonMark (with GFM tables, strikethrough, footnotes, task lists, autolinks, image attributes, YAML front matter extensions), visits the AST, persists parts in a `ContainerPart`. |
+| `MarkdownPagePartVisitor` | `AbstractVisitor` that walks the CommonMark AST and produces `PagePart` instances. Handles image dimension mapping (proportion-based `ImageSize` from Word page width), table header detection (bold row/column analysis), and safe inline HTML whitelist with post-processing unescape. |
+| `MarkdownMathPreprocessor` | Replaces `$$...$$` display math blocks with unique placeholders before CommonMark parsing. |
+| `MarkdownCodeLanguageMapping` | Maps fenced code block info strings to `CodeLanguage` enum. |
+| `MarkdownAdmonitionMapping` | Detects `[!NOTE]`, `[!WARNING]`, etc. in blockquotes and maps to `AlertBoxType`. |
 | `MarkdownImportResult` | Record carrying `List<String> warnings` from partial conversion issues. |
 
 **Security measures:**
 
 - `HtmlRenderer` configured with `escapeHtml(true)` and `sanitizeUrls(true)` allowing only `http`, `https`, and `mailto` protocols.
 - HTML blocks are skipped entirely (warning emitted).
-- Inline HTML (`HtmlInline`) nodes are stripped from plain text extraction (headings, table cells).
-- Remote image downloads are restricted to domains allowed by `MediaServerModule.isRestrictedDomain()` (SSRF protection).
-- Download size is limited to `MarkdownImportController.MAX_UPLOAD_SIZE_KB` (50 MB).
-- Local file path images require a `basePath` (file upload mode); rejected in text paste mode to prevent server filesystem reads.
+- Safe inline HTML whitelist: only `<sup>`, `<sub>`, `<u>`, `<mark>`, `<span style="text-decoration:underline">`, and their closing tags pass through. All other inline HTML is stripped.
+- Remote image downloads restricted by `MediaServerModule.isRestrictedDomain()`.
+- Download size limited to `MAX_UPLOAD_SIZE_KB` (50 MB).
+- Local file path images require a `basePath`; rejected in text paste mode.
 - Path traversal protection via canonical path comparison against `basePath`.
 
 **UI integration:**
 
 | Class | Role |
 |-------|------|
-| `MarkdownImportController` | `FormBasicController` with file upload (`.md`, `.txt`, `.zip`) or text paste mode. ZIP archives are extracted and searched for a single `.md` file. Fires `MarkdownImportDoneEvent` on success. |
-| `ImportMarkdownEvent` | Fired by `PageEditorV2Controller` when the markdown import button is clicked. |
+| `MarkdownImportController` | `FormBasicController` with card-style mode selection (file upload or text paste). Accepts `.md`, `.txt`, `.zip`, and `.docx` files. DOCX files are converted via `DocxToMarkdownService`. Upload limits configurable via `ceditor.import.limit.md` (default 50 MB) and `ceditor.import.limit.docx` (default 200 MB) in `olat.properties`. Fires `MarkdownImportDoneEvent` on success. |
+| `ImportMarkdownEvent` | Fired by `PageEditorV2Controller` when the import button is clicked. |
 | `MarkdownImportDoneEvent` | Carries `List<String> warnings` back to the embedding controller. |
 
-The markdown import button is shown when `PageEditorProvider.isImportMarkdownEnabled()` returns `true`. Currently enabled for portfolio pages (`PortfolioPageEditorProvider`).
+**Configuration (`olat.properties`):**
+
+| Property | Default | Description |
+|---|---|---|
+| `ceditor.import.limit.md` | `51200` | Max upload size for Markdown/ZIP files (KB) |
+| `ceditor.import.limit.docx` | `204800` | Max upload size for DOCX files (KB) |
+
+The import button is shown when `PageEditorProvider.isImportMarkdownEnabled()` returns `true`. Currently enabled for portfolio pages (`PortfolioPageEditorProvider`).
 
 ---
 
