@@ -19,13 +19,14 @@
  */
 package org.olat.core.commons.services.ai.service;
 
+import java.util.List;
 import java.util.Locale;
 
 import org.olat.core.commons.services.ai.model.ImageDescriptionData;
 
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.service.SystemMessage;
 
 /**
@@ -40,16 +41,16 @@ import dev.langchain4j.service.SystemMessage;
 public interface ImageDescriptionAiService {
 
 	@SystemMessage("You are an assistant that analyzes images and generates structured metadata for them.")
-	ImageDescriptionData describeImage(UserMessage userMessage);
+	ImageDescriptionData describeImage(List<Content> contents);
 
-	static UserMessage buildUserMessage(Locale locale, String imageBase64, String mimeType) {
+	static List<Content> buildContents(Locale locale, String imageBase64, String mimeType) {
 		String langName = (locale != null) ? locale.getDisplayLanguage(Locale.ENGLISH) : "English";
 		String prompt = """
 				Analyze this image and generate structured metadata.
 				Respond in %s.
 				""".formatted(langName);
 
-		return UserMessage.from(
+		return List.of(
 				ImageContent.from(imageBase64, mimeType),
 				TextContent.from(prompt)
 		);

@@ -19,6 +19,7 @@
  */
 package org.olat.core.commons.services.ai.manager;
 
+import java.util.List;
 import java.util.Locale;
 
 import org.olat.core.commons.services.ai.AiFeature;
@@ -31,7 +32,7 @@ import org.olat.core.commons.services.ai.service.ImageDescriptionAiService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 
@@ -78,12 +79,12 @@ public class AiImageDescriptionServiceImpl implements AiImageDescriptionService 
 			cachedAiService = CachedChatModel.getOrRefresh(cachedAiService, spi, spiId, modelName, MAX_TOKENS);
 			ChatModel chatModel = cachedAiService.chatModel();
 
-			UserMessage userMessage = ImageDescriptionAiService.buildUserMessage(locale, imageBase64, mimeType);
+			List<Content> contents = ImageDescriptionAiService.buildContents(locale, imageBase64, mimeType);
 			AiServices<ImageDescriptionAiService> builder = AiServices.builder(ImageDescriptionAiService.class);
 			AiLoggingChatModel.configureBuilder(builder, chatModel, aiUsageLogDAO, spiId, AiFeature.ImageDescriptionGenerator.getType(), usageContext);
 			ImageDescriptionAiService service = builder.build();
 
-			response.setDescription(service.describeImage(userMessage));
+			response.setDescription(service.describeImage(contents));
 
 		} catch (Exception e) {
 			Exception cause = e instanceof AiUsageLoggedException ? (Exception) e.getCause() : e;
