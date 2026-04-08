@@ -40,13 +40,24 @@ import dev.langchain4j.service.SystemMessage;
  */
 public interface ImageDescriptionAiService {
 
-	@SystemMessage("You are an assistant that analyzes images and generates structured metadata for them.")
+	@SystemMessage("You are an expert metadata curator for a digital asset library. You generate precise, consistent, and complete structured metadata for images.")
 	ImageDescriptionData describeImage(List<Content> contents);
 
 	static List<Content> buildContents(Locale locale, String imageBase64, String mimeType) {
 		String langName = (locale != null) ? locale.getDisplayLanguage(Locale.ENGLISH) : "English";
 		String prompt = """
 				Analyze this image and generate structured metadata.
+
+				You MUST provide ALL of the following fields:
+				- title: Short descriptive title, max 10 words
+				- description: 2-3 sentences describing the image in detail, suitable for full-text search
+				- altText: Accessible description for screen readers, precise and informative, only relevant details, very short, avoids redundancy, does not start with 'Image of' or 'Picture of'
+				- subject: Academic or professional subject area, 1-2 words, e.g. Biology, Computer Science, Marketing, History, Mathematics, Medicine, Art
+				- orientation: Exactly one of: horizontal, vertical, square
+				- colorTags: 1-2 dominant colors; use b&w for grayscale; empty list if no clear dominant color
+				- categoryTags: 1-2 categories describing the image content
+				- keywords: 1-4 descriptive tags, stock-photo style, singular form (e.g. tree not trees)
+
 				Respond in %s.
 				""".formatted(langName);
 

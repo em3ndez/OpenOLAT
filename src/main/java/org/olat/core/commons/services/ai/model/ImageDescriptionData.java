@@ -45,9 +45,9 @@ public class ImageDescriptionData {
 	private String subject;
 	@Description("Exactly one of: horizontal, vertical, square")
 	private String orientation;
-	@Description("1-2 dominant colors only; empty list if no clear dominant color; use b&w for grayscale")
+	@Description("1-2 dominant colors; use b&w for grayscale; empty list if no clear dominant color")
 	private List<String> colorTags = new ArrayList<>();
-	@Description("1-2 categories from: nature, city, portrait, architecture, food, technology, abstract, animals, sport, education")
+	@Description("1-2 categories describing the image content")
 	private List<String> categoryTags = new ArrayList<>();
 	@Description("1-4 descriptive tags, stock-photo style, singular form (e.g. tree not trees)")
 	private List<String> keywords = new ArrayList<>();
