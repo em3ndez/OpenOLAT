@@ -42,6 +42,11 @@ import org.olat.core.gui.control.WindowControl;
 import org.olat.core.gui.translator.TranslatorHelper;
 import org.olat.core.util.StringHelper;
 import org.olat.course.nodes.MediaSiteCourseNode;
+import org.olat.ims.lti13.LTI13Service;
+import org.olat.ims.lti13.LTI13Tool;
+import org.olat.ims.lti13.LTI13ToolDeployment;
+import org.olat.ims.lti13.LTI13ToolDeploymentType;
+import org.olat.ims.lti13.LTI13ToolType;
 import org.olat.modules.ModuleConfiguration;
 import org.olat.modules.mediasite.LtiVersion;
 import org.olat.modules.mediasite.MediaSiteModule;
@@ -83,6 +88,8 @@ public class MediaSiteAdminController extends FormBasicController {
 	
 	@Autowired
 	private MediaSiteModule mediaSiteModule;
+	@Autowired
+	private LTI13Service lti13Service;
 
 	public MediaSiteAdminController(UserRequest ureq, WindowControl wControl) {
 		super(ureq, wControl);
@@ -225,19 +232,35 @@ public class MediaSiteAdminController extends FormBasicController {
 						mediaSiteModule.setUsernameProperty(usernamePropertyKeyEl.getValue());
 					}
 					case lti_1_3 -> {
-						if (!StringHelper.containsNonWhitespace(mediaSiteModule.getLti13ClientId())) {
-							String clientId = UUID.randomUUID().toString();
-							mediaSiteModule.setLti13ClientId(clientId);
-							lti13ClientIdEl.setValue(clientId);
+						List<LTI13Tool> tools = lti13Service.getTools(LTI13ToolType.MEDIASITE_GLOBAL);
+						LTI13Tool tool;
+						if (tools.isEmpty()) {
+							tool = lti13Service.createExternalTool(
+									mediaSiteModule.getServerName(), "",
+									lti13Service.newClientId(),
+									lti13InitiateLoginUrlEl.getValue(),
+									lti13RedirectUrlEl.getValue(),
+									LTI13ToolType.MEDIASITE_GLOBAL);
+							tool.setPublicKeyTypeEnum(LTI13Tool.PublicKeyType.URL);
+							tool.setPublicKeyUrl(lti13JwksUrlEl.getValue());
+							tool = lti13Service.updateTool(tool);
+							LTI13ToolDeployment deployment = lti13Service.createToolDeployment(
+									null, LTI13ToolDeploymentType.MULTIPLE_CONTEXTS,
+									UUID.randomUUID().toString(), tool);
+							mediaSiteModule.setLti13ToolKey(tool.getKey());
+							mediaSiteModule.setLti13DeploymentKey(deployment.getKey());
+						} else {
+							tool = tools.get(0);
+							tool.setInitiateLoginUrl(lti13InitiateLoginUrlEl.getValue());
+							tool.setRedirectUrl(lti13RedirectUrlEl.getValue());
+							tool.setPublicKeyUrl(lti13JwksUrlEl.getValue());
+							tool = lti13Service.updateTool(tool);
 						}
-						if (!StringHelper.containsNonWhitespace(mediaSiteModule.getLti13DeploymentId())) {
-							String deploymentId = UUID.randomUUID().toString();
-							mediaSiteModule.setLti13DeploymentId(deploymentId);
-							lti13DeploymentIdEl.setValue(deploymentId);
+						lti13ClientIdEl.setValue(tool.getClientId());
+						List<LTI13ToolDeployment> deployments = lti13Service.getToolDeploymentByTool(tool);
+						if (!deployments.isEmpty()) {
+							lti13DeploymentIdEl.setValue(deployments.get(0).getDeploymentId());
 						}
-						mediaSiteModule.setLti13InitiateLoginUrl(lti13InitiateLoginUrlEl.getValue());
-						mediaSiteModule.setLti13RedirectUrl(lti13RedirectUrlEl.getValue());
-						mediaSiteModule.setLti13JwksUrl(lti13JwksUrlEl.getValue());
 					}
 				}
 			}
@@ -280,29 +303,63 @@ public class MediaSiteAdminController extends FormBasicController {
 		administrationUrlEl.setValue(mediaSiteModule.getAdministrationURL());
 		usernamePropertyKeyEl.setValue(mediaSiteModule.getUsernameProperty());
 
-		lti13ClientIdEl.setValue(StringHelper.blankIfNull(mediaSiteModule.getLti13ClientId()));
-		lti13DeploymentIdEl.setValue(StringHelper.blankIfNull(mediaSiteModule.getLti13DeploymentId()));
-		lti13InitiateLoginUrlEl.setValue(mediaSiteModule.getLti13InitiateLoginUrl());
-		lti13RedirectUrlEl.setValue(mediaSiteModule.getLti13RedirectUrl());
-		lti13JwksUrlEl.setValue(mediaSiteModule.getLti13JwksUrl());
+		Long toolKey = mediaSiteModule.getLti13ToolKey();
+		if (toolKey != null) {
+			LTI13Tool tool = lti13Service.getToolByKey(toolKey);
+			if (tool != null) {
+				lti13ClientIdEl.setValue(StringHelper.blankIfNull(tool.getClientId()));
+				lti13InitiateLoginUrlEl.setValue(StringHelper.blankIfNull(tool.getInitiateLoginUrl()));
+				lti13RedirectUrlEl.setValue(StringHelper.blankIfNull(tool.getRedirectUrl()));
+				lti13JwksUrlEl.setValue(StringHelper.blankIfNull(tool.getPublicKeyUrl()));
+				Long deploymentKey = mediaSiteModule.getLti13DeploymentKey();
+				if (deploymentKey != null) {
+					LTI13ToolDeployment deployment = lti13Service.getToolDeploymentByKey(deploymentKey);
+					if (deployment != null) {
+						lti13DeploymentIdEl.setValue(deployment.getDeploymentId());
+					}
+				}
+			}
+		}
 
 		supressDataTransmissionEl.select("on", mediaSiteModule.isSupressDataTransmissionAgreement());
 	}
 	
 	public void loadFromCourseNodeConfig(ModuleConfiguration config) {
-		ltiVersionEl.select(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_VERSION, LtiVersion.lti_1_1.name()), true);
-		
-		enterpriseKeyEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_PRIVATE_KEY));
-		enterpriseSecretEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_PRIVATE_SECRET));
-		baseUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_SERVER_URL));
-		administrationUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_ADMINISTRATION_URL));
-		usernamePropertyKeyEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_USER_NAME_KEY, mediaSiteModule.getUsernameProperty()));
+		lti13ClientIdEl.setValue("");
+		lti13InitiateLoginUrlEl.setValue("");
+		lti13RedirectUrlEl.setValue("");
+		lti13JwksUrlEl.setValue("");
+		lti13DeploymentIdEl.setValue("");
 
-		lti13ClientIdEl.setValue(StringHelper.blankIfNull(mediaSiteModule.getLti13ClientId()));
-		lti13DeploymentIdEl.setValue(StringHelper.blankIfNull(mediaSiteModule.getLti13DeploymentId()));
-		lti13InitiateLoginUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_INITIATE_LOGIN_URL));
-		lti13RedirectUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_REDIRECT_URL));
-		lti13JwksUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_13_JWKS_URL));
+		ltiVersionEl.select(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_VERSION, LtiVersion.lti_1_1.name()), true);
+
+		LtiVersion ltiVersion = LtiVersion.valueOf(ltiVersionEl.getSelectedKey());
+		
+		switch (ltiVersion) {
+			case lti_1_1 -> {
+				enterpriseKeyEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_PRIVATE_KEY));
+				enterpriseSecretEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_PRIVATE_SECRET));
+				baseUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_SERVER_URL));
+				administrationUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_ADMINISTRATION_URL));
+				usernamePropertyKeyEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_USER_NAME_KEY, mediaSiteModule.getUsernameProperty()));
+			}
+			case lti_1_3 -> {
+				String courseToolKeyStr = config.getStringValue(MediaSiteCourseNode.CONFIG_LTI13_TOOL_KEY);
+				if (StringHelper.containsNonWhitespace(courseToolKeyStr)) {
+					LTI13Tool courseTool = lti13Service.getToolByKey(Long.valueOf(courseToolKeyStr));
+					if (courseTool != null) {
+						lti13ClientIdEl.setValue(StringHelper.blankIfNull(courseTool.getClientId()));
+						lti13InitiateLoginUrlEl.setValue(StringHelper.blankIfNull(courseTool.getInitiateLoginUrl()));
+						lti13RedirectUrlEl.setValue(StringHelper.blankIfNull(courseTool.getRedirectUrl()));
+						lti13JwksUrlEl.setValue(StringHelper.blankIfNull(courseTool.getPublicKeyUrl()));
+						List<LTI13ToolDeployment> deployments = lti13Service.getToolDeploymentByTool(courseTool);
+						if (!deployments.isEmpty()) {
+							lti13DeploymentIdEl.setValue(deployments.get(0).getDeploymentId());
+						}
+					}
+				}
+			}
+		}
 
 		supressDataTransmissionEl.select("on", config.getBooleanSafe(MediaSiteCourseNode.CONFIG_SUPRESS_AGREEMENT, mediaSiteModule.isSupressDataTransmissionAgreement()));
 	
@@ -324,11 +381,30 @@ public class MediaSiteAdminController extends FormBasicController {
 					config.setStringValue(MediaSiteCourseNode.CONFIG_ADMINISTRATION_URL, administrationUrlEl.getValue());
 				}
 				case lti_1_3 -> {
-					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_CLIENT_ID, mediaSiteModule.getLti13ClientId());
-					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_DEPLOYMENT_ID, mediaSiteModule.getLti13DeploymentId());
-					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_INITIATE_LOGIN_URL, lti13InitiateLoginUrlEl.getValue());
-					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_REDIRECT_URL, lti13RedirectUrlEl.getValue());
-					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI_13_JWKS_URL, lti13JwksUrlEl.getValue());
+					String courseToolKeyStr = config.getStringValue(MediaSiteCourseNode.CONFIG_LTI13_TOOL_KEY);
+					LTI13Tool courseTool;
+					if (!StringHelper.containsNonWhitespace(courseToolKeyStr)) {
+						courseTool = lti13Service.createExternalTool(
+								mediaSiteModule.getServerName(), "",
+								lti13Service.newClientId(),
+								lti13InitiateLoginUrlEl.getValue(),
+								lti13RedirectUrlEl.getValue(),
+								LTI13ToolType.MEDIASITE_COURSE);
+						courseTool.setPublicKeyTypeEnum(LTI13Tool.PublicKeyType.URL);
+						courseTool.setPublicKeyUrl(lti13JwksUrlEl.getValue());
+						courseTool = lti13Service.updateTool(courseTool);
+						lti13Service.createToolDeployment(null, LTI13ToolDeploymentType.SINGLE_CONTEXT,
+								UUID.randomUUID().toString(), courseTool);
+						config.setStringValue(MediaSiteCourseNode.CONFIG_LTI13_TOOL_KEY, String.valueOf(courseTool.getKey()));
+					} else {
+						courseTool = lti13Service.getToolByKey(Long.valueOf(courseToolKeyStr));
+						if (courseTool != null) {
+							courseTool.setInitiateLoginUrl(lti13InitiateLoginUrlEl.getValue());
+							courseTool.setRedirectUrl(lti13RedirectUrlEl.getValue());
+							courseTool.setPublicKeyUrl(lti13JwksUrlEl.getValue());
+							lti13Service.updateTool(courseTool);
+						}
+					}
 				}
 			}
 

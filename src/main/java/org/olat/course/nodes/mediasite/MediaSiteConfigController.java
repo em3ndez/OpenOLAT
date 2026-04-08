@@ -186,11 +186,7 @@ public class MediaSiteConfigController extends FormBasicController {
 			config.remove(MediaSiteCourseNode.CONFIG_SERVER_URL);
 			config.remove(MediaSiteCourseNode.CONFIG_SUPRESS_AGREEMENT);
 			config.remove(MediaSiteCourseNode.CONFIG_ADMINISTRATION_URL);
-			config.remove(MediaSiteCourseNode.CONFIG_LTI_13_CLIENT_ID);
-			config.remove(MediaSiteCourseNode.CONFIG_LTI_13_DEPLOYMENT_ID);
-			config.remove(MediaSiteCourseNode.CONFIG_LTI_13_INITIATE_LOGIN_URL);
-			config.remove(MediaSiteCourseNode.CONFIG_LTI_13_REDIRECT_URL);
-			config.remove(MediaSiteCourseNode.CONFIG_LTI_13_JWKS_URL);
+			config.remove(MediaSiteCourseNode.CONFIG_LTI13_TOOL_KEY);
 			config.remove(MediaSiteCourseNode.CONFIG_LTI_VERSION);
 		}
 		

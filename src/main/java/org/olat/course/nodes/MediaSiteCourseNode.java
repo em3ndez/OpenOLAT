@@ -65,11 +65,7 @@ public class MediaSiteCourseNode extends AbstractAccessableCourseNode {
 	public static final String CONFIG_PRIVATE_SECRET 		= "privateSecret";
 	public static final String CONFIG_USER_NAME_KEY			= "usernameKey";
 	
-	public static final String CONFIG_LTI_13_CLIENT_ID		= "lti13ClientId";
-	public static final String CONFIG_LTI_13_DEPLOYMENT_ID	= "lti13DeploymentId";
-	public static final String CONFIG_LTI_13_INITIATE_LOGIN_URL	= "lti13InitiateLoginUrl";
-	public static final String CONFIG_LTI_13_REDIRECT_URL	= "lti13Url";
-	public static final String CONFIG_LTI_13_JWKS_URL		= "lti13Url";
+	public static final String CONFIG_LTI13_TOOL_KEY		= "lti13ToolKey";
 	
 	public static final String CONFIG_SUPRESS_AGREEMENT		= "supressDataTransmissionAgreement";
 	public static final String CONFIG_IS_DEBUG				= "isDebug";

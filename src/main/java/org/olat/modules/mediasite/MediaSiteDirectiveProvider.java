@@ -26,6 +26,8 @@ import java.util.stream.Stream;
 
 import org.olat.core.commons.services.csp.CSPDirectiveProvider;
 import org.olat.core.util.StringHelper;
+import org.olat.ims.lti13.LTI13Service;
+import org.olat.ims.lti13.LTI13Tool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -38,6 +40,8 @@ public class MediaSiteDirectiveProvider implements CSPDirectiveProvider {
 
 	@Autowired
 	private MediaSiteModule mediaSiteModule;
+	@Autowired
+	private LTI13Service lti13Service;
 	
 	@Override
 	public Collection<String> getScriptSrcUrls() {
@@ -73,9 +77,19 @@ public class MediaSiteDirectiveProvider implements CSPDirectiveProvider {
 		if (!mediaSiteModule.isEnabled()) {
 			return null;
 		}
-		List<String> urls = Stream.of(mediaSiteModule.getBaseURL(), mediaSiteModule.getAdministrationURL(), 
-						mediaSiteModule.getLti13InitiateLoginUrl(), mediaSiteModule.getLti13RedirectUrl(),
-						mediaSiteModule.getLti13JwksUrl())
+		Stream.Builder<String> urlBuilder = Stream.builder();
+		urlBuilder.add(mediaSiteModule.getBaseURL());
+		urlBuilder.add(mediaSiteModule.getAdministrationURL());
+		Long toolKey = mediaSiteModule.getLti13ToolKey();
+		if (toolKey != null) {
+			LTI13Tool tool = lti13Service.getToolByKey(toolKey);
+			if (tool != null) {
+				urlBuilder.add(tool.getInitiateLoginUrl());
+				urlBuilder.add(tool.getRedirectUrl());
+				urlBuilder.add(tool.getPublicKeyUrl());
+			}
+		}
+		List<String> urls = urlBuilder.build()
 				.filter(StringHelper::containsNonWhitespace)
 				.collect(Collectors.toList());
 		return urls.isEmpty() ? null : urls;
