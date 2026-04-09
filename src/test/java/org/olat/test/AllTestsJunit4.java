@@ -93,6 +93,8 @@ import org.junit.runners.Suite;
 	org.olat.core.util.docxToMarkdown.DocxToMarkdownHandlerTest.class,
 	org.olat.core.util.docxToMarkdown.DocxToMarkdownServiceTest.class,
 	org.olat.core.util.docxToMarkdown.SmartArtRendererTest.class,
+	org.olat.core.util.docxToMarkdown.PresetGeometryPathTest.class,
+	org.olat.core.util.docxToMarkdown.DocxThemeParserTest.class,
 	org.olat.core.util.pdf.PdfDocumentTest.class,
 	org.olat.core.util.pdf.PdfDocumentSplitTest.class,
 	org.olat.core.util.prefs.gui.manager.GuiPreferenceServiceTest.class,

@@ -146,16 +146,37 @@ public class DocxToMarkdownService {
 			Map<String, String> footnotes = DocxFootnoteParser.parse(content.footnotesXml());
 			Map<String, String> endnotes = DocxFootnoteParser.parse(content.endnotesXml());
 
-			// Stage 5c: Pre-render SmartArt diagrams to SVG
-			Map<String, String> smartArtSvgs = new HashMap<>();
+			// Stage 5c: Parse theme colors for SmartArt rendering
+			Map<String, String> themeColors = DocxThemeParser.parse(content.themeXml());
+
+			// Stage 5d: Pre-render SmartArt diagrams to SVG
+			// The map is keyed by the diagramData rel ID (r:dm in dgm:relIds)
+			// so the handler can look up the correct SVG per diagram.
+			// Correlation: diagrams/data1.xml ↔ diagrams/drawing1.xml (same index).
+			Map<String, String> drawingByIndex = new HashMap<>();
 			for (Map.Entry<String, DocxRelTarget> rel : relationships.entrySet()) {
 				String type = rel.getValue().type();
 				if (type != null && type.contains("diagramDrawing")) {
-					String target = rel.getValue().target();
-					// Find the wp:extent for this diagram from document.xml (use default size)
-					String svgFile = SmartArtRenderer.render(zipFile, target, mediaDir, 5486400, 3200400);
-					if (svgFile != null) {
-						smartArtSvgs.put(rel.getKey(), svgFile);
+					String idx = extractDiagramIndex(rel.getValue().target());
+					if (idx != null) {
+						drawingByIndex.put(idx, rel.getKey());
+					}
+				}
+			}
+			Map<String, String> smartArtSvgs = new HashMap<>();
+			for (Map.Entry<String, DocxRelTarget> rel : relationships.entrySet()) {
+				String type = rel.getValue().type();
+				if (type != null && type.contains("diagramData")) {
+					String idx = extractDiagramIndex(rel.getValue().target());
+					String drawingRelId = idx != null ? drawingByIndex.get(idx) : null;
+					if (drawingRelId != null) {
+						DocxRelTarget drawingRel = relationships.get(drawingRelId);
+						String svgFile = SmartArtRenderer.render(zipFile, drawingRel.target(),
+								mediaDir, 5486400, 3200400, themeColors);
+						if (svgFile != null) {
+							// Key by diagramData rel ID — matches r:dm in dgm:relIds
+							smartArtSvgs.put(rel.getKey(), svgFile);
+						}
 					}
 				}
 			}
@@ -201,6 +222,26 @@ public class DocxToMarkdownService {
 				"docx.convert.error.read.failed", new String[]{ e.getMessage() }));
 			return new DocxToMarkdownResult("", null, messages);
 		}
+	}
+
+	/**
+	 * Extract the trailing number from a diagram target path.
+	 * E.g., "diagrams/data1.xml" → "1", "diagrams/drawing2.xml" → "2".
+	 */
+	private static String extractDiagramIndex(String target) {
+		if (target == null) return null;
+		int lastSlash = target.lastIndexOf('/');
+		String filename = lastSlash >= 0 ? target.substring(lastSlash + 1) : target;
+		if (filename.endsWith(".xml")) filename = filename.substring(0, filename.length() - 4);
+		StringBuilder digits = new StringBuilder();
+		for (int i = filename.length() - 1; i >= 0; i--) {
+			if (Character.isDigit(filename.charAt(i))) {
+				digits.insert(0, filename.charAt(i));
+			} else {
+				break;
+			}
+		}
+		return digits.isEmpty() ? null : digits.toString();
 	}
 
 	private static boolean isZipFile(File file) {

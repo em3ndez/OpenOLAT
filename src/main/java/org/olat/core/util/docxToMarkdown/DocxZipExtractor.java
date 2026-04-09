@@ -50,6 +50,7 @@ class DocxZipExtractor {
 	private static final String ENTRY_APP        = "docProps/app.xml";
 	private static final String ENTRY_FOOTNOTES  = "word/footnotes.xml";
 	private static final String ENTRY_ENDNOTES   = "word/endnotes.xml";
+	private static final String ENTRY_THEME      = "word/theme/theme1.xml";
 
 	private DocxZipExtractor() {
 		// utility
@@ -84,9 +85,10 @@ class DocxZipExtractor {
 		byte[] appPropsXml   = readOptional(zipFile, ENTRY_APP);
 		byte[] footnotesXml  = readOptional(zipFile, ENTRY_FOOTNOTES);
 		byte[] endnotesXml   = readOptional(zipFile, ENTRY_ENDNOTES);
+		byte[] themeXml      = readOptional(zipFile, ENTRY_THEME);
 
 		return new DocxArchiveContent(relsXml, numberingXml, stylesXml,
-			corePropsXml, appPropsXml, footnotesXml, endnotesXml);
+			corePropsXml, appPropsXml, footnotesXml, endnotesXml, themeXml);
 	}
 
 	private static byte[] readRequired(ZipFile zipFile, String entryName) throws IOException {

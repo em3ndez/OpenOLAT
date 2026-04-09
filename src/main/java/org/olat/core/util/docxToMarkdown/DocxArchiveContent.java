@@ -33,5 +33,6 @@ record DocxArchiveContent(
 	byte[] corePropsXml,
 	byte[] appPropsXml,
 	byte[] footnotesXml,
-	byte[] endnotesXml
+	byte[] endnotesXml,
+	byte[] themeXml
 ) {}

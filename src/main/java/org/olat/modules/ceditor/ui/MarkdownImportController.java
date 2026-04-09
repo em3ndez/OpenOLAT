@@ -36,11 +36,11 @@ import org.olat.core.gui.components.form.flexible.FormItem;
 import org.olat.core.gui.components.form.flexible.FormItemContainer;
 import org.olat.core.gui.components.form.flexible.elements.FileElement;
 import org.olat.core.gui.components.form.flexible.elements.SingleSelection;
-import org.olat.core.gui.components.form.flexible.elements.StaticTextElement;
 import org.olat.core.gui.components.form.flexible.elements.TextAreaElement;
 import org.olat.core.gui.components.form.flexible.impl.FormBasicController;
 import org.olat.core.gui.components.form.flexible.impl.FormEvent;
 import org.olat.core.gui.components.form.flexible.impl.FormLayoutContainer;
+import org.olat.core.gui.components.form.flexible.impl.elements.UploadFileElementEvent;
 import org.olat.core.gui.control.Controller;
 import org.olat.core.gui.control.Event;
 import org.olat.core.gui.control.WindowControl;
@@ -86,7 +86,6 @@ public class MarkdownImportController extends FormBasicController {
 	private SingleSelection modeEl;
 	private FileElement fileUploadEl;
 	private TextAreaElement markdownTextEl;
-	private StaticTextElement docxWarningEl;
 
 	private File tempUnzipDir;
 
@@ -123,12 +122,7 @@ public class MarkdownImportController extends FormBasicController {
 		fileUploadEl.setMandatory(true);
 		fileUploadEl.limitToMimeType(UPLOAD_MIME_TYPES, "import.file.error", null);
 		fileUploadEl.setMaxUploadSizeKB(maxUploadKB, "import.file.toolarge", null);
-
-		// Beta warning for DOCX imports — hidden by default, shown after upload
-		docxWarningEl = uifactory.addStaticTextElement("import.docx.warning", null,
-				translate("import.docx.beta.warning"), formLayout);
-		docxWarningEl.setVisible(false);
-		docxWarningEl.setElementCssClass("o_warning");
+		fileUploadEl.addActionListener(FormEvent.ONCHANGE);
 
 		// Text input
 		markdownTextEl = uifactory.addTextAreaElement("import.text", "import.text", -1, 15, 80, false, false, "", formLayout);
@@ -148,14 +142,17 @@ public class MarkdownImportController extends FormBasicController {
 			fileUploadEl.setVisible(isFileMode);
 			fileUploadEl.setMandatory(isFileMode);
 			markdownTextEl.setVisible(!isFileMode);
-			docxWarningEl.setVisible(false);
 			flc.setDirty(true);
 		}
-		if (source == fileUploadEl && fileUploadEl.isUploadSuccess()) {
+		if (event instanceof UploadFileElementEvent) {
 			// Show beta warning when a .docx file is uploaded
 			String filename = fileUploadEl.getUploadFileName();
 			boolean isDocx = filename != null && filename.toLowerCase().endsWith(".docx");
-			docxWarningEl.setVisible(isDocx);
+			if (isDocx) {
+				fileUploadEl.setWarningKey("import.docx.beta.warning");
+			} else {
+				fileUploadEl.clearWarning();
+			}
 		}
 		super.formInnerEvent(ureq, source, event);
 	}

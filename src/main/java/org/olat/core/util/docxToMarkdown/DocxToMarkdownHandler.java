@@ -617,12 +617,12 @@ class DocxToMarkdownHandler extends DefaultHandler {
 			}
 
 			case "dgm:relIds": {
-				// SmartArt diagram — emit pre-rendered SVG if available
-				if (!smartArtSvgs.isEmpty()) {
-					// Find which smartArt SVG to use by checking all diagram-related rIds
-					for (Map.Entry<String, String> entry : smartArtSvgs.entrySet()) {
-						emitAsBlock(buildImageMarkdown("", "media/" + entry.getValue()));
-						break; // emit first match (typically one diagram per dgm:relIds)
+				// SmartArt diagram — look up pre-rendered SVG by diagramData rel ID (r:dm)
+				String dmRelId = attrs.getValue("r:dm");
+				if (dmRelId != null) {
+					String svgFile = smartArtSvgs.get(dmRelId);
+					if (svgFile != null) {
+						emitAsBlock(buildImageMarkdown("", "media/" + svgFile));
 					}
 				}
 				break;
