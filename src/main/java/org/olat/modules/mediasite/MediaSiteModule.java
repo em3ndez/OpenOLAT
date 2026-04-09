@@ -49,6 +49,7 @@ public class MediaSiteModule extends AbstractSpringModule implements ConfigOnOff
 	private static final String MEDIASITE_LTI13_TOOL_KEY		= "mediasite.lti13.tool.key";
 	private static final String MEDIASITE_LTI13_DEPLOYMENT_KEY	= "mediasite.lti13.deployment.key";
 	private static final String MEDIASITE_LTI_VERSION			= "mediasite.lti.version";
+	private static final String MEDIASITE_LTI13_BASE_URL		= "mediasite.lei13.base.url";
 
 	@Value("${mediasite.enabled}")
 	private boolean enabled;
@@ -72,6 +73,7 @@ public class MediaSiteModule extends AbstractSpringModule implements ConfigOnOff
 	private String ltiVersion;
 	private Long lti13ToolKey;
 	private Long lti13DeploymentKey;
+	private String lti13BaseUrl;
 
 	public MediaSiteModule(CoordinatorManager coordinatorManager) {
 		super(coordinatorManager);
@@ -93,6 +95,7 @@ public class MediaSiteModule extends AbstractSpringModule implements ConfigOnOff
 		lti13ToolKey = StringHelper.containsNonWhitespace(toolKeyStr) ? Long.valueOf(toolKeyStr) : null;
 		String deploymentKeyStr = getStringPropertyValue(MEDIASITE_LTI13_DEPLOYMENT_KEY, null);
 		lti13DeploymentKey = StringHelper.containsNonWhitespace(deploymentKeyStr) ? Long.valueOf(deploymentKeyStr) : null;
+		lti13BaseUrl = getStringPropertyValue(MEDIASITE_LTI13_BASE_URL, null);
 	}
 
 	@Override
@@ -224,4 +227,12 @@ public class MediaSiteModule extends AbstractSpringModule implements ConfigOnOff
 		return result;
 	}
 
+	public String getLti13BaseUrl() {
+		return lti13BaseUrl;
+	}
+	
+	public void setLti13BaseUrl(String lti13BaseUrl) {
+		this.lti13BaseUrl = lti13BaseUrl;
+		setStringProperty(MEDIASITE_LTI13_BASE_URL, this.lti13BaseUrl, true);
+	}
 }

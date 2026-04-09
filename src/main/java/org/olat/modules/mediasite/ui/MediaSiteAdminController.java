@@ -79,6 +79,7 @@ public class MediaSiteAdminController extends FormBasicController {
 	private TextElement lti13InitiateLoginUrlEl;
 	private TextElement lti13RedirectUrlEl;
 	private TextElement lti13JwksUrlEl;
+	private TextElement lti13BaseUrlEl;
 
 	private List<FormItem> ltiCommonFormItems;
 	private List<FormItem> lti11FormItems;
@@ -165,9 +166,11 @@ public class MediaSiteAdminController extends FormBasicController {
 		lti13RedirectUrlEl.setMandatory(true);
 		lti13JwksUrlEl = uifactory.addTextElement("lti13.jwks.url", -1, null, formLayout);
 		lti13JwksUrlEl.setMandatory(true);
+		lti13BaseUrlEl = uifactory.addTextElement("lti13.base.url", -1, null, formLayout);
+		lti13BaseUrlEl.setMandatory(true);
 
 		lti13FormItems = Arrays.asList(lti13Spacer, lti13ClientIdEl, lti13DeploymentIdEl, lti13InitiateLoginUrlEl, 
-				lti13RedirectUrlEl, lti13JwksUrlEl);
+				lti13RedirectUrlEl, lti13JwksUrlEl, lti13BaseUrlEl);
 
 		SpacerElement suppressSpacer = uifactory.addSpacerElement("suppress.spacer", formLayout, false);
 		supressDataTransmissionEl = uifactory.addCheckboxesHorizontal("supress.data.transmission", formLayout, enabledKeys, TranslatorHelper.translateAll(getTranslator(), enabledKeys));
@@ -209,6 +212,7 @@ public class MediaSiteAdminController extends FormBasicController {
 		allOk &= checkMandatoryElement(lti13InitiateLoginUrlEl);
 		allOk &= checkMandatoryElement(lti13RedirectUrlEl);
 		allOk &= checkMandatoryElement(lti13JwksUrlEl);
+		allOk &= checkMandatoryElement(lti13BaseUrlEl);
 		return allOk;
 	}
 
@@ -236,7 +240,8 @@ public class MediaSiteAdminController extends FormBasicController {
 						LTI13Tool tool;
 						if (tools.isEmpty()) {
 							tool = lti13Service.createExternalTool(
-									mediaSiteModule.getServerName(), "",
+									mediaSiteModule.getServerName(), 
+									lti13RedirectUrlEl.getValue(),
 									lti13Service.newClientId(),
 									lti13InitiateLoginUrlEl.getValue(),
 									lti13RedirectUrlEl.getValue(),
@@ -252,10 +257,12 @@ public class MediaSiteAdminController extends FormBasicController {
 						} else {
 							tool = tools.get(0);
 							tool.setInitiateLoginUrl(lti13InitiateLoginUrlEl.getValue());
+							tool.setToolUrl(lti13RedirectUrlEl.getValue());
 							tool.setRedirectUrl(lti13RedirectUrlEl.getValue());
 							tool.setPublicKeyUrl(lti13JwksUrlEl.getValue());
 							tool = lti13Service.updateTool(tool);
 						}
+						mediaSiteModule.setLti13BaseUrl(lti13BaseUrlEl.getValue());
 						lti13ClientIdEl.setValue(tool.getClientId());
 						List<LTI13ToolDeployment> deployments = lti13Service.getToolDeploymentByTool(tool);
 						if (!deployments.isEmpty()) {
@@ -318,6 +325,7 @@ public class MediaSiteAdminController extends FormBasicController {
 						lti13DeploymentIdEl.setValue(deployment.getDeploymentId());
 					}
 				}
+				lti13BaseUrlEl.setValue(StringHelper.blankIfNull(mediaSiteModule.getLti13BaseUrl()));
 			}
 		}
 
@@ -330,6 +338,7 @@ public class MediaSiteAdminController extends FormBasicController {
 		lti13RedirectUrlEl.setValue("");
 		lti13JwksUrlEl.setValue("");
 		lti13DeploymentIdEl.setValue("");
+		lti13BaseUrlEl.setValue("");
 
 		ltiVersionEl.select(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI_VERSION, LtiVersion.lti_1_1.name()), true);
 
@@ -356,6 +365,7 @@ public class MediaSiteAdminController extends FormBasicController {
 						if (!deployments.isEmpty()) {
 							lti13DeploymentIdEl.setValue(deployments.get(0).getDeploymentId());
 						}
+						lti13BaseUrlEl.setValue(config.getStringValue(MediaSiteCourseNode.CONFIG_LTI13_BASE_URL, ""));
 					}
 				}
 			}
@@ -385,7 +395,8 @@ public class MediaSiteAdminController extends FormBasicController {
 					LTI13Tool courseTool;
 					if (!StringHelper.containsNonWhitespace(courseToolKeyStr)) {
 						courseTool = lti13Service.createExternalTool(
-								mediaSiteModule.getServerName(), "",
+								mediaSiteModule.getServerName(), 
+								lti13RedirectUrlEl.getValue(),
 								lti13Service.newClientId(),
 								lti13InitiateLoginUrlEl.getValue(),
 								lti13RedirectUrlEl.getValue(),
@@ -400,11 +411,13 @@ public class MediaSiteAdminController extends FormBasicController {
 						courseTool = lti13Service.getToolByKey(Long.valueOf(courseToolKeyStr));
 						if (courseTool != null) {
 							courseTool.setInitiateLoginUrl(lti13InitiateLoginUrlEl.getValue());
+							courseTool.setToolUrl(lti13RedirectUrlEl.getValue());
 							courseTool.setRedirectUrl(lti13RedirectUrlEl.getValue());
 							courseTool.setPublicKeyUrl(lti13JwksUrlEl.getValue());
 							lti13Service.updateTool(courseTool);
 						}
 					}
+					config.setStringValue(MediaSiteCourseNode.CONFIG_LTI13_BASE_URL, lti13BaseUrlEl.getValue());
 				}
 			}
 
