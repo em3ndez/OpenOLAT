@@ -264,6 +264,7 @@ MyManager mgr = CoreSpringFactory.getImpl(MyManager.class);
 - **Gender strategy:** `Benutzer{in}` → converted per locale config (star `*`, colon `:`, etc.)
 - **Core classes:** `I18nModule` (config), `I18nManager` (resolution/caching), `PackageTranslator` (per-controller)
 - **Glossary:** See `doc/openolat-glossary.md` for product-specific term definitions and `doc/openolat-glossary-translations.md` for canonical translations
+- **Alphabetical key order (mandatory):** Keys in `LocalStrings_XX.properties` files **must** be sorted alphabetically. When adding new keys, insert them at the correct alphabetical position. When modifying existing keys, keep them in place. Do **not** reorder existing keys unless explicitly told to do so.
 - **Glossary-driven translation (mandatory):** When translating i18n strings between languages, always read `doc/openolat-glossary-translations.md` first. If the source text contains any glossary terms, you **must** use the corresponding translated term from the glossary as the basis for your translation. This ensures consistent terminology across all languages.
 
 ## VFS (Virtual File System)
@@ -273,6 +274,41 @@ Never access `bcroot/` directly. Always use VFS classes:
 VFSContainer folder = VFSManager.olatRootContainer("/course/" + courseId + "/files");
 VFSLeaf file = folder.createChildLeaf("report.pdf");
 VFSManager.copyContent(inputStream, file, identity);
+```
+
+## New File Header (mandatory)
+
+Every new Java file must include the standard license header and a class-level Javadoc with the initial date and `@author` tag. The username is mandatory; the email is optional. The author for AI-generated code is `AI, ai@frentix.com, https://www.frentix.com`.
+
+```java
+/**
+ * <a href="https://www.openolat.org">
+ * OpenOLAT - Online Learning and Training</a><br>
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License"); <br>
+ * you may not use this file except in compliance with the License.<br>
+ * You may obtain a copy of the License at the
+ * <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache homepage</a>
+ * <p>
+ * Unless required by applicable law or agreed to in writing,<br>
+ * software distributed under the License is distributed on an "AS IS" BASIS, <br>
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. <br>
+ * See the License for the specific language governing permissions and <br>
+ * limitations under the License.
+ * <p>
+ * Initial code contributed and copyrighted by<br>
+ * frentix GmbH, https://www.frentix.com
+ * <p>
+ */
+package org.olat.modules.example;
+
+import ...;
+
+/**
+ * Initial date: 9 Apr 2026<br>
+ * @author AI, ai@frentix.com, https://www.frentix.com
+ */
+public class ExampleController extends BasicController {
 ```
 
 ## Code Style Rules
