@@ -218,6 +218,8 @@ public class PageEditorV2Controller extends BasicController {
 			if (event instanceof AddElementEvent aee) {
 				doAddElement(ureq, aee.getReferenceComponent(), aee.getHandler(),
 						aee.getTarget(),  aee.getContainerColumn());
+			} else if (event instanceof ImportMarkdownEvent) {
+				fireEvent(ureq, event);
 			}
 		} else if(addLayoutCtrl == source) {
 			addCalloutCtrl.deactivate();

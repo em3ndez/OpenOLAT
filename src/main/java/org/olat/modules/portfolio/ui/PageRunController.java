@@ -108,6 +108,7 @@ import org.olat.modules.ceditor.model.ExtendedMediaRenderingHints;
 import org.olat.modules.ceditor.model.StandardMediaRenderingHints;
 import org.olat.modules.ceditor.ui.FullEditorSecurityCallback;
 import org.olat.modules.ceditor.ui.MarkdownImportController;
+import org.olat.modules.ceditor.ui.PageElementTarget;
 import org.olat.modules.ceditor.ui.PageController;
 import org.olat.modules.ceditor.ui.PageEditorV2Controller;
 import org.olat.modules.ceditor.ui.ValidationMessage;
@@ -488,8 +489,9 @@ public class PageRunController extends BasicController implements TooledControll
 				doConfirmPublish(ureq);
 			} else if(event instanceof ImportEvent) {
 				openImportPageSelection(ureq);
-			} else if(event instanceof ImportMarkdownEvent) {
-				openMarkdownImport(ureq);
+			} else if(event instanceof ImportMarkdownEvent mdImportEvent) {
+				openMarkdownImport(ureq, mdImportEvent.getTargetContainerId(), mdImportEvent.getTargetColumn(),
+						mdImportEvent.getReferenceElementId(), mdImportEvent.getTarget());
 			}
 		} else if(editMetadataCtrl == source || restorePageCtrl == source) {
 			if(event == Event.DONE_EVENT) {
@@ -859,9 +861,11 @@ public class PageRunController extends BasicController implements TooledControll
 		mainVC.setDirty(true);
 	}
 
-	private void openMarkdownImport(UserRequest ureq) {
+	private void openMarkdownImport(UserRequest ureq, String targetContainerId, int targetColumn,
+			String referenceElementId, PageElementTarget target) {
 		removeAsListenerAndDispose(markdownImportCtrl);
-		markdownImportCtrl = new MarkdownImportController(ureq, getWindowControl(), page, settings.getAiOres(), settings.getSubIdent());
+		markdownImportCtrl = new MarkdownImportController(ureq, getWindowControl(), page, settings.getAiOres(), settings.getSubIdent(),
+				targetContainerId, targetColumn, referenceElementId, target);
 		listenTo(markdownImportCtrl);
 
 		Translator mdTranslator = Util.createPackageTranslator(MarkdownImportController.class, getLocale());

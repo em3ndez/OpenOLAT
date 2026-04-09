@@ -82,6 +82,10 @@ public class MarkdownImportController extends FormBasicController {
 	private final Page page;
 	private final OLATResourceable aiOres;
 	private final String subIdent;
+	private final String targetContainerId;
+	private final int targetColumn;
+	private final String referenceElementId;
+	private final PageElementTarget target;
 
 	private SingleSelection modeEl;
 	private FileElement fileUploadEl;
@@ -96,11 +100,17 @@ public class MarkdownImportController extends FormBasicController {
 	@Autowired
 	private DocxToMarkdownService docxToMarkdownService;
 
-	public MarkdownImportController(UserRequest ureq, WindowControl wControl, Page page, OLATResourceable aiOres, String subIdent) {
+	public MarkdownImportController(UserRequest ureq, WindowControl wControl, Page page, OLATResourceable aiOres,
+			String subIdent, String targetContainerId, int targetColumn,
+			String referenceElementId, PageElementTarget target) {
 		super(ureq, wControl);
 		this.page = page;
 		this.aiOres = aiOres;
 		this.subIdent = subIdent;
+		this.targetContainerId = targetContainerId;
+		this.targetColumn = targetColumn;
+		this.referenceElementId = referenceElementId;
+		this.target = target;
 		initForm(ureq);
 	}
 
@@ -232,7 +242,7 @@ public class MarkdownImportController extends FormBasicController {
 		}
 
 		MarkdownImportResult result = markdownImportService.convertAndPersist(markdown, page, getIdentity(), aiOres,
-				subIdent, basePath, getLocale());
+				subIdent, basePath, getLocale(), targetContainerId, targetColumn, referenceElementId, target);
 		fireEvent(ureq, new MarkdownImportDoneEvent(result.warnings()));
 	}
 
