@@ -53,6 +53,7 @@ import org.olat.core.gui.components.form.flexible.impl.elements.table.StickyActi
 import org.olat.core.gui.components.form.flexible.impl.elements.table.filter.FlexiTableMultiSelectionFilter;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.tab.FlexiFiltersTab;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.tab.FlexiFiltersTabFactory;
+import org.olat.core.gui.components.form.flexible.impl.elements.table.tab.FlexiTableFilterTabEvent;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.tab.TabSelectionBehavior;
 import org.olat.core.gui.components.link.Link;
 import org.olat.core.gui.components.link.LinkFactory;
@@ -187,6 +188,8 @@ public class CurriculumListManagerController extends FormBasicController impleme
 		initForm(ureq);
 		loadModel(null, true);
 		initFilters();// To collect some organisations
+		
+		tableEl.setAndLoadPersistedPreferences(ureq, "cur-curriculum-manage");
 	}
 
 	@Override
@@ -243,8 +246,6 @@ public class CurriculumListManagerController extends FormBasicController impleme
 				.withPrimaryButton("o_icon_add", "add.curriculum", null)
 				.build());
 		
-		tableEl.setAndLoadPersistedPreferences(ureq, "cur-curriculum-manage");
-		
 		initFiltersPresets();
 		tableEl.setSelectedFilterTab(ureq, allTab);
 		
@@ -288,7 +289,7 @@ public class CurriculumListManagerController extends FormBasicController impleme
 		}
 
 		if(!filters.isEmpty()) {
-			tableEl.setFilters(true, filters, false, false);
+			tableEl.setFilters(true, filters, true, false);
 		}
 	}
 	
@@ -537,6 +538,8 @@ public class CurriculumListManagerController extends FormBasicController impleme
 				}
 			} else if(event instanceof FlexiTableSearchEvent ftse) {
 				doSearch(ftse);
+			} else if(event instanceof FlexiTableFilterTabEvent) {
+				loadModel(tableEl.getQuickSearchString(), true);
 			} else if (event instanceof FlexiTableEmptyNextPrimaryActionEvent) {
 				doNewCurriculum(ureq);
 			}
