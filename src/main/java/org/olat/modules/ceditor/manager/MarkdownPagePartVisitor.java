@@ -59,6 +59,7 @@ import org.commonmark.node.Paragraph;
 import org.commonmark.node.SoftLineBreak;
 import org.commonmark.node.Text;
 import org.commonmark.node.ThematicBreak;
+import org.commonmark.ext.front.matter.YamlFrontMatterBlock;
 import org.commonmark.renderer.html.DefaultUrlSanitizer;
 import org.commonmark.renderer.html.HtmlRenderer;
 import org.olat.basesecurity.MediaServerModule;
@@ -299,6 +300,14 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 
 	@Override
 	public void visit(CustomBlock customBlock) {
+		if (customBlock instanceof YamlFrontMatterBlock yamlBlock) {
+			if (yamlBlock.getFirstChild() == null) {
+				// No actual YAML metadata — treat as thematic break
+				SpacerPart part = new SpacerPart();
+				parts.add(part);
+			}
+			return;
+		}
 		if (customBlock instanceof TableBlock tableBlock) {
 			handleTable(tableBlock);
 		} else {

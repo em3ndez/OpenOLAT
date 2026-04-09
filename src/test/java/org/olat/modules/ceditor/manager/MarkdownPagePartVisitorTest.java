@@ -243,6 +243,29 @@ public class MarkdownPagePartVisitorTest {
 		assertThat(parts.get(0)).isInstanceOf(SpacerPart.class);
 	}
 
+	// --- YAML front matter ---
+
+	@Test
+	public void testYamlFrontMatterSkipped() {
+		List<PagePart> parts = convert("---\ntitle: My Page\ntags: test\n---\n\nHello world");
+
+		assertThat(parts).hasSize(1);
+		assertThat(parts.get(0)).isInstanceOf(ParagraphPart.class);
+		ParagraphPart para = (ParagraphPart) parts.get(0);
+		assertThat(para.getContent()).contains("Hello world");
+		assertThat(para.getContent()).doesNotContain("title");
+	}
+
+	@Test
+	public void testThematicBreakAfterContent() {
+		List<PagePart> parts = convert("Above\n\n---\n\nBelow");
+
+		assertThat(parts).hasSize(3);
+		assertThat(parts.get(0)).isInstanceOf(ParagraphPart.class);
+		assertThat(parts.get(1)).isInstanceOf(SpacerPart.class);
+		assertThat(parts.get(2)).isInstanceOf(ParagraphPart.class);
+	}
+
 	// --- BlockQuote ---
 
 	@Test
