@@ -265,7 +265,10 @@ MyManager mgr = CoreSpringFactory.getImpl(MyManager.class);
 - **Core classes:** `I18nModule` (config), `I18nManager` (resolution/caching), `PackageTranslator` (per-controller)
 - **Glossary:** See `doc/openolat-glossary.md` for product-specific term definitions and `doc/openolat-glossary-translations.md` for canonical translations
 - **Alphabetical key order (mandatory):** Keys in `LocalStrings_XX.properties` files **must** be sorted alphabetically. When adding new keys, insert them at the correct alphabetical position. When modifying existing keys, keep them in place. Do **not** reorder existing keys unless explicitly told to do so.
-- **Glossary-driven translation (mandatory):** When translating i18n strings between languages, always read `doc/openolat-glossary-translations.md` first. If the source text contains any glossary terms, you **must** use the corresponding translated term from the glossary as the basis for your translation. This ensures consistent terminology across all languages.
+- **Wording (mandatory):** Always use the same terms as the OpenOlat application UI. The running product is the source of truth. If multiple terms exist for the same concept, ask the user.
+- **Glossary-driven translation (mandatory):** When translating i18n strings between languages, always read `doc/openolat-glossary-translations.md` first. Every glossary term **must** be translated exactly as defined there. If existing translations use different words, flag the inconsistency to the user and offer to fix it.
+- **DE is the base language.** When new terms appear that are not in the glossary, ask the user to add the term and provide the base translations before proceeding.
+- **Glossary sync:** When `doc/openolat-glossary.md` is updated, the glossary in the OpenOLAT-docs project (`sites/manual_user/docs/general`) must also be updated with the same information.
 
 ## VFS (Virtual File System)
 
