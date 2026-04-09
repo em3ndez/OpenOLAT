@@ -274,7 +274,6 @@ public class CurriculumDAO {
 		appendElementStatistics( sb, CurriculumElementStatus.preparation).append(",");
 		appendElementStatistics( sb, CurriculumElementStatus.provisional).append(",");
 		appendElementStatistics( sb, CurriculumElementStatus.confirmed).append(",");
-		appendElementStatistics( sb, CurriculumElementStatus.active).append(",");
 		appendElementStatistics( sb, CurriculumElementStatus.cancelled).append(",");
 		appendElementStatistics( sb, CurriculumElementStatus.finished).append(",");
 		appendElementStatistics( sb, CurriculumElementStatus.deleted)
@@ -371,13 +370,12 @@ public class CurriculumDAO {
 			long numOfPreparationRootElements = PersistenceHelper.extractPrimitiveLong(rawObject, 2);
 			long numOfProvisionalRootElements = PersistenceHelper.extractPrimitiveLong(rawObject, 3);
 			long numOfConfirmedRootElements = PersistenceHelper.extractPrimitiveLong(rawObject, 4);
-			long numOfActiveRootElements = PersistenceHelper.extractPrimitiveLong(rawObject, 5);
-			long numOfCancelledRootElements = PersistenceHelper.extractPrimitiveLong(rawObject, 6);
-			long numOfFinishedRootElements = PersistenceHelper.extractPrimitiveLong(rawObject, 7);
-			long numOfDeletedRootElements = PersistenceHelper.extractPrimitiveLong(rawObject, 8);
+			long numOfCancelledRootElements = PersistenceHelper.extractPrimitiveLong(rawObject, 5);
+			long numOfFinishedRootElements = PersistenceHelper.extractPrimitiveLong(rawObject, 6);
+			long numOfDeletedRootElements = PersistenceHelper.extractPrimitiveLong(rawObject, 7);
 			CurriculumImplementationsStatistics statistics = new CurriculumImplementationsStatistics(numOfRootElements,
 					numOfPreparationRootElements, numOfProvisionalRootElements, numOfConfirmedRootElements,
-					numOfActiveRootElements, numOfCancelledRootElements, numOfFinishedRootElements, numOfDeletedRootElements);
+					numOfCancelledRootElements, numOfFinishedRootElements, numOfDeletedRootElements);
 			infos.add(new CurriculumInfos(curriculum, statistics));
 		}
 		return infos;

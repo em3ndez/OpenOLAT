@@ -117,13 +117,11 @@ public class CurriculumListManagerController extends FormBasicController impleme
 	public static final String CONTEXT_REPORTS = "Reports";
 	public static final String CONTEXT_ABSENCES = "Absences";
 	public static final String CONTEXT_CONFIRMED = "Confirmed";
-	public static final String CONTEXT_ACTIVE = "Active";
 	public static final String CONTEXT_CANCELLED = "Cancelled";
 	public static final String CONTEXT_FINISHED = "Finished";
 	public static final String CONTEXT_DELETED = "Deleted";
-	public static final List<String> CONTEXTS = List.of(CONTEXT_DETAILS, CONTEXT_IMPLEMENTATIONS,
-			CONTEXT_PREPARATION, CONTEXT_PROVISIONAL, CONTEXT_CONFIRMED, CONTEXT_ACTIVE,
-			CONTEXT_CANCELLED, CONTEXT_FINISHED, CONTEXT_DELETED);
+	public static final List<String> CONTEXTS = List.of(CONTEXT_DETAILS, CONTEXT_IMPLEMENTATIONS, CONTEXT_PREPARATION,
+			CONTEXT_PROVISIONAL, CONTEXT_CONFIRMED, CONTEXT_CANCELLED, CONTEXT_FINISHED, CONTEXT_DELETED);
 	
 	public static final String SUB_PATH_DETAILS = "/" + CONTEXT_DETAILS + "/0";
 	public static final String SUB_PATH_OVERVIEW = "/" + CONTEXT_OVERVIEW + "/0";
@@ -131,7 +129,6 @@ public class CurriculumListManagerController extends FormBasicController impleme
 	public static final String SUB_PATH_PREPARATION = SUB_PATH_IMPLEMENTATIONS + "/" + CONTEXT_PREPARATION + "/0";
 	public static final String SUB_PATH_PROVISIONAL = SUB_PATH_IMPLEMENTATIONS +  "/" + CONTEXT_PROVISIONAL + "/0";
 	public static final String SUB_PATH_CONFIRMED = SUB_PATH_IMPLEMENTATIONS +  "/" + CONTEXT_CONFIRMED + "/0";
-	public static final String SUB_PATH_ACTIVE = SUB_PATH_IMPLEMENTATIONS +  "/" + CONTEXT_ACTIVE + "/0";
 	public static final String SUB_PATH_CANCELLED = SUB_PATH_IMPLEMENTATIONS +  "/" + CONTEXT_CANCELLED + "/0";
 	public static final String SUB_PATH_FINISHED = SUB_PATH_IMPLEMENTATIONS +  "/" + CONTEXT_FINISHED + "/0";
 	public static final String SUB_PATH_DELETED = SUB_PATH_IMPLEMENTATIONS +  "/" + CONTEXT_DELETED + "/0";
@@ -214,7 +211,6 @@ public class CurriculumListManagerController extends FormBasicController impleme
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(CurriculumCols.numOfPreparationRootElements, CONTEXT_PREPARATION));
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(CurriculumCols.numOfProvisionalRootElements, CONTEXT_PROVISIONAL));
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(CurriculumCols.numOfConfirmedRootElements, CONTEXT_CONFIRMED));
-		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(CurriculumCols.numOfActiveRootElements, CONTEXT_ACTIVE));
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(false, CurriculumCols.numOfCancelledRootElements, CONTEXT_CANCELLED));
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(false, CurriculumCols.numOfFinishedRootElements, CONTEXT_FINISHED));
 		columnsModel.addFlexiColumnModel(new DefaultFlexiColumnModel(false, CurriculumCols.numOfDeletedRootElements, CONTEXT_DELETED));
