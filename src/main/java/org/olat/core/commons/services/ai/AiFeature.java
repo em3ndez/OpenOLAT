@@ -52,11 +52,11 @@ public enum AiFeature {
 		return "ai.feature." + type;
 	}
 	
-	private final static Map<String, AiFeature> secureValues = List.of(values()).stream()
-			.collect(Collectors.toMap(AiFeature::name, Function.identity()));
+	private final static Map<String, AiFeature> typeToEnum = List.of(values()).stream()
+			.collect(Collectors.toMap(AiFeature::getType, Function.identity()));
 
-	public static final AiFeature secureValueOf(String val) {
-		return secureValues.getOrDefault(val, null);
+	public static final AiFeature ofType(String type) {
+		return typeToEnum.getOrDefault(type, null);
 	}
 
 }

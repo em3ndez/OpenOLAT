@@ -46,7 +46,7 @@ public class AiFeatureCellRenderer implements FlexiCellRenderer {
 	public void render(Renderer renderer, StringOutput target, Object cellValue, int row,
 			FlexiTableComponent source, URLBuilder ubu, Translator t) {
 		if (cellValue instanceof String value && StringHelper.containsNonWhitespace(value)) {
-			AiFeature aiFeature = AiFeature.secureValueOf(value);
+			AiFeature aiFeature = AiFeature.ofType(value);
 			if (aiFeature != null) {
 				target.append(translator.translate(aiFeature.getI18nKey()));
 			} else {
