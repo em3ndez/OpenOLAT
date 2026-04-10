@@ -142,6 +142,11 @@
 		}
 	}
 
+	&.o_apply_background_color:not(.o_alert_box_active) {
+		border-radius: $border-radius-base;
+		overflow: hidden;
+	}
+
 	.o_ed_htitle {
 		h1, .h1 { font-size: $font-size-h1; }
 		h2, .h2 { font-size: $font-size-h2; }
