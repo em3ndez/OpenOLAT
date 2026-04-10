@@ -30,6 +30,7 @@ import org.olat.basesecurity.OrganisationModule;
 import org.olat.basesecurity.OrganisationRoles;
 import org.olat.basesecurity.OrganisationService;
 import org.olat.basesecurity.model.OrganisationRefImpl;
+import org.olat.core.commons.persistence.SortKey;
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.Component;
 import org.olat.core.gui.components.emptystate.EmptyStateConfig;
@@ -38,11 +39,14 @@ import org.olat.core.gui.components.form.flexible.FormItemContainer;
 import org.olat.core.gui.components.form.flexible.elements.FlexiTableElement;
 import org.olat.core.gui.components.form.flexible.elements.FlexiTableExtendedFilter;
 import org.olat.core.gui.components.form.flexible.elements.FlexiTableFilter;
+import org.olat.core.gui.components.form.flexible.elements.FlexiTableSort;
+import org.olat.core.gui.components.form.flexible.elements.FlexiTableSortOptions;
 import org.olat.core.gui.components.form.flexible.elements.FormLink;
 import org.olat.core.gui.components.form.flexible.impl.FormBasicController;
 import org.olat.core.gui.components.form.flexible.impl.FormEvent;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.BooleanCellRenderer;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.DefaultFlexiColumnModel;
+import org.olat.core.gui.components.form.flexible.impl.elements.table.FlexiColumnModel;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.FlexiTableColumnModel;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.FlexiTableDataModelFactory;
 import org.olat.core.gui.components.form.flexible.impl.elements.table.FlexiTableEmptyNextPrimaryActionEvent;
@@ -134,11 +138,13 @@ public class CurriculumListManagerController extends FormBasicController impleme
 	public static final String SUB_PATH_DELETED = SUB_PATH_IMPLEMENTATIONS +  "/" + CONTEXT_DELETED + "/0";
 	
 	private static final String ALL_TAB_ID = "All";
+	private static final String RELEVANT_TAB_ID = "Relevant";
 
 	private static final String FILTER_STATUS = "Status";
 	private static final String FILTER_ORGANISATIONS = "Organisations";
-	
+
 	private FlexiFiltersTab allTab;
+	private FlexiFiltersTab relevantTab;
 	
 	private FlexiTableElement tableEl;
 	private FormLink bulkDeleteButton;
@@ -187,6 +193,7 @@ public class CurriculumListManagerController extends FormBasicController impleme
 		initFilters();// To collect some organisations
 		
 		tableEl.setAndLoadPersistedPreferences(ureq, "cur-curriculum-manage");
+		initSortSettings();
 	}
 
 	@Override
@@ -243,7 +250,7 @@ public class CurriculumListManagerController extends FormBasicController impleme
 				.build());
 		
 		initFiltersPresets();
-		tableEl.setSelectedFilterTab(ureq, allTab);
+		tableEl.setSelectedFilterTab(ureq, relevantTab);
 		
 		if(secCallback.canDeleteCurriculum()) {
 			tableEl.setMultiSelect(true);
@@ -260,6 +267,22 @@ public class CurriculumListManagerController extends FormBasicController impleme
 		}
 	}
 	
+	private void initSortSettings() {
+		List<FlexiTableSort> sorters = new ArrayList<>();
+		sorters.add(new FlexiTableSort(translate("sort.relevance"), CurriculumManagerTableSort.SORT_RELEVANCE));
+		sorters.add(FlexiTableSort.SPACER);
+		FlexiTableColumnModel columnModel = tableModel.getTableColumnModel();
+		for(int i = 0; i < columnModel.getColumnCount(); i++) {
+			FlexiColumnModel col = columnModel.getColumnModel(i);
+			if(col.isSortable() && col.getSortKey() != null && col.getHeaderKey() != null) {
+				sorters.add(new FlexiTableSort(translate(col.getHeaderKey()), col.getSortKey()));
+			}
+		}
+		FlexiTableSortOptions sortOptions = new FlexiTableSortOptions(sorters);
+		sortOptions.setDefaultOrderBy(new SortKey(CurriculumManagerTableSort.SORT_RELEVANCE, true));
+		tableEl.setSortSettings(sortOptions);
+	}
+
 	private void initFilters() {
 		List<FlexiTableExtendedFilter> filters = new ArrayList<>();
 		
@@ -308,12 +331,13 @@ public class CurriculumListManagerController extends FormBasicController impleme
 	
 	private void initFiltersPresets() {
 		List<FlexiFiltersTab> tabs = new ArrayList<>();
-		
-		allTab = FlexiFiltersTabFactory.tabWithImplicitFilters(ALL_TAB_ID, translate("filter.all"),
-				TabSelectionBehavior.nothing, List.of());
-		allTab.setFiltersExpanded(true);
+
+		allTab = FlexiFiltersTabFactory.tab(ALL_TAB_ID, translate("filter.all"), TabSelectionBehavior.nothing);
 		tabs.add(allTab);
-		
+
+		relevantTab = FlexiFiltersTabFactory.tab(RELEVANT_TAB_ID, translate("filter.relevant"), TabSelectionBehavior.nothing);
+		tabs.add(relevantTab);
+
 		tableEl.setFilterTabs(true, tabs);
 	}
 	
@@ -364,6 +388,9 @@ public class CurriculumListManagerController extends FormBasicController impleme
 		// principals can only view them
 		CurriculumSearchParameters searchParams = new CurriculumSearchParameters();
 		searchParams.setSearchString(searchString);
+		
+		FlexiFiltersTab selectedFilterTab = tableEl.getSelectedFilterTab();
+		searchParams.setHasRelevantImplementations(selectedFilterTab != null && selectedFilterTab == relevantTab);
 		
 		FlexiTableFilter statusFilter = FlexiTableFilter.getFilter(tableEl.getFilters(), FILTER_STATUS);
 		if (statusFilter instanceof FlexiTableExtendedFilter extendedFilter) {

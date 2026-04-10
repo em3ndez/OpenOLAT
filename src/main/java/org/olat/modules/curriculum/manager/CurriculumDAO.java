@@ -321,9 +321,17 @@ public class CurriculumDAO {
 				key = Long.valueOf(ref);
 				sb.append(" or cur.key=:curriculumKey");
 			}
-			sb.append(")");	
+			sb.append(")");
 		}
-		
+
+		if(params.isHasRelevantImplementations()) {
+			sb.and().append(" exists (select relEl.key from curriculumelement relEl")
+			  .append("  where relEl.curriculum.key=cur.key")
+			  .append("   and relEl.parent.key is null")
+			  .append("   and relEl.status ").in(CurriculumElementStatus.preparation, CurriculumElementStatus.provisional, CurriculumElementStatus.confirmed)
+			  .append(" )");
+		}
+
 		if(params.getElementOwner() != null || params.getCurriculumOwner() != null || params.getCurriculumAdmin() != null || params.getCurriculumPrincipal() != null) {
 			appendCurriculumPermissions(sb, params);
 		}
