@@ -141,7 +141,7 @@ table {
 			border: 1px solid $o-content-table-border;
 		}
 		thead td, th {
-			background: $gray-lighter;
+			background: mix($o-color-light-gray, white, 5%);
 			font-weight: bold;
 		}
 	}

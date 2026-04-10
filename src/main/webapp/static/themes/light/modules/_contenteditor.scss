@@ -1525,7 +1525,7 @@ table.o_ce_table {
 .o_page_run_code_box {
 	position: relative;
 
-	background-color: $pre-bg;
+	background-color: mix($o-color-light-gray, white, 5%);
 	border: 1px solid $pre-border-color;
 	border-radius: $border-radius-base;
 
@@ -2827,6 +2827,63 @@ table.o_ce_table {
 	&.o_lightbox_close_border.o_image_gallery_lightbox {
 		.basicLightbox__placeholder {
 			overflow-y: auto;
+		}
+	}
+}
+
+.o_page_layout.o_apply_background_color {
+	.o_container_block, .o_page_container_slot-inner {
+		padding: $o-ce-padding-compact;
+	}
+
+	div.o_color_lightgray hr {
+		border-top-color: mix($o-color-light-gray, white, 30%);
+	}
+	div.o_color_yellow hr {
+		border-top-color: mix($o-color-yellow, white, 30%);
+	}
+	div.o_color_orange hr {
+		border-top-color: mix($o-color-orange, white, 30%);
+	}
+	div.o_color_brown hr {
+		border-top-color: mix($o-color-brown, white, 30%);
+	}
+	div.o_color_red hr {
+		border-top-color: mix($o-color-red, white, 30%);
+	}
+	div.o_color_orchid hr {
+		border-top-color: mix($o-color-orchid, white, 30%);
+	}
+	div.o_color_purple hr {
+		border-top-color: mix($o-color-purple, white, 30%);
+	}
+	div.o_color_light_blue hr {
+		border-top-color: mix($o-color-light-blue, white, 30%);
+	}
+	div.o_color_cobalt_blue hr {
+		border-top-color: mix($o-color-cobalt-blue, white, 30%);
+	}
+	div.o_color_dark_blue hr {
+		border-top-color: mix($o-color-dark-blue, white, 30%);
+	}
+	div.o_color_light_green hr {
+		border-top-color: mix($o-color-light-green, white, 30%);
+	}
+	div.o_color_sea_green hr {
+		border-top-color: mix($o-color-sea-green, white, 30%);
+	}
+
+	.o_alert_box_active {
+		margin-left: $o-ce-padding-normal;
+		margin-right: $o-ce-padding-normal;
+	}
+}
+
+.o_page_content_editor {
+	.o_page_layout {
+		.o_alert_box_active {
+			margin-left: $o-ce-padding-compact;
+			margin-right: $o-ce-padding-compact;
 		}
 	}
 }
