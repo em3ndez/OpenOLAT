@@ -2016,6 +2016,14 @@ table.o_ce_table {
 			}
 		}
 
+		.o_table_caption {
+			padding-top: $table-cell-padding;
+			padding-bottom: $table-cell-padding;
+			color: $text-muted;
+			text-align: left;
+			font-style: italic;
+		}
+
 		table {
 			width: 100%;
 
