@@ -80,7 +80,8 @@ public class MarkdownImportService {
 			AutolinkExtension.create(),
 			FootnotesExtension.create(),
 			ImageAttributesExtension.create(),
-			YamlFrontMatterExtension.create()
+			YamlFrontMatterExtension.create(),
+			HighlightExtension.create()
 		));
 		return extensions;
 	}
@@ -121,15 +122,22 @@ public class MarkdownImportService {
 			return new MarkdownImportResult(List.of());
 		}
 
-		// 1. Pre-process math blocks
+		// 1a. Pre-process math blocks FIRST so $$...$$ content is replaced with
+		// placeholders before the admonition preprocessor scans the text. This
+		// prevents any stray `!!!` inside LaTeX math from being mistaken for a
+		// MkDocs admonition marker.
 		MarkdownMathPreprocessor.PreprocessResult preprocessed =
 			MarkdownMathPreprocessor.preprocess(markdown);
+
+		// 1b. Pre-process MkDocs-style admonitions (!!! type) into blockquote form
+		String withAdmonitions =
+			MarkdownMkDocsAdmonitionPreprocessor.preprocess(preprocessed.text());
 
 		// 2. Parse with CommonMark + GFM Tables
 		Parser parser = Parser.builder()
 			.extensions(markdownExtensions())
 			.build();
-		Node document = parser.parse(preprocessed.text());
+		Node document = parser.parse(withAdmonitions);
 
 		// Extract image dimensions from ImageAttributes nodes BEFORE the visitor
 		// processes the tree (the HtmlRenderer strips ImageAttributes during rendering)

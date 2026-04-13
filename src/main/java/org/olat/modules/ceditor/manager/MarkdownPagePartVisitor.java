@@ -267,8 +267,14 @@ public class MarkdownPagePartVisitor extends AbstractVisitor {
 		alertBox.setShowAlertBox(true);
 		alertBox.setWithIcon(admonition != null);
 		alertBox.setType(alertType);
-		if (admonition != null && translator != null) {
-			alertBox.setTitle(translator.translate(alertType.getI18nKey()));
+		if (admonition != null) {
+			String customTitle = admonition.customTitle();
+			if (customTitle != null) {
+				// Explicit custom title — empty string suppresses the title
+				alertBox.setTitle(customTitle);
+			} else if (translator != null) {
+				alertBox.setTitle(translator.translate(alertType.getI18nKey()));
+			}
 		}
 		textSettings.setAlertBoxSettings(alertBox);
 		part.setLayoutOptions(ContentEditorXStream.toXml(textSettings));

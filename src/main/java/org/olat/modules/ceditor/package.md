@@ -43,7 +43,7 @@ The `ceditor` package implements a **server-centric block-based content editor**
 ceditor/
   *.java                    # Core interfaces and enums (~39 files)
   handler/                  # PageElementHandler implementations (12 files)
-  manager/                  # Service layer, DAO, file storage, markdown import (18 files)
+  manager/                  # Service layer, DAO, file storage, markdown import (23 files)
   model/                    # Domain model interfaces and value objects (~49 files)
   model/jpa/                # JPA entity classes (24 files)
   ui/                       # Controllers, run components (~52 files)
@@ -836,11 +836,13 @@ The content import feature allows users to create page content from CommonMark m
 | `# Heading` (H1–H6) | `TitlePart` |
 | Paragraphs | `ParagraphPart` (consecutive merged) |
 | `**bold**`, `*italic*`, `~~strike~~` | Inline HTML in paragraph content |
+| `==highlight==` | `<mark>` via custom `HighlightExtension` |
 | `<sup>`, `<sub>`, `<u>`, `<mark>`, `<span style="text-decoration:underline">` | Whitelisted safe inline HTML |
 | `` ```code``` `` | `CodePart` with syntax highlighting |
 | `$$math$$` | `MathPart` via display math preprocessor |
 | GFM tables | `TablePart` with row/column header detection |
 | `> blockquote` / `> [!NOTE]` | `ParagraphPart` with `AlertBoxSettings` |
+| `!!! type "Title"` (MkDocs) | `ParagraphPart` with `AlertBoxSettings` (custom title) |
 | `---` | `SpacerPart` |
 | `![alt](url){width=N height=N}` | `MediaPart` with `ImageSize` from dimensions |
 | `[^1]` footnotes | Rendered as footnote definitions |
@@ -855,11 +857,13 @@ Word documents are converted to Markdown via the `DocxToMarkdownService` from `o
 
 | Class | Role |
 |-------|------|
-| `MarkdownImportService` | Spring `@Service` — orchestrates parsing and persistence. Pre-processes math, extracts image dimensions from AST, parses via CommonMark (with GFM tables, strikethrough, footnotes, task lists, autolinks, image attributes, YAML front matter extensions), visits the AST, persists parts in a `ContainerPart`. |
+| `MarkdownImportService` | Spring `@Service` — orchestrates parsing and persistence. Runs the math preprocessor then the MkDocs admonition preprocessor, extracts image dimensions from the AST, parses via CommonMark (with GFM tables, strikethrough, footnotes, task lists, autolinks, image attributes, YAML front matter, and the custom Highlight extension), visits the AST, persists parts in a `ContainerPart`. |
 | `MarkdownPagePartVisitor` | `AbstractVisitor` that walks the CommonMark AST and produces `PagePart` instances. Handles image dimension mapping (proportion-based `ImageSize` from Word page width), table header detection (bold row/column analysis), and safe inline HTML whitelist with post-processing unescape. |
-| `MarkdownMathPreprocessor` | Replaces `$$...$$` display math blocks with unique placeholders before CommonMark parsing. |
+| `MarkdownMathPreprocessor` | Replaces `$$...$$` display math blocks with unique placeholders before CommonMark parsing. Runs before the admonition preprocessor so stray `!!!` inside LaTeX cannot be mis-transformed. |
+| `MarkdownMkDocsAdmonitionPreprocessor` | Transforms MkDocs / Python-Markdown admonition blocks (`!!! type "Title"` with 4-space-indented content) into the existing `> [!TYPE\|Title]` blockquote form. Respects fenced code blocks. Titles are sanitized to plain text (HTML tags and CommonMark-formatting chars stripped) so the title survives as a single Text node and is safely displayed by the alert-box renderer. A blank separator line is appended so adjacent admonitions do not merge into a single blockquote. |
 | `MarkdownCodeLanguageMapping` | Maps fenced code block info strings to `CodeLanguage` enum. |
-| `MarkdownAdmonitionMapping` | Detects `[!NOTE]`, `[!WARNING]`, etc. in blockquotes and maps to `AlertBoxType`. |
+| `MarkdownAdmonitionMapping` | Detects `[!TYPE]` and `[!TYPE\|Custom title]` markers in blockquotes and maps to `AlertBoxType`. Supports GitHub types (NOTE, TIP, IMPORTANT, WARNING, CAUTION, INFO, SUCCESS, ERROR) and MkDocs types (ABSTRACT, SUMMARY, TLDR, HINT, CHECK, DONE, HELP, FAQ, QUESTION, ATTENTION, FAILURE, FAIL, MISSING, DANGER, BUG, EXAMPLE, QUOTE, CITE). Empty custom title `\|` suppresses the title; absent `\|…` falls back to the translated type name. |
+| `Highlight` / `HighlightDelimiterProcessor` / `HighlightHtmlNodeRenderer` / `HighlightExtension` | Custom CommonMark extension implementing the `==text==` → `<mark>text</mark>` syntax via a proper `DelimiterProcessor`. Respects code spans and code fences automatically. |
 | `MarkdownImportResult` | Record carrying `List<String> warnings` from partial conversion issues. |
 
 **Security measures:**
@@ -867,6 +871,8 @@ Word documents are converted to Markdown via the `DocxToMarkdownService` from `o
 - `HtmlRenderer` configured with `escapeHtml(true)` and `sanitizeUrls(true)` allowing only `http`, `https`, and `mailto` protocols.
 - HTML blocks are skipped entirely (warning emitted).
 - Safe inline HTML whitelist: only `<sup>`, `<sub>`, `<u>`, `<mark>`, `<span style="text-decoration:underline">`, and their closing tags pass through. All other inline HTML is stripped.
+- `==highlight==` is processed by a CommonMark `DelimiterProcessor`, so code spans and code fences are respected automatically (e.g., `x==y` inside `` `…` `` or ``` ``` ``` is never transformed).
+- MkDocs admonition titles are stripped of all markup (HTML tags and CommonMark-formatting chars) before being emitted, so they cannot inject HTML into the alert box.
 - Remote image downloads restricted by `MediaServerModule.isRestrictedDomain()`.
 - Download size limited to `MAX_UPLOAD_SIZE_KB` (50 MB).
 - Local file path images require a `basePath`; rejected in text paste mode.
