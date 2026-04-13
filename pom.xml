@@ -93,6 +93,7 @@
 		<jakarta.xml.ws-api>4.0.3</jakarta.xml.ws-api>
 		<qtiworks.version>1.0.32</qtiworks.version>
 		<org.commonmark>0.28.0</org.commonmark>
+		<dev.langchain4j>1.13.0</dev.langchain4j>
 		
 	    <!-- properties for testing and Q&A -->
 	    <!-- by default no tests are executed so far (April 2011). Use appropriate profiles and properties on the command line -->
@@ -2389,17 +2390,17 @@
 		<dependency>
 			<groupId>dev.langchain4j</groupId>
 			<artifactId>langchain4j</artifactId>
-			<version>1.12.2</version>
+			<version>${dev.langchain4j}</version>
 		</dependency>
 		<dependency>
 			<groupId>dev.langchain4j</groupId>
 			<artifactId>langchain4j-open-ai</artifactId>
-			<version>1.12.2</version>
+			<version>${dev.langchain4j}</version>
 		</dependency>
 		<dependency>
 			<groupId>dev.langchain4j</groupId>
 			<artifactId>langchain4j-anthropic</artifactId>
-			<version>1.12.2</version>
+			<version>${dev.langchain4j}</version>
 		</dependency>
 		<!-- end AI API -->
 
