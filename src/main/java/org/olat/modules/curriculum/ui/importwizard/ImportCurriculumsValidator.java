@@ -890,7 +890,8 @@ public class ImportCurriculumsValidator {
 			}
 		}
 		
-		if(allOk && (!subjectsList.isEmpty() || !currentPaths.isEmpty())) {
+		if(allOk && (!subjectsList.isEmpty() || !currentPaths.isEmpty())
+				&& (!subjectsList.containsAll(currentPaths) || !currentPaths.containsAll(subjectsList)) ) {
 			importedRow.addChanged(column, currentPaths, subjectsList, ImportCurriculumsCols.taxonomyLevels);
 		}
 		return allOk;
