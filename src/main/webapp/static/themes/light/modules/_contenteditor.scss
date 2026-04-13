@@ -2832,8 +2832,14 @@ table.o_ce_table {
 }
 
 .o_page_layout.o_apply_background_color {
-	.o_container_block, .o_page_container_slot-inner {
+	> .o_container_block {
 		padding: $o-ce-padding-compact;
+	}
+
+	> .o_page_container_slot {
+		> .o_page_container_slot-inner {
+			padding: $o-ce-padding-compact;
+		}
 	}
 
 	div.o_color_lightgray hr {
