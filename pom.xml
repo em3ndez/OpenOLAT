@@ -67,7 +67,7 @@
 		
 		<!-- Dependency versions -->
 		<org.springframework.version>7.0.6</org.springframework.version>
-		<org.hibernate.version>7.3.0.Final</org.hibernate.version>
+		<org.hibernate.version>7.3.1.Final</org.hibernate.version>
 		<org.hibernate.validator.version>9.1.0.Final</org.hibernate.validator.version>
 		<org.glassfish.jaxb.runtime>4.0.7</org.glassfish.jaxb.runtime>
 		<apache.cxf>4.2.0</apache.cxf>
@@ -1655,7 +1655,7 @@
 		<dependency>
 			<groupId>org.mnode.ical4j</groupId>
 			<artifactId>ical4j</artifactId>
-			<version>4.2.4</version>
+			<version>4.2.5</version>
 			<exclusions>
 				<exclusion>
 					<groupId>commons-logging</groupId>
@@ -2192,7 +2192,7 @@
 		<dependency>
 			<groupId>com.nimbusds</groupId>
 			<artifactId>nimbus-jose-jwt</artifactId>
-			<version>10.8</version>		
+			<version>10.9</version>		
 		</dependency>
 		<dependency>
 			<groupId>com.neemsoft</groupId>
