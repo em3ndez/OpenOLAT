@@ -1305,6 +1305,11 @@
 }
 
 .o_ce_html_raw, .o_ce_html_paragraph {
+	&.o_html_col0 {
+		>p:last-child, >ul:last-child, >ol:last-child {
+			margin-bottom: 0;
+		}
+	}
 	&.o_html_col2 {
 		column-count: 2;
 		column-gap: 1em;
