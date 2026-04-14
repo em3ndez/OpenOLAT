@@ -158,7 +158,7 @@
 }
 
 @mixin alert_box($mainColor, $backgroundColor) {
-	box-shadow: $o-card-box-hover-shadow;
+	box-shadow: $o-cc-box-shadow;
 	border-color: rgba($mainColor, 15%);
 	background-color: $backgroundColor;
 
@@ -1197,7 +1197,7 @@
 		}
 		img.o_image_shadow {
 			padding: 0;
-			box-shadow: $o-card-box-hover-shadow;
+			box-shadow: $o-cc-box-shadow;
 			border: 1px solid rgba($gray, 15%);
 			border-radius: $border-radius-base;
 		}
@@ -1450,7 +1450,7 @@ table.o_ce_table {
 .o_page_run_code_box {
 	position: relative;
 
-	box-shadow: $o-card-box-hover-shadow;
+	box-shadow: $o-cc-box-shadow;
 	background-color: mix($o-color-light-gray, white, 5%);
 	border: 1px solid $pre-border-color;
 	border-radius: $border-radius-base;
@@ -1915,7 +1915,7 @@ table.o_ce_table {
 		overflow-x: auto;
 
 		.o_table_border_wrap {
-			box-shadow: $o-card-box-hover-shadow;
+			box-shadow: $o-cc-box-shadow;
 			border-radius: $border-radius-base;
 			overflow: hidden;
 			border: 1px solid rgba($gray-base, 10%);
