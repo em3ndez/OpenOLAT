@@ -2476,7 +2476,7 @@ table.o_ce_table {
 /* Page / form: editor mode */
 .o_page_content_editor {
 	.o_page_fragment_edit {
-		.o_page_layout {
+		.o_page_layout:not(.o_apply_background_color) {
 			div.o_spacer_wrapper {
 				padding-top: 20px;
 				padding-bottom: 20px;
