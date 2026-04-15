@@ -256,11 +256,11 @@ public class ShowZoomApplicationsController extends FormBasicController {
                 FlexiTableComponent source, URLBuilder ubu, Translator translator) {
             if (cellValue instanceof ZoomApplicationRow applicationRow) {
                 if (StringHelper.containsNonWhitespace(applicationRow.getGroupDisplayText())) {
-                    target.append(applicationRow.getGroupDisplayText());
+                    target.append(StringHelper.escapeHtml(applicationRow.getGroupDisplayText()));
                 } else {
                     String displayText = buildDisplayText(applicationRow.getApplication(), translator);
                     if (StringHelper.containsNonWhitespace(displayText)) {
-                        target.append(displayText);
+                        target.append(StringHelper.escapeHtml(displayText));
                     }
                 }
             }
