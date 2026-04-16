@@ -2899,6 +2899,27 @@ table.o_ce_table {
 		color: $text-muted;
 		font-style: italic;
 	}
+
+	.o_page_toc_list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+
+		li {
+			padding: 0.2em 0;
+		}
+
+		.o_page_toc_indent_0 { padding-left: 0; }
+		.o_page_toc_indent_1 { padding-left: 1.5em; }
+		.o_page_toc_indent_2 { padding-left: 3em; }
+		.o_page_toc_indent_3 { padding-left: 4.5em; }
+		.o_page_toc_indent_4 { padding-left: 6em; }
+	}
+
+	.o_page_toc_empty {
+		color: $text-muted;
+		font-style: italic;
+	}
 }
 
 .o_page_content_editor {

@@ -92,11 +92,11 @@ public class TocElementHandler implements PageElementHandler, PageElementStore<T
 			return null;
 		}
 
-		String title = tocPart.getTocSettings().getTitle();
 		if (options.isEditable()) {
-			TocEditorController ctrl = new TocEditorController(ureq, wControl, title);
+			TocEditorController ctrl = new TocEditorController(ureq, wControl, tocPart, this::computeEntries);
 			return new PageRunControllerElement(ctrl);
 		} else {
+			String title = tocPart.getTocSettings().getTitle();
 			List<TitleEntry> entries = computeEntries(tocPart);
 			TocRunController ctrl = new TocRunController(ureq, wControl, tocPart, entries, title);
 			return new PageRunControllerElement(ctrl);
@@ -150,7 +150,7 @@ public class TocElementHandler implements PageElementHandler, PageElementStore<T
 	@Override
 	public PageElementEditorController getEditor(UserRequest ureq, WindowControl wControl, PageElement element) {
 		if (element instanceof TocPart tocPart) {
-			return new TocEditorController(ureq, wControl, tocPart.getTocSettings().getTitle());
+			return new TocEditorController(ureq, wControl, tocPart, this::computeEntries);
 		}
 		return null;
 	}

@@ -19,6 +19,9 @@
  */
 package org.olat.modules.ceditor.ui;
 
+import java.util.List;
+import java.util.function.Function;
+
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.Component;
 import org.olat.core.gui.components.velocity.VelocityContainer;
@@ -26,6 +29,10 @@ import org.olat.core.gui.control.Event;
 import org.olat.core.gui.control.WindowControl;
 import org.olat.core.gui.control.controller.BasicController;
 import org.olat.modules.ceditor.PageElementEditorController;
+import org.olat.modules.ceditor.model.jpa.TocPart;
+import org.olat.modules.ceditor.ui.TocRunController.TitleEntry;
+import org.olat.modules.ceditor.ui.event.ChangePartEvent;
+import org.olat.modules.ceditor.ui.event.PageStructureChangedEvent;
 
 /**
  * Initial date: 15 Apr 2026<br>
@@ -33,15 +40,33 @@ import org.olat.modules.ceditor.PageElementEditorController;
  */
 public class TocEditorController extends BasicController implements PageElementEditorController {
 
-	public TocEditorController(UserRequest ureq, WindowControl wControl, String title) {
+	private final VelocityContainer mainVC;
+	private TocPart tocPart;
+	private final Function<TocPart, List<TitleEntry>> entryProvider;
+
+	public TocEditorController(UserRequest ureq, WindowControl wControl, TocPart tocPart, 
+							   Function<TocPart, List<TitleEntry>> entryProvider) {
 		super(ureq, wControl);
-		VelocityContainer mainVC = createVelocityContainer("toc_editor");
-		mainVC.contextPut("title", title);
+		this.tocPart = tocPart;
+		this.entryProvider = entryProvider;
+		mainVC = createVelocityContainer("toc_editor");
+		doUpdateEntries();
 		putInitialPanel(mainVC);
 	}
 
 	@Override
 	protected void event(UserRequest ureq, Component source, Event event) {
-		//
+		if (event instanceof ChangePartEvent cpe && cpe.getElement() instanceof TocPart updatedTocPart) {
+			tocPart = updatedTocPart;
+			doUpdateEntries();
+		} else if (event instanceof PageStructureChangedEvent) {
+			doUpdateEntries();
+		}
+	}
+
+	private void doUpdateEntries() {
+		mainVC.contextPut("title", tocPart.getTocSettings().getTitle());
+		mainVC.contextPut("entries", entryProvider.apply(tocPart));
+		mainVC.setDirty(true);
 	}
 }
