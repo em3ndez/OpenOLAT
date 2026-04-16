@@ -26,7 +26,6 @@ import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.Component;
 import org.olat.core.gui.components.ComponentEventListener;
 import org.olat.core.gui.components.velocity.VelocityContainer;
-import org.olat.core.gui.control.Controller;
 import org.olat.core.gui.control.Event;
 import org.olat.core.gui.control.WindowControl;
 import org.olat.core.gui.control.controller.BasicController;
@@ -62,15 +61,10 @@ public class TocEditorController extends BasicController implements PageElementE
 
 	@Override
 	protected void event(UserRequest ureq, Component source, Event event) {
-		if (event instanceof PageStructureChangedEvent) {
-			doUpdateEntries();
-		}
-	}
-	
-	@Override
-	protected void event(UserRequest ureq, Controller source, Event event) {
 		if (event instanceof ChangePartEvent cpe && cpe.getElement() instanceof TocPart updatedTocPart) {
 			tocPart = updatedTocPart;
+			doUpdateEntries();
+		} else if (event instanceof PageStructureChangedEvent) {
 			doUpdateEntries();
 		}
 	}
@@ -82,11 +76,11 @@ public class TocEditorController extends BasicController implements PageElementE
 	}
 
 	class EditModeAwareVelocityContainer extends VelocityContainer implements EditModeAware {
-		private boolean editMode;
+		private boolean editMode = true;
 		
 		
 		public EditModeAwareVelocityContainer(String page, Translator translator, ComponentEventListener listeningController) {
-			super("vc_" + page, velocity_root + "/" + page + ".html", translator, listeningController);
+			super("vc_" + page, getVelocityTemplatePath(page), translator, listeningController);
 		}
 
 		@Override
