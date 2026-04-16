@@ -27,6 +27,7 @@ import org.olat.core.CoreSpringFactory;
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.control.WindowControl;
 import org.olat.core.util.StringHelper;
+import org.olat.core.util.Util;
 import org.olat.core.util.filter.FilterFactory;
 import org.olat.modules.ceditor.CloneElementHandler;
 import org.olat.modules.ceditor.Page;
@@ -167,6 +168,7 @@ public class TocElementHandler implements PageElementHandler, PageElementStore<T
 	public PageElement createPageElement(Locale locale) {
 		TocPart part = new TocPart();
 		TocSettings settings = new TocSettings();
+		settings.setTitle(Util.createPackageTranslator(TocEditorController.class, locale).translate("toc.title.example"));
 		part.setTocSettings(settings);
 		return part;
 	}
