@@ -33,9 +33,10 @@ import org.olat.modules.ceditor.PageElementEditorController;
  */
 public class TocEditorController extends BasicController implements PageElementEditorController {
 
-	public TocEditorController(UserRequest ureq, WindowControl wControl) {
+	public TocEditorController(UserRequest ureq, WindowControl wControl, String title) {
 		super(ureq, wControl);
 		VelocityContainer mainVC = createVelocityContainer("toc_editor");
+		mainVC.contextPut("title", title);
 		putInitialPanel(mainVC);
 	}
 

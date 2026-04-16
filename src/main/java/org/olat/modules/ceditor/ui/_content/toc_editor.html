@@ -1,3 +1,8 @@
 <div class="o_page_toc_editor o_ce_layout_predefined">
-    <i class="o_icon o_icon_list_num"> </i> $r.translate("add.toc")
+    #if($title && !$title.isEmpty())
+    <div class="o_page_toc_title">$r.escapeHtml($title)</div>
+    #end
+    <div class="o_page_toc_placeholder">
+        <i class="o_icon o_icon_list_num"> </i> $r.translate("add.toc")
+    </div>
 </div>

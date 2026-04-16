@@ -27,6 +27,7 @@ import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.form.flexible.FormItem;
 import org.olat.core.gui.components.form.flexible.FormItemContainer;
 import org.olat.core.gui.components.form.flexible.elements.MultipleSelectionElement;
+import org.olat.core.gui.components.form.flexible.elements.TextElement;
 import org.olat.core.gui.components.form.flexible.impl.FormBasicController;
 import org.olat.core.gui.components.form.flexible.impl.FormEvent;
 import org.olat.core.gui.components.util.SelectionValues;
@@ -46,6 +47,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 public class TocInspectorController extends FormBasicController implements PageElementInspectorController {
 
+	private TextElement titleEl;
 	private MultipleSelectionElement headingLevelsEl;
 
 	private TocElement tocElement;
@@ -56,7 +58,7 @@ public class TocInspectorController extends FormBasicController implements PageE
 
 	public TocInspectorController(UserRequest ureq, WindowControl wControl, TocElement tocElement,
 								  PageElementStore<TocElement> store) {
-		super(ureq, wControl, LAYOUT_BAREBONE);
+		super(ureq, wControl, LAYOUT_VERTICAL);
 		this.tocElement = tocElement;
 		this.store = store;
 		initForm(ureq);
@@ -69,6 +71,11 @@ public class TocInspectorController extends FormBasicController implements PageE
 
 	@Override
 	protected void initForm(FormItemContainer formLayout, Controller listener, UserRequest ureq) {
+		TocSettings settings = tocElement.getTocSettings();
+
+		titleEl = uifactory.addTextElement("toc.title", "title", 255, settings.getTitle(), formLayout);
+		titleEl.addActionListener(FormEvent.ONBLUR);
+
 		SelectionValues headingLevelsKV = new SelectionValues();
 		headingLevelsKV.add(SelectionValues.entry("1", translate("toc.heading.level.1")));
 		headingLevelsKV.add(SelectionValues.entry("2", translate("toc.heading.level.2")));
@@ -80,7 +87,6 @@ public class TocInspectorController extends FormBasicController implements PageE
 				formLayout, headingLevelsKV.keys(), headingLevelsKV.values(), 1);
 		headingLevelsEl.addActionListener(FormEvent.ONCHANGE);
 
-		TocSettings settings = tocElement.getTocSettings();
 		for (int i = 1; i <= 5; i++) {
 			headingLevelsEl.select(String.valueOf(i), settings.getVisibleLevels().contains(i));
 		}
@@ -88,7 +94,7 @@ public class TocInspectorController extends FormBasicController implements PageE
 
 	@Override
 	protected void formInnerEvent(UserRequest ureq, FormItem source, FormEvent event) {
-		if (headingLevelsEl == source) {
+		if (titleEl == source || headingLevelsEl == source) {
 			doSaveSettings(ureq);
 		}
 		super.formInnerEvent(ureq, source, event);
@@ -101,6 +107,7 @@ public class TocInspectorController extends FormBasicController implements PageE
 
 	private void doSaveSettings(UserRequest ureq) {
 		TocSettings settings = tocElement.getTocSettings();
+		settings.setTitle(titleEl.getValue());
 		Set<Integer> visibleLevels = new LinkedHashSet<>();
 		for (int i = 1; i <= 5; i++) {
 			if (headingLevelsEl.isSelected(i - 1)) {

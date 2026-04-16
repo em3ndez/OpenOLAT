@@ -62,9 +62,10 @@ public class TocRunController extends BasicController {
 		}
 	}
 
-	public TocRunController(UserRequest ureq, WindowControl wControl, TocPart tocPart, List<TitleEntry> entries) {
+	public TocRunController(UserRequest ureq, WindowControl wControl, TocPart tocPart, List<TitleEntry> entries, String title) {
 		super(ureq, wControl);
 		VelocityContainer mainVC = createVelocityContainer("toc_run");
+		mainVC.contextPut("title", title);
 		mainVC.contextPut("entries", entries);
 		putInitialPanel(mainVC);
 	}
