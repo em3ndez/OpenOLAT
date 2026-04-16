@@ -598,6 +598,7 @@ public class PageEditorV2Controller extends BasicController {
 			if(referenceFragment != null) {
 				referenceFragment.setEditMode(false);
 			}
+			doNotifyStructureChangedToEditors(ureq);
 			fragment.setEditMode(true);
 			fireEvent(ureq, Event.CHANGED_EVENT);
 		}
