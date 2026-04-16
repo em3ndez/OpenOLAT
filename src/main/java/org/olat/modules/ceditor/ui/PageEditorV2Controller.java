@@ -272,6 +272,7 @@ public class PageEditorV2Controller extends BasicController {
 			}
 			return true;
 		}, editorCmp, false).visitAll(ureq);
+		doNotifyStructureChangedToEditors(ureq);
 	}
 
 	private void doNotifyStructureChangedToEditors(UserRequest ureq) {
