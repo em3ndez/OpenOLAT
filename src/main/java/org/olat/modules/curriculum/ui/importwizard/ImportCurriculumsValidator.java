@@ -65,6 +65,7 @@ import org.olat.repository.RepositoryEntrySecurity;
 import org.olat.repository.RepositoryEntryStatusEnum;
 import org.olat.repository.RepositoryManager;
 import org.olat.user.UserManager;
+import org.olat.user.UserModule;
 import org.olat.user.propertyhandlers.UserPropertyHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -87,6 +88,8 @@ public class ImportCurriculumsValidator {
 	private final List<UserPropertyHandler> userPropertyHandlers;
 	private final Set<String> curriculumsNoPermissions = new HashSet<>();
 
+	@Autowired
+	private UserModule userModule;
 	@Autowired
 	private UserManager userManager;
 	@Autowired
@@ -260,7 +263,10 @@ public class ImportCurriculumsValidator {
 			ValidationError validationError = new ValidationError();
 			String column = translate(handler.i18nColumnDescriptorLabelKey());
 			
-			if(validateMandatory(importedRow, value, handler)
+			if(!StringHelper.containsNonWhitespace(value)
+					&& handler.getName().equals(UserConstants.EMAIL) && !userModule.isEmailMandatory()) {
+				// Not mandatory per setting
+			} else if(validateMandatory(importedRow, value, handler)
 					&& validateLength(importedRow, value, 128, handler)) {
 			
 				if(UserConstants.NICKNAME.equals(handler.getName())) {
