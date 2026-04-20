@@ -28,6 +28,7 @@ import org.apache.logging.log4j.Logger;
 import org.olat.basesecurity.BaseSecurity;
 import org.olat.basesecurity.BaseSecurityModule;
 import org.olat.basesecurity.Group;
+import org.olat.basesecurity.OrganisationRoles;
 import org.olat.basesecurity.OrganisationService;
 import org.olat.core.CoreSpringFactory;
 import org.olat.core.commons.persistence.DB;
@@ -166,7 +167,20 @@ public class ImportCurriculumsFinishStepCallback implements StepRunnerCallback {
 			authusername = nickName;
 			pwd = row.getPassword();
 		}
-		return securityManager.createAndPersistIdentityAndUserWithOrganisation(null, nickName, null, newUser, provider, BaseSecurity.DEFAULT_ISSUER, null, authusername, pwd, row.getOrganisation(), null, doer);
+		
+		Organisation organisation = row.getOrganisations() != null && !row.getOrganisations().isEmpty()
+				? row.getOrganisations().get(0)
+				: null;
+		
+		Identity identity = securityManager.createAndPersistIdentityAndUserWithOrganisation(null, nickName, null, newUser,
+				provider, BaseSecurity.DEFAULT_ISSUER, null, authusername, pwd, organisation, null, doer);
+		if(row.getOrganisations() != null && row.getOrganisations().size() > 1) {
+			for(int i=1; i<row.getOrganisations().size(); i++) {
+				Organisation additionalOrganisation = row.getOrganisations().get(i);
+				organisationService.addMember(additionalOrganisation, identity, OrganisationRoles.user, doer);
+			}
+		}
+		return identity;
 	}
 	
 	private void processEvents() {

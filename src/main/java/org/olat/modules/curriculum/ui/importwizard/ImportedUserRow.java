@@ -27,6 +27,7 @@ import java.util.Map;
 
 import org.olat.core.id.Identity;
 import org.olat.core.id.Organisation;
+import org.olat.core.util.StringHelper;
 
 /**
  * 
@@ -42,7 +43,7 @@ public class ImportedUserRow extends AbstractImportRow {
 	private final String password;
 	
 	private Identity identity;
-	private Organisation organisation;
+	private List<Organisation> organisations;
 	private Map<String,CurriculumImportedValue> validationHandlersMap;
 	
 	
@@ -88,13 +89,26 @@ public class ImportedUserRow extends AbstractImportRow {
 	public String getOrganisationIdentifier() {
 		return organisationIdentifier;
 	}
-
-	public Organisation getOrganisation() {
-		return organisation;
+	
+	public List<String> getOrganisationIdentifiersList() {
+		List<String> list = new ArrayList<>(3);
+		if(StringHelper.containsNonWhitespace(organisationIdentifier)) {
+			String[] subjectsArr = organisationIdentifier.split(";");
+			for(String subject:subjectsArr) {
+				if(StringHelper.containsNonWhitespace(subject)) {
+					list.add(subject.trim());
+				}
+			}
+		}
+		return list;
 	}
 
-	public void setOrganisation(Organisation organisation) {
-		this.organisation = organisation;
+	public List<Organisation> getOrganisations() {
+		return organisations;
+	}
+
+	public void setOrganisations(List<Organisation> organisations) {
+		this.organisations = organisations;
 	}
 
 	public LocalDateTime getCreationDate() {

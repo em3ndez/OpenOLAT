@@ -298,18 +298,29 @@ public class ImportCurriculumsValidator {
 		// Organisation
 		if(validateMandatory(importedRow, importedRow.getOrganisationIdentifier(), ImportCurriculumsCols.organisationIdentifier)) {
 			String organisationColumn = translate(ImportCurriculumsCols.organisationIdentifier.i18nHeaderKey());
-			if(importedRow.getOrganisation() == null) {
+			if(importedRow.getOrganisations() == null || importedRow.getOrganisations().isEmpty()) {
 				// Has an organisation identifier
 				importedRow.addValidationError(ImportCurriculumsCols.organisationIdentifier, organisationColumn,
 						null, translator.translate("error.not.exist", importedRow.getOrganisationIdentifier()));
-			} else if(!hasOrganisationPermission(importedRow.getOrganisation())) {
+			} else if(importedRow.getOrganisations() == null || importedRow.getOrganisations().isEmpty()) {
+				// Has an organisation identifier
+				importedRow.addValidationError(ImportCurriculumsCols.organisationIdentifier, organisationColumn,
+						null, translator.translate("error.not.exist", importedRow.getOrganisationIdentifier()));
+			} else if(importedRow.getOrganisations().size() < importedRow.getOrganisationIdentifiersList().size()) {
+				String missingOrganisations = listMissingOrganisations(importedRow.getOrganisationIdentifiersList(), importedRow.getOrganisations());
+				importedRow.addValidationError(ImportCurriculumsCols.organisationIdentifier, organisationColumn,
+						null, translator.translate("error.not.exist", missingOrganisations));
+			} else if(!hasOrganisationsPermission(importedRow.getOrganisations())) {
 				importedRow.addValidationError(ImportCurriculumsCols.organisationIdentifier, organisationColumn,
 						null, translate("error.permissions"));
 			} else if(importedRow.getIdentity() != null) {
 				List<Organisation> currentOrganisations = organisationService.getOrganisations(importedRow.getIdentity(), OrganisationRoles.user);
-				if(!currentOrganisations.contains(importedRow.getOrganisation())) {
-					importedRow.addValidationWarning(ImportCurriculumsCols.organisationIdentifier, organisationColumn,
-							null, translate("error.no.update"));
+				for(Organisation organisation: importedRow.getOrganisations()) {
+					if(!currentOrganisations.contains(organisation)) {
+						importedRow.addValidationWarning(ImportCurriculumsCols.organisationIdentifier, organisationColumn,
+								null, translate("error.no.update"));
+						break;
+					}
 				}
 			}
 		}
@@ -322,6 +333,20 @@ public class ImportCurriculumsValidator {
 				importedRow.setStatus(ImportCurriculumsStatus.NO_CHANGES);
 			}
 		}
+	}
+	
+	private String listMissingOrganisations(List<String> identifiers, List<Organisation> organisations) {
+		Set<String> organisationsSet = organisations.stream()
+				.map(Organisation::getIdentifier)
+				.collect(Collectors.toSet());
+		StringBuilder sb = new StringBuilder();
+		for(String identifier:identifiers) {
+			if(!organisationsSet.contains(identifier)) {
+				if(!sb.isEmpty()) sb.append(";");
+				sb.append(identifier);
+			}
+		}
+		return sb.toString();
 	}
 	
 	public void validatePassword(ImportedUserRow importedRow) {
@@ -839,6 +864,14 @@ public class ImportCurriculumsValidator {
 		// Identifier / external ref.
 		boolean allOk = validateMandatory(importedRow, importedRow.getIdentifier(), ImportCurriculumsCols.identifier);
 		allOk &= validateLength(importedRow, importedRow.getIdentifier(), maxLength, ImportCurriculumsCols.identifier);
+		return allOk;
+	}
+	
+	private boolean hasOrganisationsPermission(List<Organisation> organisations) {
+		boolean allOk = true;
+		for(Organisation organisation:organisations) {
+			allOk &= hasOrganisationPermission(organisation);
+		}
 		return allOk;
 	}
 	
