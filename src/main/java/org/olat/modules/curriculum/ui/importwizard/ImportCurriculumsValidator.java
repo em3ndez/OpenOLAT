@@ -19,6 +19,7 @@
  */
 package org.olat.modules.curriculum.ui.importwizard;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
@@ -29,7 +30,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.time.DateUtils;
 import org.olat.admin.user.imp.TransientIdentity;
 import org.olat.basesecurity.BaseSecurityModule;
 import org.olat.basesecurity.OrganisationRoles;
@@ -43,6 +43,8 @@ import org.olat.core.id.Organisation;
 import org.olat.core.id.Roles;
 import org.olat.core.id.User;
 import org.olat.core.id.UserConstants;
+import org.olat.core.util.DateUtils;
+import org.olat.core.util.Formatter;
 import org.olat.core.util.StringHelper;
 import org.olat.core.util.openxml.AbstractExcelReader;
 import org.olat.core.util.openxml.AbstractExcelReader.ReaderLocalDate;
@@ -79,6 +81,7 @@ public class ImportCurriculumsValidator {
 	
 	private final Roles roles;
 	private final Identity identity;
+	private final Formatter formatter;
 	private final Translator translator;
 	
 	public static final String ON = "ON";
@@ -106,6 +109,7 @@ public class ImportCurriculumsValidator {
 		this.roles = roles;
 		this.identity = identity;
 		this.translator = translator;
+		formatter = Formatter.getInstance(translator.getLocale());
 		
 		boolean isAdministrativeUser = securityModule.isUserAllowedAdminProps(roles);
 		userPropertyHandlers = userManager.getUserPropertyHandlersFor(CurriculumExport.usageIdentifyer, isAdministrativeUser)
@@ -328,6 +332,22 @@ public class ImportCurriculumsValidator {
 						break;
 					}
 				}
+			}
+		}
+		
+		if(importedRow.getExpirationDate() != null && importedRow.getExpirationDate().date() != null) {
+			ReaderLocalDate expirationDate = importedRow.getExpirationDate();
+			String expirationColumn = translate(ImportCurriculumsCols.expirationDate.i18nHeaderKey());
+			if(importedRow.getIdentity() == null &&  expirationDate.date().compareTo(LocalDate.now()) < 0) {
+				importedRow.addValidationError(ImportCurriculumsCols.expirationDate, expirationColumn,
+						null, translate("error.date.future"));
+			} else if(importedRow.getIdentity() != null && (importedRow.getIdentity().getExpirationDate() == null
+					|| !DateUtils.isSameDay(importedRow.getIdentity().getExpirationDate(), DateUtils.toDate(expirationDate.date())))) {
+				String currentValue = importedRow.getIdentity().getExpirationDate() == null
+						? expirationColumn
+						: formatter.formatDate(importedRow.getIdentity().getExpirationDate());
+				importedRow.addValidationWarning(ImportCurriculumsCols.expirationDate, expirationColumn, null,
+						translator.translate("warning.change.ignore", currentValue));
 			}
 		}
 		

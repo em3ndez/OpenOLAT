@@ -219,6 +219,7 @@ implements FilterableFlexiTableModel, SortableFlexiTableDataModel<ImportedUserRo
 				case tools -> Boolean.valueOf(userRow.getIgnoreEl() != null && userRow.getIgnoreEl().isEnabled());
 				case organisationIdentifier -> userRow.getOrganisationIdentifier();
 				case password -> userRow.getPassword();
+				case expirationDate -> userRow.getExpirationDate();
 				default -> "ERROR";
 			};
 		}

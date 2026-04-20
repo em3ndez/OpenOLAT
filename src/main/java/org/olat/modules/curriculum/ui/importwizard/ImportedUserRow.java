@@ -28,6 +28,7 @@ import java.util.Map;
 import org.olat.core.id.Identity;
 import org.olat.core.id.Organisation;
 import org.olat.core.util.StringHelper;
+import org.olat.core.util.openxml.AbstractExcelReader.ReaderLocalDate;
 
 /**
  * 
@@ -39,6 +40,7 @@ public class ImportedUserRow extends AbstractImportRow {
 
 	private final String organisationIdentifier;
 	private final LocalDateTime creationDate;
+	private final ReaderLocalDate expirationDate;
 	private final String[] identityProps;
 	private final String password;
 	
@@ -48,11 +50,13 @@ public class ImportedUserRow extends AbstractImportRow {
 	
 	
 	
-	public ImportedUserRow(int rowNum, String[] identityProps, String organisationIdentifier, String password, LocalDateTime creationDate) {
+	public ImportedUserRow(int rowNum, String[] identityProps, String organisationIdentifier,
+			ReaderLocalDate expirationDate, String password, LocalDateTime creationDate) {
 		super(rowNum);
 		this.organisationIdentifier = organisationIdentifier;
 		this.creationDate = creationDate;
 		this.identityProps = identityProps;
+		this.expirationDate = expirationDate;
 		this.password = password;
 	}
 	
@@ -84,6 +88,10 @@ public class ImportedUserRow extends AbstractImportRow {
 			return identityProps[index];
 		}
 		return null;
+	}
+	
+	public ReaderLocalDate getExpirationDate() {
+		return expirationDate;
 	}
 
 	public String getOrganisationIdentifier() {
