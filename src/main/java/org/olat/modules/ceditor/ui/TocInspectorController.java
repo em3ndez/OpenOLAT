@@ -24,6 +24,7 @@ import java.util.Set;
 
 import org.olat.core.commons.persistence.DB;
 import org.olat.core.commons.services.color.ColorService;
+import org.olat.core.util.StringHelper;
 import org.olat.core.gui.UserRequest;
 import org.olat.core.gui.components.form.flexible.FormItem;
 import org.olat.core.gui.components.form.flexible.FormItemContainer;
@@ -54,6 +55,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class TocInspectorController extends FormBasicController implements PageElementInspectorController {
 
 	private TabbedPaneItem tabbedPane;
+	private int selectedTabIndex = 0;
 	private MediaUIHelper.LayoutTabComponents layoutTabComponents;
 	private MediaUIHelper.AlertBoxComponents alertBoxComponents;
 
@@ -100,7 +102,7 @@ public class TocInspectorController extends FormBasicController implements PageE
 		TocSettings settings = tocElement.getTocSettings();
 
 		titleEl = uifactory.addTextElement("toc.title", "title", 255, settings.getTitle(), layoutCont);
-		titleEl.addActionListener(FormEvent.ONBLUR);
+		titleEl.addActionListener(FormEvent.ONCHANGE);
 
 		SelectionValues headingLevelsKV = new SelectionValues();
 		headingLevelsKV.add(SelectionValues.entry("1", translate("toc.heading.level.1")));
@@ -137,6 +139,9 @@ public class TocInspectorController extends FormBasicController implements PageE
 		} else if (titleEl == source || headingLevelsEl == source) {
 			doSaveSettings(ureq);
 		} else {
+			if (source == tabbedPane) {
+				selectedTabIndex = tabbedPane.getSelectedPane();
+			}
 			updateTocTab();
 		}
 		super.formInnerEvent(ureq, source, event);
@@ -144,7 +149,11 @@ public class TocInspectorController extends FormBasicController implements PageE
 
 	@Override
 	protected void formOK(UserRequest ureq) {
-		doSaveSettings(ureq);
+		switch (selectedTabIndex) {
+			case 0 -> doSaveSettings(ureq);
+			case 1 -> doChangeAlertBoxSettings(ureq);
+			case 2 -> doChangeLayout(ureq);
+		}
 	}
 
 	private void doSaveSettings(UserRequest ureq) {
@@ -178,6 +187,12 @@ public class TocInspectorController extends FormBasicController implements PageE
 		TocSettings settings = getTocSettings();
 		AlertBoxSettings alertBoxSettings = getAlertBoxSettings(settings);
 		alertBoxComponents.sync(alertBoxSettings);
+		if (alertBoxSettings.isShowAlertBox()
+				&& !StringHelper.containsNonWhitespace(alertBoxSettings.getTitle())
+				&& StringHelper.containsNonWhitespace(settings.getTitle())) {
+			alertBoxSettings.setTitle(settings.getTitle());
+			alertBoxComponents.titleEl().setValue(settings.getTitle());
+		}
 		settings.setAlertBoxSettings(alertBoxSettings);
 		tocElement.setTocSettings(settings);
 		doSave(ureq);

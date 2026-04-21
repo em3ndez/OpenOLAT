@@ -42,6 +42,7 @@ import org.olat.modules.ceditor.PageRunElement;
 import org.olat.modules.ceditor.PageService;
 import org.olat.modules.ceditor.RenderingHints;
 import org.olat.modules.ceditor.SimpleAddPageElementHandler;
+import org.olat.modules.ceditor.model.AlertBoxSettings;
 import org.olat.modules.ceditor.model.TocElement;
 import org.olat.modules.ceditor.model.TocSettings;
 import org.olat.modules.ceditor.model.jpa.TitlePart;
@@ -110,7 +111,11 @@ public class TocElementHandler implements PageElementHandler, PageElementStore<T
 		int tocIndex = indexOf(allParts, tocPart);
 		if (tocIndex < 0) {
 			TocSettings fallback = tocPart.getTocSettings();
-			return new TocRenderData(fallback.getTitle(), List.of(), BlockLayoutClassFactory.buildClass(fallback, false));
+			AlertBoxSettings fallbackAlertBox = fallback.getAlertBoxSettings();
+			boolean fallbackBoxTitleActive = fallbackAlertBox != null && fallbackAlertBox.isShowAlertBox()
+					&& StringHelper.containsNonWhitespace(fallbackAlertBox.getTitle());
+			String fallbackInlineTitle = fallbackBoxTitleActive ? "" : fallback.getTitle();
+			return new TocRenderData(fallbackInlineTitle, List.of(), BlockLayoutClassFactory.buildClass(fallback, false));
 		}
 
 		// Use fresh TocPart from DB so settings are always up to date
@@ -146,7 +151,11 @@ public class TocElementHandler implements PageElementHandler, PageElementStore<T
 				entries.add(new TitleEntry(title.getKey(), text, level - currentLevel - 1));
 			}
 		}
-		return new TocRenderData(settings.getTitle(), entries, BlockLayoutClassFactory.buildClass(settings, false));
+		AlertBoxSettings alertBoxSettings = settings.getAlertBoxSettings();
+		boolean boxTitleActive = alertBoxSettings != null && alertBoxSettings.isShowAlertBox()
+				&& StringHelper.containsNonWhitespace(alertBoxSettings.getTitle());
+		String inlineTitle = boxTitleActive ? "" : settings.getTitle();
+		return new TocRenderData(inlineTitle, entries, BlockLayoutClassFactory.buildClass(settings, false));
 	}
 
 	private int indexOf(List<PagePart> parts, TocPart target) {
