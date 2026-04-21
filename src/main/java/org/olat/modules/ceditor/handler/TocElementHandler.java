@@ -46,11 +46,13 @@ import org.olat.modules.ceditor.model.TocElement;
 import org.olat.modules.ceditor.model.TocSettings;
 import org.olat.modules.ceditor.model.jpa.TitlePart;
 import org.olat.modules.ceditor.model.jpa.TocPart;
+import org.olat.modules.ceditor.ui.BlockLayoutClassFactory;
 import org.olat.modules.ceditor.ui.PageRunControllerElement;
 import org.olat.modules.ceditor.ui.TocEditorController;
 import org.olat.modules.ceditor.ui.TocInspectorController;
 import org.olat.modules.ceditor.ui.TocRunController;
 import org.olat.modules.ceditor.ui.TocRunController.TitleEntry;
+import org.olat.modules.ceditor.ui.TocRunController.TocRenderData;
 
 /**
  * Initial date: 15 Apr 2026<br>
@@ -94,22 +96,30 @@ public class TocElementHandler implements PageElementHandler, PageElementStore<T
 		}
 
 		if (options.isEditable()) {
-			TocEditorController ctrl = new TocEditorController(ureq, wControl, tocPart, this::computeEntries, true);
+			TocEditorController ctrl = new TocEditorController(ureq, wControl, tocPart, this::computeRenderData, true);
 			return new PageRunControllerElement(ctrl);
 		} else {
-			String title = tocPart.getTocSettings().getTitle();
-			List<TitleEntry> entries = computeEntries(tocPart);
-			TocRunController ctrl = new TocRunController(ureq, wControl, tocPart, entries, title);
+			TocRenderData renderData = computeRenderData(tocPart);
+			TocRunController ctrl = new TocRunController(ureq, wControl, renderData);
 			return new PageRunControllerElement(ctrl);
 		}
 	}
 
-	private List<TitleEntry> computeEntries(TocPart tocPart) {
+	private TocRenderData computeRenderData(TocPart tocPart) {
 		List<PagePart> allParts = pageService.getAllPagePartsFlat(page);
+		int tocIndex = indexOf(allParts, tocPart);
+		if (tocIndex < 0) {
+			TocSettings fallback = tocPart.getTocSettings();
+			return new TocRenderData(fallback.getTitle(), List.of(), BlockLayoutClassFactory.buildClass(fallback, false));
+		}
+
+		// Use fresh TocPart from DB so settings are always up to date
 		TocSettings settings = tocPart.getTocSettings();
+		if (allParts.get(tocIndex) instanceof TocPart freshPart) {
+			settings = freshPart.getTocSettings();
+		}
 
 		// Step 1: determine current level from nearest preceding title
-		int tocIndex = indexOf(allParts, tocPart);
 		int currentLevel = 0;
 		for (int i = tocIndex - 1; i >= 0; i--) {
 			if (allParts.get(i) instanceof TitlePart preceding) {
@@ -136,7 +146,7 @@ public class TocElementHandler implements PageElementHandler, PageElementStore<T
 				entries.add(new TitleEntry(title.getKey(), text, level - currentLevel - 1));
 			}
 		}
-		return entries;
+		return new TocRenderData(settings.getTitle(), entries, BlockLayoutClassFactory.buildClass(settings, false));
 	}
 
 	private int indexOf(List<PagePart> parts, TocPart target) {
@@ -145,13 +155,13 @@ public class TocElementHandler implements PageElementHandler, PageElementStore<T
 				return i;
 			}
 		}
-		return 0;
+		return -1;
 	}
 
 	@Override
 	public PageElementEditorController getEditor(UserRequest ureq, WindowControl wControl, PageElement element) {
 		if (element instanceof TocPart tocPart) {
-			return new TocEditorController(ureq, wControl, tocPart, this::computeEntries, false);
+			return new TocEditorController(ureq, wControl, tocPart, this::computeRenderData, false);
 		}
 		return null;
 	}
