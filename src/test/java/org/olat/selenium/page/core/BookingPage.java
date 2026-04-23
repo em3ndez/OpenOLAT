@@ -164,7 +164,7 @@ public class BookingPage {
 		By descriptionBy = By.cssSelector(".o_sel_accesscontrol_open_form .o_sel_accesscontrol_description textarea");
 		browser.findElement(descriptionBy).sendKeys(description);		
 
-		By submitBy = By.cssSelector(".o_sel_accesscontrol_open_form button.btn-primary");
+		By submitBy = By.cssSelector(".modal-content .o_sel_accesscontrol_buttons button.btn.btn-primary");
 		browser.findElement(submitBy).click();
 		OOGraphene.waitModalDialogWithFieldsetDisappears(browser, "o_sel_accesscontrol_open_form");
 		
