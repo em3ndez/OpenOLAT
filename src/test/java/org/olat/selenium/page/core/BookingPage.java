@@ -237,7 +237,8 @@ public class BookingPage {
 		By descriptionBy = By.cssSelector(".o_sel_accesscontrol_invoice_form .o_sel_accesscontrol_description textarea");
 		browser.findElement(descriptionBy).sendKeys(description);
 
-		By submitBy = By.cssSelector(".o_sel_accesscontrol_invoice_form button.btn-primary");
+		By submitBy = By.cssSelector(".o_sel_accesscontrol_buttons button.btn.btn-primary.o_button_dirty");
+		OOGraphene.waitElementRefreshed(submitBy, browser);
 		OOGraphene.click(submitBy, browser);
 		OOGraphene.waitModalDialogDisappears(browser);
 		
