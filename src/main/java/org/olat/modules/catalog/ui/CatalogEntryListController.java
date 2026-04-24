@@ -119,8 +119,8 @@ import org.olat.modules.catalog.filter.LifecyclePublicHandler;
 import org.olat.modules.catalog.ui.CatalogEntryDataModel.CatalogEntryCols;
 import org.olat.modules.creditpoint.CreditPointModule;
 import org.olat.modules.curriculum.CurriculumElement;
-import org.olat.modules.curriculum.CurriculumInfoHelper;
 import org.olat.modules.curriculum.CurriculumElementMembership;
+import org.olat.modules.curriculum.CurriculumInfoHelper;
 import org.olat.modules.curriculum.CurriculumService;
 import org.olat.modules.curriculum.model.CurriculumElementRefImpl;
 import org.olat.modules.curriculum.ui.CurriculumElementImageMapper;
@@ -140,10 +140,10 @@ import org.olat.registration.SelfRegistrationAdvanceOrderInput;
 import org.olat.registration.TemporaryKey;
 import org.olat.repository.LifecycleModule;
 import org.olat.repository.RepositoryEntry;
-import org.olat.repository.ResourceInfoHelper;
 import org.olat.repository.RepositoryManager;
 import org.olat.repository.RepositoryModule;
 import org.olat.repository.RepositoryService;
+import org.olat.repository.ResourceInfoHelper;
 import org.olat.repository.ui.PriceMethod;
 import org.olat.repository.ui.RepositoryEntryImageMapper;
 import org.olat.repository.ui.author.EducationalTypeRenderer;
@@ -553,8 +553,9 @@ public class CatalogEntryListController extends FormBasicController implements A
 		if (catalogEntry.isPublicVisible()) {
 			updateAccessMaxParticipants(row);
 			
+			boolean bookingOnBehalf = getIdentity() != null && !getIdentity().equals(searchParams.getMember());
 			CatalogEntrySecurityCallback secCallback = CatalogEntrySecurityCallbackFactory.createSecurityCallback(
-					catalogEntry, searchParams.isGuestOnly(), row.getParticipantsAvailabilityNum().availability());
+					catalogEntry, searchParams.isGuestOnly(), row.getParticipantsAvailabilityNum().availability(), bookingOnBehalf);
 			row.setSecCallback(secCallback);
 			
 			Set<String> accessMethodTypes = new HashSet<>(2);
@@ -1167,7 +1168,7 @@ public class CatalogEntryListController extends FormBasicController implements A
 										searchParams.getMember())
 								.stream().anyMatch(CurriculumElementMembership::hasMembership);
 					}
-					if (!canLaunch && acService.tryAutoBooking(getIdentity(), curriculumElement, acResult)) {
+					if (!canLaunch && acService.tryAutoBooking(searchParams.getMember(), curriculumElement, acResult)) {
 						doOpenResource(ureq, row);
 						return;
 					}
