@@ -156,7 +156,7 @@ public class CurriculumAccountingDAO {
 			sb.append(", user.").append(userPropertyHandler.getName()).append(" as p_").append(userPropertyHandler.getName());
 		}
 		sb.append(" from acorder o");
-		sb.append(" inner join fetch o.billingAddress billingAddress");
+		sb.append(" left join fetch o.billingAddress billingAddress");
 		sb.append(" inner join o.parts orderPart");
 		sb.append(" inner join orderPart.lines orderLine");
 		sb.append(" inner join orderLine.offer offer");
