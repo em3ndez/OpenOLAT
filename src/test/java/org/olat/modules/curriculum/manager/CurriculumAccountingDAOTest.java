@@ -49,6 +49,7 @@ import org.olat.resource.accesscontrol.OrderStatus;
 import org.olat.resource.accesscontrol.model.AccessMethod;
 import org.olat.resource.accesscontrol.model.FreeAccessMethod;
 import org.olat.resource.accesscontrol.model.OrderAdditionalInfos;
+import org.olat.resource.accesscontrol.provider.invoice.model.InvoiceAccessMethod;
 import org.olat.test.JunitTestHelper;
 import org.olat.test.OlatTestCase;
 import org.olat.user.propertyhandlers.UserPropertyHandler;
@@ -212,6 +213,43 @@ public class CurriculumAccountingDAOTest extends OlatTestCase {
 		List<BookingOrder> bookingOrders = curriculumAccountingDao.bookingOrders(searchParams, handlers);
 		
 		curriculumAccountingDao.loadAssessmentsInfos(bookingOrders, searchParams);
+	}
+	
+	@Test
+	public void bookingOrdersByType() {
+		// Create a curriculum with an element and an invoice offer
+		Identity owner = JunitTestHelper.createAndPersistIdentityAsRndUser("account-7");
+		Identity id = JunitTestHelper.createAndPersistIdentityAsRndUser("account-8");
+		
+		// Make curriculum
+		Organisation organisation = JunitTestHelper.getDefaultOrganisation();
+		Curriculum curriculum = curriculumService.createCurriculum("CUR-ACCOUNTING-5", "Curriculum accounting 5", "Curriculum", false, organisation);
+		curriculumService.addMember(curriculum, owner, CurriculumRoles.curriculumowner);
+		
+		CurriculumElement element = curriculumService.createCurriculumElement("Element-for-rel", "Element for reservation",
+				CurriculumElementStatus.active, null, null, null, null, CurriculumCalendars.disabled,
+				CurriculumLectures.disabled, CurriculumLearningProgress.disabled, curriculum);
+		
+		AccessResult accessResult = createOrder(id, element.getResource(), "offer-1");
+		Assert.assertTrue(accessResult.isAccessible());
+		
+		// An order with free access
+		CurriculumAccountingSearchParams searchParams = new CurriculumAccountingSearchParams();
+		searchParams.setAccessMethodType(FreeAccessMethod.class);
+		searchParams.setCurriculum(curriculum);
+		List<BookingOrder> bookingOrders = curriculumAccountingDao.bookingOrders(searchParams, new ArrayList<>());
+		Assertions.assertThat(bookingOrders)
+			.hasSize(1)
+			.map(BookingOrder::getOrder)
+			.containsExactly(accessResult.getOrder());
+		
+		// No order with invoice
+		CurriculumAccountingSearchParams negativeSearchParams = new CurriculumAccountingSearchParams();
+		negativeSearchParams.setAccessMethodType(InvoiceAccessMethod.class);
+		negativeSearchParams.setCurriculum(curriculum);
+		List<BookingOrder> noBookingOrders = curriculumAccountingDao.bookingOrders(negativeSearchParams, new ArrayList<>());
+		Assertions.assertThat(noBookingOrders)
+			.hasSize(0);
 	}
 	
 	private AccessResult createOrder(Identity delivery, OLATResource resource, String offerLabel) {

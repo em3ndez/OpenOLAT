@@ -77,6 +77,7 @@ import org.olat.repository.RepositoryService;
 import org.olat.repository.ui.RepositoyUIFactory;
 import org.olat.resource.accesscontrol.AccessControlModule;
 import org.olat.resource.accesscontrol.Price;
+import org.olat.resource.accesscontrol.manager.ACMethodDAO;
 import org.olat.resource.accesscontrol.method.AccessMethodHandler;
 import org.olat.resource.accesscontrol.model.AccessMethod;
 import org.olat.resource.accesscontrol.ui.OrderTableItem;
@@ -92,7 +93,16 @@ import org.olat.user.propertyhandlers.UserPropertyHandler;
  */
 public class AccountingReportConfiguration extends TimeBoundReportConfiguration implements CurriculumReportConfiguration {
 
+	private String accessMethodType;
 	private Boolean excludeDeletedCurriculumElements;
+	
+	public String getAccessMethod() {
+		return accessMethodType;
+	}
+
+	public void setAccessMethod(String type) {
+		this.accessMethodType = type;
+	}
 
 	public void setExcludeDeletedCurriculumElements(Boolean excludeDeletedCurriculumElements) {
 		this.excludeDeletedCurriculumElements = excludeDeletedCurriculumElements;
@@ -121,6 +131,9 @@ public class AccountingReportConfiguration extends TimeBoundReportConfiguration 
 
 	@Override
 	protected String getI18nCategoryKey() {
+		if(StringHelper.containsNonWhitespace(accessMethodType)) {
+			return "report." + accessMethodType;
+		}
 		return "report.booking";
 	}
 
@@ -207,6 +220,11 @@ public class AccountingReportConfiguration extends TimeBoundReportConfiguration 
 		}
 		if (getExcludeDeletedCurriculumElements() != null) {
 			searchParams.setExcludeDeletedCurriculumElements(getExcludeDeletedCurriculumElements());
+		}
+		if(StringHelper.containsNonWhitespace(getAccessMethod())) {
+			Class<? extends AccessMethod> type = CoreSpringFactory.getImpl(ACMethodDAO.class)
+					.getAvailableMethodClass(accessMethodType);
+			searchParams.setAccessMethodType(type);
 		}
 		
 		CurriculumModule curriculumModule = CoreSpringFactory.getImpl(CurriculumModule.class);
